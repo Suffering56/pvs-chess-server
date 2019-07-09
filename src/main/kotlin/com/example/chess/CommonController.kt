@@ -1,4 +1,4 @@
-package com.example
+package com.example.chess
 
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
