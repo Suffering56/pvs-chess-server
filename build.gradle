@@ -22,6 +22,10 @@ version '1.0-SNAPSHOT'
 apply plugin: 'org.springframework.boot'
 apply plugin: 'io.spring.dependency-management'
 
+sourceSets {
+    main.java.srcDirs += 'src/main/kotlin/'
+    test.java.srcDirs += 'src/test/kotlin/'
+}
 
 repositories {
     mavenCentral()
@@ -54,6 +58,7 @@ dependencies {
 
 compileKotlin {
     kotlinOptions.jvmTarget = "1.8"
+//    kotlinOptions.freeCompilerArgs += ["-XXLanguage:+InlineClasses"]
 }
 compileTestKotlin {
     kotlinOptions.jvmTarget = "1.8"
