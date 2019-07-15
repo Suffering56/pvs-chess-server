@@ -1,5 +1,6 @@
-package com.example.chess
+package com.example.chess.web
 
+import com.example.chess.App
 import com.example.chess.entity.GameRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.ResponseEntity
@@ -9,10 +10,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api")
-class CommonController {
-
-    @Autowired
-    lateinit var gameRepository: GameRepository
+class CommonController @Autowired constructor(private val gameRepository: GameRepository) {
 
     @GetMapping("/version")
     fun get(): ResponseEntity<String> {
