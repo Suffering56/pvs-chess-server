@@ -47,6 +47,7 @@ dependencies {
     compile('org.hibernate:hibernate-java8:5.4.3.Final')
     compile('org.liquibase:liquibase-core:3.6.3')
 
+    compile group: 'com.google.guava', name: 'guava', version: '28.0-jre'
 
     compile 'org.springframework.boot:spring-boot-starter-logging'
     compile 'org.springframework.boot:spring-boot-starter-log4j2'

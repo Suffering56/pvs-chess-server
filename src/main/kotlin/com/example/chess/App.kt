@@ -8,12 +8,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 @SpringBootApplication
 open class App : CommandLineRunner {
 
-    private val log = LoggerFactory.getLogger(this.javaClass)
+    private val log = LoggerFactory.getLogger(javaClass)
 
     companion object {
-        fun getVersion(): String {
-            return "1.0.2"
-        }
+        fun getVersion() = "1.0.2"
     }
 
     override fun run(vararg args: String?) {
