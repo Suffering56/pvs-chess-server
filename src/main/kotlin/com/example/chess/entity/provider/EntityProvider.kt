@@ -7,7 +7,7 @@ import com.example.chess.shared.enums.Side
 import org.springframework.stereotype.Component
 
 @Component
-class GameProvider {
+class EntityProvider {
 
     fun createNewGame(): Game {
         val gameFeatures = mutableMapOf<Side, GameFeatures>()
@@ -30,4 +30,18 @@ class GameProvider {
         pawnLongMoveColumnIndex = null,
         isUnderCheck = false
     )
+
+//    fun createHistoryItem(gameId: Long, position: Int, move: MoveDTO, pieceFrom: Piece): History {
+//        return History(
+//            id = null,
+//            gameId = gameId,
+//            position = position,
+//            rowIndexFrom = move.rowIndexFrom,
+//            columnIndexFrom = move.columnIndexFrom,
+//            rowIndexTo = move.rowIndexTo,
+//            columnIndexTo = move.columnIndexTo,
+//            pieceFromPawn = move.pieceFromPawn,
+//            description = move.createDescription(pieceFrom)
+//        )
+//    }
 }
