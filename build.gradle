@@ -58,7 +58,7 @@ dependencies {
 
     runtime 'org.postgresql:postgresql:42.2.6'
 
-    compileOnly('org.projectlombok:lombok:1.18.2')
+//    compileOnly('org.projectlombok:lombok:1.18.2')
 }
 
 compileKotlin {

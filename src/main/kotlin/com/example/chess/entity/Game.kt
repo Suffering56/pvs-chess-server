@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.google.common.base.Preconditions.checkState
 import org.hibernate.annotations.ColumnDefault
 import org.hibernate.annotations.GenericGenerator
+import java.time.LocalDateTime
 import javax.persistence.*
 
 @Entity
@@ -39,6 +40,16 @@ data class Game(
 
     @Transient
     private fun getSideFeatures(side: Side) = featuresMap.getValue(side)
+
+    @Transient
+    fun setLastVisitDate(side: Side, lastVisitDate: LocalDateTime) {
+        getSideFeatures(side).lastVisitDate = lastVisitDate
+    }
+
+    @Transient
+    fun setSessionId(side: Side, sessionId: String) {
+        getSideFeatures(side).sessionId = sessionId
+    }
 
     @Transient
     private fun disableShortCasting(side: Side) {
