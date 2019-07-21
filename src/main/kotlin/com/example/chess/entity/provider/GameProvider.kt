@@ -3,7 +3,7 @@ package com.example.chess.entity.provider
 import com.example.chess.entity.Game
 import com.example.chess.entity.GameFeatures
 import com.example.chess.enums.GameMode
-import com.example.chess.enums.Side
+import com.example.chess.shared.enums.Side
 import org.springframework.stereotype.Component
 
 @Component

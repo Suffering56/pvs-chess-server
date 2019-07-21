@@ -1,7 +1,7 @@
 package com.example.chess.entity
 
 import com.example.chess.enums.GameMode
-import com.example.chess.enums.Side
+import com.example.chess.shared.enums.Side
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.google.common.base.Preconditions.checkState
 import org.hibernate.annotations.ColumnDefault

@@ -1,6 +1,6 @@
 package com.example.chess.entity
 
-import com.example.chess.enums.Side
+import com.example.chess.shared.enums.Side
 import com.fasterxml.jackson.annotation.JsonIgnore
 import org.hibernate.annotations.ColumnDefault
 import org.hibernate.annotations.GenericGenerator
