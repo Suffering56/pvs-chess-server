@@ -1,4 +1,4 @@
-package com.example.chess.web.filters
+package com.example.chess.server.web.filters
 
 import com.fasterxml.jackson.databind.JsonMappingException
 import org.springframework.http.HttpStatus

@@ -1,4 +1,4 @@
-package com.example.chess.enums
+package com.example.chess.server.enums
 
 enum class GameMode {
     UNSELECTED,

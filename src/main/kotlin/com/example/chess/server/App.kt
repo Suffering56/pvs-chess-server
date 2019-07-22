@@ -1,4 +1,4 @@
-package com.example.chess
+package com.example.chess.server
 
 import org.slf4j.LoggerFactory
 import org.springframework.boot.CommandLineRunner

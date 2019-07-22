@@ -1,4 +1,4 @@
-package com.example.chess.web.filters
+package com.example.chess.server.web.filters
 
 import org.springframework.stereotype.Component
 

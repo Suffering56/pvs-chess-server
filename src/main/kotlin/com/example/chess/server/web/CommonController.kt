@@ -1,7 +1,7 @@
-package com.example.chess.web
+package com.example.chess.server.web
 
-import com.example.chess.App
-import com.example.chess.repository.GameRepository
+import com.example.chess.server.App
+import com.example.chess.server.repository.GameRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping

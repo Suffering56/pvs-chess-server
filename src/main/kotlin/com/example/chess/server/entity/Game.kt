@@ -1,6 +1,6 @@
-package com.example.chess.entity
+package com.example.chess.server.entity
 
-import com.example.chess.enums.GameMode
+import com.example.chess.server.enums.GameMode
 import com.example.chess.shared.enums.Side
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.google.common.base.Preconditions.checkState

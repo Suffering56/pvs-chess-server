@@ -1,4 +1,4 @@
-package com.example.chess.entity
+package com.example.chess.server.entity
 
 import com.example.chess.shared.enums.PieceType
 import org.hibernate.annotations.GenericGenerator
