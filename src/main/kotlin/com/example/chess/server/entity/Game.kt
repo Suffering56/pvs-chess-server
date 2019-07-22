@@ -9,6 +9,10 @@ import org.hibernate.annotations.GenericGenerator
 import java.time.LocalDateTime
 import javax.persistence.*
 
+/**
+ * @author v.peschaniy
+ *      Date: 22.07.2019
+ */
 @Entity
 data class Game(
     @Id

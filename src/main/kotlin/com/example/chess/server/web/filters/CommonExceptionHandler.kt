@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
 
+/**
+ * @author v.peschaniy
+ *      Date: 22.07.2019
+ */
 @RestControllerAdvice
 class CommonExceptionHandler {
 

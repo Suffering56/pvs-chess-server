@@ -6,6 +6,10 @@ import com.example.chess.server.enums.GameMode
 import com.example.chess.shared.enums.Side
 import org.springframework.stereotype.Component
 
+/**
+ * @author v.peschaniy
+ *      Date: 22.07.2019
+ */
 @Component
 class EntityProvider {
 

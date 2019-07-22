@@ -5,6 +5,10 @@ import org.springframework.stereotype.Component
 import javax.servlet.*
 import javax.servlet.http.HttpServletResponse
 
+/**
+ * @author v.peschaniy
+ *      Date: 22.07.2019
+ */
 @Component
 class CORSFilter : Filter {
 
