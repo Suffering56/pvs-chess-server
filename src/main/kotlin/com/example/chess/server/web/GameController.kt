@@ -1,12 +1,12 @@
 package com.example.chess.server.web
 
 import com.example.chess.server.enums.GameMode
-import com.example.chess.server.logic.ExtendedMove
+import com.example.chess.server.objects.Point
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IGameService
-import com.example.chess.shared.Move
-import com.example.chess.shared.Playground
-import com.example.chess.shared.Point
+import com.example.chess.shared.dto.ChessboardDTO
+import com.example.chess.shared.dto.MoveDTO
+import com.example.chess.shared.dto.PointDTO
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
@@ -23,11 +23,11 @@ class GameController @Autowired constructor(
     private val botService: IBotService
 ) {
 
-    @GetMapping("/{gameId}/playground/{position}")
+    @GetMapping("/{gameId}/state/{position}")
     fun getPlaygroundByPosition(
         @PathVariable("gameId") gameId: Long,
         @PathVariable("position") position: Int
-    ): Playground {
+    ): ChessboardDTO {
 
         val game = gameService.findAndCheckGame(gameId)
         val result = gameService.createPlaygroundByGame(game, position)
@@ -39,7 +39,7 @@ class GameController @Autowired constructor(
     }
 
     @GetMapping("/{gameId}/listen")
-    fun getActualPlayground(@PathVariable("gameId") gameId: Long): Playground {
+    fun getActualPlayground(@PathVariable("gameId") gameId: Long): ChessboardDTO {
 
         val game = gameService.findAndCheckGame(gameId)
         return gameService.createPlaygroundByGame(game, game.position)
@@ -50,15 +50,15 @@ class GameController @Autowired constructor(
         @PathVariable("gameId") gameId: Long,
         @RequestParam rowIndex: Int,
         @RequestParam columnIndex: Int
-    ): Set<Point> {
+    ): Set<PointDTO> {
         return gameService.getMovesByPoint(gameId, Point.valueOf(rowIndex, columnIndex))
     }
 
     @PostMapping("/{gameId}/move")
     fun applyMove(
         @PathVariable("gameId") gameId: Long,
-        @RequestBody move: Move
-    ): Playground {
+        @RequestBody move: MoveDTO
+    ): ChessboardDTO {
 
         val game = gameService.findAndCheckGame(gameId)
         val pair = gameService.applyMove(game, move)

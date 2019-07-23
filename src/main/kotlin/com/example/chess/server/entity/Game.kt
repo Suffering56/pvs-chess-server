@@ -2,7 +2,6 @@ package com.example.chess.server.entity
 
 import com.example.chess.server.enums.GameMode
 import com.example.chess.shared.enums.Side
-import com.fasterxml.jackson.annotation.JsonIgnore
 import com.google.common.base.Preconditions.checkState
 import org.hibernate.annotations.ColumnDefault
 import org.hibernate.annotations.GenericGenerator
@@ -114,7 +113,6 @@ data class Game(
      * Only works in AI mode
      */
     @Transient
-    @JsonIgnore
     fun getPlayerSide(): Side? {
         checkState(mode == GameMode.AI, "Game mode is not AI!")
 
@@ -131,7 +129,6 @@ data class Game(
      * @return side, which has next move (not paused)
      */
     @Transient
-    @JsonIgnore
     fun getActiveSide(): Side {
         return if (position % 2 == 0)
             Side.WHITE
