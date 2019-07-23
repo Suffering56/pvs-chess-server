@@ -11,6 +11,7 @@ import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import java.lang.UnsupportedOperationException
+import java.util.stream.Collectors
 
 /**
  * @author v.peschaniy
@@ -51,7 +52,10 @@ class GameController @Autowired constructor(
         @RequestParam rowIndex: Int,
         @RequestParam columnIndex: Int
     ): Set<PointDTO> {
+        
         return gameService.getMovesByPoint(gameId, Point.valueOf(rowIndex, columnIndex))
+            .map(Point::toDTO)
+            .collect(Collectors.toSet())
     }
 
     @PostMapping("/{gameId}/move")

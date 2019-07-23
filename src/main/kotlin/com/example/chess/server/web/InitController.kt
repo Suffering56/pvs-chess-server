@@ -5,7 +5,8 @@ import com.example.chess.server.entity.provider.EntityProvider
 import com.example.chess.server.enums.GameMode
 import com.example.chess.server.repository.GameRepository
 import com.example.chess.server.service.IGameService
-import com.example.chess.shared.PlayerSide
+import com.example.chess.shared.dto.GameDTO
+import com.example.chess.shared.enums.ExtendedSide
 import com.example.chess.shared.enums.Side
 import com.google.common.base.Preconditions.checkState
 import org.springframework.beans.factory.annotation.Autowired
@@ -27,18 +28,15 @@ class InitController @Autowired constructor(
 ) {
 
     @GetMapping
-    fun createGame(): Game {
-        val game = entityProvider.createNewGame()
-        return gameRepository.save(game)
+    fun createGame(): GameDTO {
+        val game = gameRepository.save(entityProvider.createNewGame())
+        return GameDTO(game.id!!, game.position)
     }
 
     @GetMapping("/{gameId}")
     fun getGame(
         @PathVariable("gameId") gameId: Long,
-        @RequestParam(
-            value = "debug",
-            required = false
-        ) isDebug: Boolean = false,
+        @RequestParam(value = "debug", required = false) isDebug: Boolean = false,
         @RequestParam(value = "desiredSide", required = false) desiredSide: Side,
         request: HttpServletRequest
     ): Game {
@@ -63,7 +61,10 @@ class InitController @Autowired constructor(
     }
 
     @GetMapping("/{gameId}/side")
-    fun getSideBySessionId(@PathVariable("gameId") gameId: Long, request: HttpServletRequest): PlayerSide {
+    fun getSideBySessionId(
+        @PathVariable("gameId") gameId: Long,
+        request: HttpServletRequest
+    ): ExtendedSide {
 
         val game = gameService.findAndCheckGame(gameId)
         val sessionId = request.session.id
@@ -74,7 +75,7 @@ class InitController @Autowired constructor(
         for (features in game.featuresMap.values) {
             if (sessionId == features.sessionId) {
                 //значит этот игрок уже начал эту игру ранее - позволяем ему продолжить за выбранную им ранее сторону
-                return PlayerSide.ofSide(features.side)
+                return ExtendedSide.ofSide(features.side)
             }
 
             if (features.sessionId == null) {
@@ -84,25 +85,29 @@ class InitController @Autowired constructor(
         }
 
         if (freeSlotsCount == 2) {
-            return PlayerSide.UNSELECTED
+            return ExtendedSide.UNSELECTED
         }
 
         //TODO: здесь нужно добавить проверку на то как давно пользователь был неактивен.
 
         return if (freeSide == null) {
             //no free slots
-            PlayerSide.VIEWER
+            ExtendedSide.VIEWER
         } else {
             //take free slot
-            return PlayerSide.ofSide(freeSide)
+            return ExtendedSide.ofSide(freeSide)
         }
     }
 
     @PostMapping("/{gameId}/side")
     @ResponseStatus(value = HttpStatus.OK)
-    fun setSide(@PathVariable("gameId") gameId: Long, @RequestBody selectedSide: PlayerSide, request: HttpServletRequest) {
+    fun setSide(
+        @PathVariable("gameId") gameId: Long,
+        @RequestBody selectedSide: ExtendedSide,
+        request: HttpServletRequest
+    ) {
         checkState(
-            selectedSide == PlayerSide.SIDE_WHITE || selectedSide == PlayerSide.SIDE_BLACK,
+            selectedSide == ExtendedSide.SIDE_WHITE || selectedSide == ExtendedSide.SIDE_BLACK,
             "incorrect PlayerSide value: $selectedSide"
         )
 

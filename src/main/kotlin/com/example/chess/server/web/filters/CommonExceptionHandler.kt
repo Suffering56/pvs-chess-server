@@ -21,6 +21,6 @@ class CommonExceptionHandler {
     fun authenticationError(e: JsonMappingException): ResponseEntity<String> {
         System.err.println(e.message)
         e.printStackTrace()
-        return ResponseEntity(e.message, HttpStatus.INTERNAL_SERVER_ERROR)
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.message)
     }
 }

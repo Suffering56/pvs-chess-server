@@ -21,7 +21,7 @@ data class History(
         parameters = [org.hibernate.annotations.Parameter(name = "sequence", value = "history_id_seq")]
     )
     @GeneratedValue(generator = "history_id_seq")
-    var id: Long?,
+    val id: Long?,
 
     @Column(nullable = false)
     val gameId: Long,

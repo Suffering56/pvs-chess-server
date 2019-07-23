@@ -21,7 +21,7 @@ data class GameFeatures(
         parameters = [org.hibernate.annotations.Parameter(name = "sequence", value = "game_features_id_seq")]
     )
     @GeneratedValue(generator = "game_features_id_seq")
-    var id: Long?,
+    val id: Long?,
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.EAGER)

@@ -1,6 +1,7 @@
 package com.example.chess.server.objects
 
 import com.example.chess.shared.Constants.BOARD_SIZE
+import com.example.chess.shared.dto.PointDTO
 
 /**
  * @author v.peschaniy
@@ -10,6 +11,9 @@ data class Point(
     val rowIndex: Int,
     val columnIndex: Int
 ) {
+
+    fun toDTO() = PointDTO(rowIndex, columnIndex)
+
     companion object {
 
         private val pointsPool = Array(BOARD_SIZE) { rowIndex ->

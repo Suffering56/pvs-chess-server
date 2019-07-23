@@ -21,13 +21,13 @@ data class Game(
         parameters = [org.hibernate.annotations.Parameter(name = "sequence", value = "game_id_seq")]
     )
     @GeneratedValue(generator = "game_id_seq")
-    var id: Long? = null,
+    val id: Long?,
 
     @ColumnDefault("0")
     @Column(nullable = false)
     var position: Int,
 
-    @ColumnDefault("UNSELECTED")
+    @ColumnDefault("'UNSELECTED'")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     var mode: GameMode,
@@ -135,5 +135,4 @@ data class Game(
         else
             Side.BLACK
     }
-
 }

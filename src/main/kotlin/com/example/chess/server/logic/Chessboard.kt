@@ -1,6 +1,6 @@
 package com.example.chess.server.logic
 
-import com.example.chess.shared.Cell
+import com.example.chess.server.objects.Cell
 
 /**
  * @author v.peschaniy
