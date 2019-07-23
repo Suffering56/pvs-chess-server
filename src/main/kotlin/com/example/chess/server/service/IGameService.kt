@@ -12,11 +12,14 @@ import java.util.stream.Stream
  */
 interface IGameService {
 
+    fun createNewGame(): Game
+
+    fun saveGame(game: Game): Game
+
     fun findAndCheckGame(gameId: Long): Game
 
     fun createPlaygroundByGame(game: Game, position: Int): ChessboardDTO
 
     fun getMovesByPoint(gameId: Long, point: Point): Stream<Point>
-
     fun applyMove(game: Game, move: MoveDTO): Any
 }

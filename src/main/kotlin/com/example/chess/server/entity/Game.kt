@@ -5,7 +5,6 @@ import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.dto.GameDTO
 import com.example.chess.shared.enums.Side
-import com.google.common.base.Preconditions.checkState
 import org.hibernate.annotations.ColumnDefault
 import org.hibernate.annotations.GenericGenerator
 import java.time.LocalDateTime
@@ -99,7 +98,7 @@ data class Game(
      * Only works in AI mode
      */
     fun getPlayerSide(): Side? {
-        checkState(mode == GameMode.AI, "Game mode is not AI!")
+        check(mode == GameMode.AI) { "Game mode is not AI!" }
 
         if (getSideFeatures(Side.WHITE).sessionId != null && getSideFeatures(Side.BLACK).sessionId == null) {
             return Side.WHITE

@@ -15,7 +15,7 @@ open class App : CommandLineRunner {
     private val log = LoggerFactory.getLogger(javaClass)
 
     companion object {
-        fun getVersion() = "1.0.3"
+        fun getVersion() = "1.0.4"
     }
 
     override fun run(vararg args: String?) {
