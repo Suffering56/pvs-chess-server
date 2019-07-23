@@ -12,6 +12,7 @@ import com.google.common.base.Preconditions.checkState
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
+import java.lang.RuntimeException
 import java.time.LocalDateTime
 import javax.servlet.http.HttpServletRequest
 
@@ -30,24 +31,27 @@ class InitController @Autowired constructor(
     @GetMapping
     fun createGame(): GameDTO {
         val game = gameRepository.save(entityProvider.createNewGame())
-        return GameDTO(game.id!!, game.position)
+        return game.toDTO()
     }
 
     @GetMapping("/{gameId}")
     fun getGame(
         @PathVariable("gameId") gameId: Long,
         @RequestParam(value = "debug", required = false) isDebug: Boolean = false,
-        @RequestParam(value = "desiredSide", required = false) desiredSide: Side,
+        @RequestParam(value = "desiredSide", required = false) desiredSide: Side?,
         request: HttpServletRequest
-    ): Game {
+    ): GameDTO {
 
         val game = gameService.findAndCheckGame(gameId)
 
+        //TODO: move to debug controller
         if (isDebug) {  //проставляем sessionId принудительно, чтобы продолжить игру после рестарта сервера (когда session.id клиента поменяется)
+            checkNotNull(desiredSide) { "desiredSide is required in debug mode" }
+
             game.setSessionId(desiredSide, request.session.id)
-            return gameRepository.save(game)
+            return gameRepository.save(game).toDTO()
         }
-        return game
+        return game.toDTO()
     }
 
     @PostMapping("/{gameId}/mode")
@@ -55,8 +59,8 @@ class InitController @Autowired constructor(
     fun setMode(@PathVariable("gameId") gameId: Long, @RequestBody gameMode: GameMode) {
 
         val game = gameService.findAndCheckGame(gameId)
-        game.mode = gameMode
 
+        game.mode = gameMode
         gameRepository.save(game)
     }
 
@@ -113,10 +117,14 @@ class InitController @Autowired constructor(
 
         val game = gameService.findAndCheckGame(gameId)
 
-        val side = selectedSide.toSide()
-        game.setSessionId(side, request.session.id)
-        game.setLastVisitDate(side, LocalDateTime.now())
+        val sessionId = request.session.id
+        checkState(!game.isSessionRegistered(sessionId), "player(id=$sessionId) already chose his side")
 
+        val side = selectedSide.toSide()
+        checkState(game.getSideFeatures(side).sessionId == null, "side($side) already chosen by another player")
+
+        game.setSessionId(side, sessionId)
+        game.setLastVisitDate(side, LocalDateTime.now())
         gameRepository.save(game)
     }
 }

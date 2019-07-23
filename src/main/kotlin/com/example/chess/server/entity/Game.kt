@@ -1,6 +1,9 @@
 package com.example.chess.server.entity
 
 import com.example.chess.server.enums.GameMode
+import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
+import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
+import com.example.chess.shared.dto.GameDTO
 import com.example.chess.shared.enums.Side
 import com.google.common.base.Preconditions.checkState
 import org.hibernate.annotations.ColumnDefault
@@ -36,41 +39,30 @@ data class Game(
     @MapKey(name = "side")
     val featuresMap: Map<Side, GameFeatures>
 ) {
-    companion object {
-        const val ROOK_SHORT_COLUMN_INDEX = 0
-        const val ROOK_LONG_COLUMN_INDEX = 7
-    }
 
-    @Transient
-    private fun getSideFeatures(side: Side) = featuresMap.getValue(side)
+    fun getSideFeatures(side: Side) = featuresMap.getValue(side)
 
-    @Transient
     fun setLastVisitDate(side: Side, lastVisitDate: LocalDateTime) {
         getSideFeatures(side).lastVisitDate = lastVisitDate
     }
 
-    @Transient
     fun setSessionId(side: Side, sessionId: String) {
         getSideFeatures(side).sessionId = sessionId
     }
 
-    @Transient
     private fun disableShortCasting(side: Side) {
         getSideFeatures(side).shortCastlingAvailable = false
     }
 
-    @Transient
     private fun disableLongCasting(side: Side) {
         getSideFeatures(side).longCastlingAvailable = false
     }
 
-    @Transient
     fun disableCasting(side: Side) {
         disableLongCasting(side)
         disableShortCasting(side)
     }
 
-    @Transient
     fun disableCasting(side: Side, rookColumnIndex: Int) {
         when (rookColumnIndex) {
             ROOK_SHORT_COLUMN_INDEX -> disableShortCasting(side)
@@ -78,21 +70,16 @@ data class Game(
         }
     }
 
-    @Transient
     fun isShortCastlingAvailable(side: Side) = getSideFeatures(side).shortCastlingAvailable
 
-    @Transient
     fun isLongCastlingAvailable(side: Side) = getSideFeatures(side).longCastlingAvailable
 
-    @Transient
     fun getPawnLongMoveColumnIndex(side: Side) = getSideFeatures(side).pawnLongMoveColumnIndex
 
-    @Transient
     fun setPawnLongMoveColumnIndex(side: Side, columnIndex: Int) {
         getSideFeatures(side).pawnLongMoveColumnIndex = columnIndex
     }
 
-    @Transient
     fun getUnderCheckSide(): Side? {
         return featuresMap.values
             .stream()
@@ -102,7 +89,6 @@ data class Game(
             .orElse(null)
     }
 
-    @Transient
     fun setUnderCheckSide(side: Side?) {
         featuresMap.values.forEach {
             it.isUnderCheck = it.side == side
@@ -112,7 +98,6 @@ data class Game(
     /**
      * Only works in AI mode
      */
-    @Transient
     fun getPlayerSide(): Side? {
         checkState(mode == GameMode.AI, "Game mode is not AI!")
 
@@ -128,11 +113,16 @@ data class Game(
     /**
      * @return side, which has next move (not paused)
      */
-    @Transient
     fun getActiveSide(): Side {
         return if (position % 2 == 0)
             Side.WHITE
         else
             Side.BLACK
+    }
+
+    fun toDTO() = GameDTO(id!!, position)
+
+    fun isSessionRegistered(sessionId: String): Boolean {
+        return featuresMap.values.stream().anyMatch { it.sessionId == sessionId }
     }
 }
