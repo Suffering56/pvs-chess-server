@@ -2,7 +2,7 @@ package com.example.chess.server.logic
 
 /**
  * @author v.peschaniy
- *      Date: 22.07.2019
+ *      Date: 24.07.2019
  */
-class ExtendedMove {
+interface IMutableChessboard : IChessboard {
 }

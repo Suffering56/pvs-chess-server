@@ -1,13 +1,15 @@
 package com.example.chess.server.web
 
 import com.example.chess.server.enums.GameMode
-import com.example.chess.server.objects.Point
+import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
+import com.example.chess.server.service.IChessboardService
 import com.example.chess.server.service.IGameService
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.MoveDTO
 import com.example.chess.shared.dto.PointDTO
 import com.example.chess.shared.enums.Side
+import com.google.common.collect.Range
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import java.lang.UnsupportedOperationException
@@ -21,29 +23,34 @@ import java.util.stream.Collectors
 @RequestMapping("/api/game")
 class GameController @Autowired constructor(
     private val gameService: IGameService,
+    private val chessboardService: IChessboardService,
     private val botService: IBotService
 ) {
 
     @GetMapping("/{gameId}/state/{position}")
-    fun getPlaygroundByPosition(
+    fun getChessboardByPosition(
         @PathVariable("gameId") gameId: Long,
         @PathVariable("position") position: Int
     ): ChessboardDTO {
 
         val game = gameService.findAndCheckGame(gameId)
-        val result = gameService.createPlaygroundByGame(game, position)
+        val availablePositionsRange = Range.closed(0, game.position)
 
-        if (game.mode == GameMode.AI && game.getPlayerSide() == Side.BLACK) {
+        require(availablePositionsRange.contains(position)) { "position must be in range: $availablePositionsRange" }
+
+        val result = chessboardService.createChessboardForGame(game, position)
+
+        if (game.mode == GameMode.AI && game.getPlayerSide() == Side.BLACK) {//TODO: сомнительное условие
             botService.applyBotMove(game, null)
         }
         return result
     }
 
     @GetMapping("/{gameId}/listen")
-    fun getActualPlayground(@PathVariable("gameId") gameId: Long): ChessboardDTO {
+    fun getActualChessboard(@PathVariable("gameId") gameId: Long): ChessboardDTO {
 
         val game = gameService.findAndCheckGame(gameId)
-        return gameService.createPlaygroundByGame(game, game.position)
+        return chessboardService.createChessboardForGame(game, game.position)
     }
 
     @GetMapping("/{gameId}/move")
@@ -52,7 +59,7 @@ class GameController @Autowired constructor(
         @RequestParam rowIndex: Int,
         @RequestParam columnIndex: Int
     ): Set<PointDTO> {
-        
+
         return gameService.getMovesByPoint(gameId, Point.valueOf(rowIndex, columnIndex))
             .map(Point::toDTO)
             .collect(Collectors.toSet())

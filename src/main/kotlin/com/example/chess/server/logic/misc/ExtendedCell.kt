@@ -1,4 +1,4 @@
-package com.example.chess.server.logic
+package com.example.chess.server.logic.misc
 
 /**
  * @author v.peschaniy

@@ -2,10 +2,9 @@ package com.example.chess.server.service.impl
 
 import com.example.chess.server.entity.Game
 import com.example.chess.server.entity.provider.EntityProvider
-import com.example.chess.server.objects.Point
+import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.repository.GameRepository
 import com.example.chess.server.service.IGameService
-import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.MoveDTO
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -31,10 +30,6 @@ class GameService @Autowired constructor(
 
     override fun findAndCheckGame(gameId: Long): Game {
         return gameRepository.findById(gameId).orElseThrow { RuntimeException("Game with id=$gameId not found") }
-    }
-
-    override fun createPlaygroundByGame(game: Game, position: Int): ChessboardDTO {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
     override fun getMovesByPoint(gameId: Long, point: Point): Stream<Point> {
