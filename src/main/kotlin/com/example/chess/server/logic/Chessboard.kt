@@ -1,15 +1,14 @@
 package com.example.chess.server.logic
 
 import com.example.chess.server.entity.History
-import com.example.chess.server.logic.misc.Cell
-import com.example.chess.server.logic.misc.CellFactory
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.shared.Constants.BOARD_SIZE
+import com.example.chess.shared.dto.CellDTO
 import com.example.chess.shared.dto.ChessboardDTO
+import com.example.chess.shared.dto.PointDTO
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.Side
-import java.lang.UnsupportedOperationException
 
 /**
  * @author v.peschaniy
@@ -17,9 +16,23 @@ import java.lang.UnsupportedOperationException
  */
 open class Chessboard protected constructor(
     val position: Int,
-    protected val matrix: Array<Array<Piece?>>,
+    protected val matrix: Array<Array<Piece?>>,     //TODO: AbstractChessboard
     protected val kingPoints: Map<Side, Point>
 ) : IChessboard {
+
+    override fun toDTO(): ChessboardDTO {
+        val matrixDto: MutableList<MutableList<CellDTO>> = mutableListOf()
+        for (rowIndex in matrix.indices) {
+            val row = matrix[rowIndex]
+            val rowDto: MutableList<CellDTO> = mutableListOf()
+
+            for (columnIndex in row.indices) {
+                rowDto.add(CellDTO(PointDTO(rowIndex, columnIndex), row[columnIndex]))
+            }
+            matrixDto.add(rowDto)
+        }
+        return ChessboardDTO(position, matrixDto, null)
+    }
 
     override fun toMutable(): IMutableChessboard {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.

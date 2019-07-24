@@ -3,6 +3,7 @@ package com.example.chess.server.service.impl
 import com.example.chess.server.entity.Game
 import com.example.chess.server.entity.History
 import com.example.chess.server.logic.Chessboard
+import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.service.IChessboardService
 import com.example.chess.shared.dto.ChessboardDTO
 import org.springframework.stereotype.Service
@@ -14,13 +15,12 @@ import org.springframework.stereotype.Service
 @Service
 class ChessboardService : IChessboardService {
 
-    override fun createChessboardForGame(game: Game, position: Int): ChessboardDTO {
-        val history: List<History>
+    override fun createChessboardForGame(game: Game, position: Int): IChessboard {
+        val history: List<History> = emptyList()
         if (position == 0) {
-
+            return Chessboard.byInitial()
         }
-//        return Chessboard.ofHistory(history)
-        TODO()
+        return Chessboard.byHistory(history)
     }
 
     private fun createChessboardByHistory(): ChessboardDTO {

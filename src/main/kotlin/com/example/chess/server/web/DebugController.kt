@@ -1,6 +1,8 @@
 package com.example.chess.server.web
 
+import com.example.chess.server.logic.Chessboard
 import com.example.chess.server.service.impl.GameService
+import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.GameDTO
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
@@ -38,4 +40,8 @@ class DebugController @Autowired constructor(
         return gameService.saveGame(game).toDTO()
     }
 
+    @GetMapping("/chessboard")
+    fun getInitialChessboard(): ChessboardDTO {
+        return Chessboard.byInitial().toDTO()
+    }
 }

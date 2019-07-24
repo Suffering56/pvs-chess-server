@@ -1,7 +1,7 @@
 package com.example.chess.server.service
 
 import com.example.chess.server.entity.Game
-import com.example.chess.shared.dto.ChessboardDTO
+import com.example.chess.server.logic.IChessboard
 
 /**
  * @author v.peschaniy
@@ -9,5 +9,5 @@ import com.example.chess.shared.dto.ChessboardDTO
  */
 interface IChessboardService {
 
-    fun createChessboardForGame(game: Game, position: Int): ChessboardDTO
+    fun createChessboardForGame(game: Game, position: Int): IChessboard
 }

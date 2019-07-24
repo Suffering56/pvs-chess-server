@@ -12,7 +12,6 @@ import com.example.chess.shared.enums.Side
 import com.google.common.collect.Range
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
-import java.lang.UnsupportedOperationException
 import java.util.stream.Collectors
 
 /**
@@ -43,14 +42,14 @@ class GameController @Autowired constructor(
         if (game.mode == GameMode.AI && game.getPlayerSide() == Side.BLACK) {//TODO: сомнительное условие
             botService.applyBotMove(game, null)
         }
-        return result
+        return result.toDTO()
     }
 
     @GetMapping("/{gameId}/listen")
     fun getActualChessboard(@PathVariable("gameId") gameId: Long): ChessboardDTO {
 
         val game = gameService.findAndCheckGame(gameId)
-        return chessboardService.createChessboardForGame(game, game.position)
+        return chessboardService.createChessboardForGame(game, game.position).toDTO()
     }
 
     @GetMapping("/{gameId}/move")
