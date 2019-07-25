@@ -2,6 +2,7 @@ package com.example.chess.server.logic
 
 import com.example.chess.server.entity.History
 import com.example.chess.server.logic.misc.Point
+import com.example.chess.shared.ArrayTable
 import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.dto.CellDTO
 import com.example.chess.shared.dto.ChessboardDTO
@@ -16,21 +17,19 @@ import com.example.chess.shared.enums.Side
  */
 open class Chessboard protected constructor(
     val position: Int,
-    protected val matrix: Array<Array<Piece?>>,     //TODO: AbstractChessboard
+    protected val matrix: ArrayTable<Piece?>,     //TODO: AbstractChessboard
     protected val kingPoints: Map<Side, Point>
 ) : IChessboard {
 
     override fun toDTO(): ChessboardDTO {
-        val matrixDto: MutableList<MutableList<CellDTO>> = mutableListOf()
-        for (rowIndex in matrix.indices) {
+        val matrixDto = Array(BOARD_SIZE) row@{ rowIndex ->
             val row = matrix[rowIndex]
-            val rowDto: MutableList<CellDTO> = mutableListOf()
-
-            for (columnIndex in row.indices) {
-                rowDto.add(CellDTO(PointDTO(rowIndex, columnIndex), row[columnIndex]))
+            Array(BOARD_SIZE) cell@{ columnIndex ->
+                val piece = row[columnIndex]
+                CellDTO(PointDTO(rowIndex, columnIndex), piece)
             }
-            matrixDto.add(rowDto)
         }
+
         return ChessboardDTO(position, matrixDto, null)
     }
 
@@ -41,10 +40,6 @@ open class Chessboard protected constructor(
     fun getCell(rowIndex: Int, columnIndex: Int) {
 
     }
-
-//    fun toDTO() {
-//        ChessboardDTO()
-//    }
 
     companion object {
 

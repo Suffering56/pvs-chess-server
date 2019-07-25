@@ -1,9 +1,11 @@
 package com.example.chess.server.web
 
+import com.example.chess.server.App
 import com.example.chess.server.logic.Chessboard
 import com.example.chess.server.service.impl.GameService
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.GameDTO
+import com.example.chess.shared.dto.PointDTO
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.GetMapping
@@ -21,6 +23,9 @@ import javax.servlet.http.HttpServletRequest
 class DebugController @Autowired constructor(
     private val gameService: GameService
 ) {
+
+    @GetMapping("/version")
+    fun get() = "version=${App.getVersion()}"
 
     /**
      * да-да... меняем данные в GET запросе... здесь можно - это debug!!!
@@ -43,5 +48,10 @@ class DebugController @Autowired constructor(
     @GetMapping("/chessboard")
     fun getInitialChessboard(): ChessboardDTO {
         return Chessboard.byInitial().toDTO()
+    }
+
+    @GetMapping("/point")
+    fun getPoint(): PointDTO {
+        return PointDTO(3, 4)
     }
 }
