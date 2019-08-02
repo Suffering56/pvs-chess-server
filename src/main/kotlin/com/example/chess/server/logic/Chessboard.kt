@@ -30,7 +30,7 @@ open class Chessboard protected constructor(
             }
         }
 
-        return ChessboardDTO(position, matrixDto, null)
+        return ChessboardDTO(position, matrixDto, null, null)
     }
 
     override fun toMutable(): IMutableChessboard {
