@@ -1,14 +1,12 @@
 package com.example.chess.server.web
 
-import com.example.chess.server.enums.GameMode
 import com.example.chess.server.service.IGameService
 import com.example.chess.shared.dto.GameDTO
-import com.example.chess.shared.enums.ExtendedSide
+import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
-import javax.servlet.http.HttpServletRequest
 
 /**
  * @author v.peschaniy
@@ -20,69 +18,88 @@ class InitController @Autowired constructor(
     private val gameService: IGameService
 ) {
 
-    @GetMapping
+    @GetMapping("/new")
     fun createGame(): GameDTO {
         val game = gameService.createNewGame()
         return game.toDTO()
     }
 
-    @GetMapping("/{gameId}")
+    @GetMapping("/continue")
     fun getGame(
-        @PathVariable("gameId") gameId: Long
+        @RequestParam("userId") userId: String,
+        @RequestParam("gameId") gameId: Long
     ): GameDTO {
         val game = gameService.findAndCheckGame(gameId)
-        return game.toDTO()
+        return game.toDTO(userId)
     }
 
-    @PostMapping("/{gameId}/mode/{gameMode}")
+    @PostMapping("/mode")
     @ResponseStatus(value = HttpStatus.OK)
     fun setMode(
-        @PathVariable("gameId") gameId: Long,
-        @PathVariable("gameMode") gameMode: GameMode
-    ) {
+        @RequestParam("userId") userId: String,
+        @RequestParam("gameId") gameId: Long,
+        @RequestParam("mode") mode: GameMode
+    ): GameDTO {
 
         val game = gameService.findAndCheckGame(gameId)
+        check(game.mode == GameMode.UNSELECTED) { "cannot set game mode, because it already defined" }
 
-        game.mode = gameMode
-        gameService.saveGame(game)
+        game.mode = mode
+        return gameService.saveGame(game).toDTO(userId)
     }
 
-    @GetMapping("/{gameId}/side")
-    fun getSideBySessionId(
-        @PathVariable("gameId") gameId: Long,
-        request: HttpServletRequest
-    ): ExtendedSide {
+    @PostMapping("/side")
+    @ResponseStatus(value = HttpStatus.OK)
+    fun setSide(
+        @RequestParam("userId") userId: String,
+        @RequestParam("gameId") gameId: Long,
+        @RequestParam("side") side: Side
+    ): GameDTO {
 
         val game = gameService.findAndCheckGame(gameId)
-        val sessionId = request.session.id
+        val sideFeatures = game.getSideFeatures(side)
 
-        var freeSlotsCount = 0
-        var freeSide: Side? = null
+        check(sideFeatures.sessionId == null) { "cannot set game mode, because it already taken by another player" }
 
-        for (features in game.featuresMap.values) { //TODO: по хорошему бы скрыть реализацию featuresMap
-            if (sessionId == features.sessionId) {
-                //значит этот игрок уже начал эту игру ранее - позволяем ему продолжить за выбранную им ранее сторону
-                return ExtendedSide.ofSide(features.side)
-            }
-
-            if (features.sessionId == null) {
-                freeSlotsCount++
-                freeSide = features.side
-            }
-        }
-
-        if (freeSlotsCount == 2) {
-            return ExtendedSide.UNSELECTED
-        }
-
-        //TODO: здесь нужно добавить проверку на то как давно пользователь был неактивен.
-
-        return if (freeSide == null) {
-            //нет свободных слотов - будет зрителем
-            ExtendedSide.VIEWER
-        } else {
-            //игроку достается последний свободный слот
-            return ExtendedSide.ofSide(freeSide)
-        }
+        sideFeatures.sessionId = userId
+        return gameService.saveGame(game).toDTO(userId)
     }
+
+//    @GetMapping("/{gameId}/side")
+//    fun getSideByUserId(
+//        @PathVariable("gameId") gameId: Long,
+//        @RequestParam("userId") userId: String
+//    ): ExtendedSide {
+//
+//        val game = gameService.findAndCheckGame(gameId)
+//
+//        var freeSlotsCount = 0
+//        var freeSide: Side? = null
+//
+//        for (features in game.featuresMap.values) { //TODO: по хорошему бы скрыть реализацию featuresMap
+//            if (userId == features.sessionId) {
+//                //значит этот игрок уже начал эту игру ранее - позволяем ему продолжить за выбранную им ранее сторону
+//                return ExtendedSide.ofSide(features.side)
+//            }
+//
+//            if (features.sessionId == null) {
+//                freeSlotsCount++
+//                freeSide = features.side
+//            }
+//        }
+//
+//        if (freeSlotsCount == 2) {
+//            return ExtendedSide.UNSELECTED
+//        }
+//
+//        //TODO: здесь нужно добавить проверку на то как давно пользователь был неактивен.
+//
+//        return if (freeSide == null) {
+//            //нет свободных слотов - будет зрителем
+//            ExtendedSide.VIEWER
+//        } else {
+//            //игроку достается последний свободный слот
+//            return ExtendedSide.ofSide(freeSide)
+//        }
+//    }
 }

@@ -1,9 +1,10 @@
 package com.example.chess.server.entity
 
-import com.example.chess.server.enums.GameMode
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.dto.GameDTO
+import com.example.chess.shared.enums.ExtendedSide
+import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
 import org.hibernate.annotations.ColumnDefault
 import org.hibernate.annotations.GenericGenerator
@@ -119,7 +120,21 @@ data class Game(
             Side.BLACK
     }
 
-    fun toDTO() = GameDTO(id!!, position)
+    fun toDTO(userId: String): GameDTO {
+        val freeSlotsCount = featuresMap.values.stream()
+            .filter { it.sessionId == null }
+            .count()
+
+        val side = featuresMap.values.stream()
+            .filter { it.sessionId == userId }
+            .findAny()
+            .map { ExtendedSide.ofSide(it.side) }
+            .orElse(if (freeSlotsCount == 0L) ExtendedSide.VIEWER else ExtendedSide.UNSELECTED)
+
+        return GameDTO(id!!, position, mode, side)
+    }
+
+    fun toDTO() = GameDTO(id!!, position, mode, ExtendedSide.UNSELECTED)
 
     fun isSessionRegistered(sessionId: String): Boolean {
         return featuresMap.values.stream().anyMatch { it.sessionId == sessionId }

@@ -1,6 +1,5 @@
 package com.example.chess.server.web
 
-import com.example.chess.server.enums.GameMode
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IChessboardService
@@ -8,6 +7,7 @@ import com.example.chess.server.service.IGameService
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.MoveDTO
 import com.example.chess.shared.dto.PointDTO
+import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
 import com.google.common.collect.Range
 import org.springframework.beans.factory.annotation.Autowired
