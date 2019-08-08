@@ -3,13 +3,14 @@ package com.example.chess.server.entity
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.dto.GameDTO
-import com.example.chess.shared.enums.ExtendedSide
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
 import org.hibernate.annotations.ColumnDefault
 import org.hibernate.annotations.GenericGenerator
 import java.time.LocalDateTime
+import java.util.*
 import javax.persistence.*
+import kotlin.streams.toList
 
 /**
  * @author v.peschaniy
@@ -113,7 +114,7 @@ data class Game(
     /**
      * @return side, which has next move (not paused)
      */
-    fun getActiveSide(): Side {
+    fun getNextTurnSideByPosition(): Side {
         return if (position % 2 == 0)
             Side.WHITE
         else
@@ -121,22 +122,34 @@ data class Game(
     }
 
     fun toDTO(userId: String): GameDTO {
-        val freeSlotsCount = featuresMap.values.stream()
-            .filter { it.sessionId == null }
-            .count()
+        val userSide = getUserSide(userId)
+        val side: Side?
+        val freeSideSlots: List<Side>
 
-        val side = featuresMap.values.stream()
-            .filter { it.sessionId == userId }
-            .findAny()
-            .map { ExtendedSide.ofSide(it.side) }
-            .orElse(if (freeSlotsCount == 0L) ExtendedSide.VIEWER else ExtendedSide.UNSELECTED)
+        if (userSide.isPresent) {
+            side = userSide.get()
+            freeSideSlots = emptyList()
+        } else {
+            side = null
+            freeSideSlots = featuresMap.values.stream()
+                .filter { it.sessionId == null }
+                .map { it.side }
+                .toList()
+        }
 
-        return GameDTO(id!!, position, mode, side)
+        return GameDTO(id!!, position, mode, side, freeSideSlots)
     }
 
-    fun toDTO() = GameDTO(id!!, position, mode, ExtendedSide.UNSELECTED)
+    fun toDTO() = GameDTO(id!!, position, mode, null, listOf(Side.WHITE, Side.BLACK))
 
     fun isSessionRegistered(sessionId: String): Boolean {
-        return featuresMap.values.stream().anyMatch { it.sessionId == sessionId }
+        return getUserSide(sessionId).isPresent
+    }
+
+    private fun getUserSide(userId: String): Optional<Side> {
+        return featuresMap.values.stream()
+            .filter { it.sessionId == userId }
+            .map { it.side }
+            .findAny()
     }
 }
