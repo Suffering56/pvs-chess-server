@@ -33,7 +33,16 @@ class GameService @Autowired constructor(
     }
 
     override fun getMovesByPoint(gameId: Long, point: Point): Stream<Point> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+//        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+
+        return setOf(
+            Point.valueOf(0, 0),
+            Point.valueOf(4, 3),
+            Point.valueOf(4, 4),
+            Point.valueOf(4, 5),
+            Point.valueOf(4, 6),
+            Point.valueOf(5, 2)
+        ).stream()
     }
 
     override fun applyMove(game: Game, move: MoveDTO): Any {

@@ -26,6 +26,20 @@ class GameController @Autowired constructor(
     private val botService: IBotService
 ) {
 
+    @GetMapping("/move")
+    fun getAvailableMoves(
+        @RequestParam userId: String, //TODO: можно ввести новую аннотацию @Authorized, которая будет проверять юзера (связка gameId + userId)
+        @RequestParam gameId: Long,
+        @RequestParam rowIndex: Int,
+        @RequestParam columnIndex: Int
+    ): Set<PointDTO> {
+
+        return gameService.getMovesByPoint(gameId, Point.valueOf(rowIndex, columnIndex))
+            .map(Point::toDTO)
+            .collect(Collectors.toSet())
+    }
+
+
     @GetMapping("/{gameId}/state/{position}")
     fun getChessboardByPosition(
         @PathVariable("gameId") gameId: Long,
@@ -52,17 +66,7 @@ class GameController @Autowired constructor(
         return chessboardService.createChessboardForGame(game, game.position).toDTO()
     }
 
-    @GetMapping("/{gameId}/move")
-    fun getAvailableMoves(
-        @PathVariable("gameId") gameId: Long,
-        @RequestParam rowIndex: Int,
-        @RequestParam columnIndex: Int
-    ): Set<PointDTO> {
 
-        return gameService.getMovesByPoint(gameId, Point.valueOf(rowIndex, columnIndex))
-            .map(Point::toDTO)
-            .collect(Collectors.toSet())
-    }
 
     @PostMapping("/{gameId}/move")
     fun applyMove(
