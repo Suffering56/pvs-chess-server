@@ -4,6 +4,7 @@ import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IChessboardService
 import com.example.chess.server.service.IGameService
+import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.MoveDTO
 import com.example.chess.shared.dto.PointDTO
@@ -39,11 +40,31 @@ class GameController @Autowired constructor(
             .collect(Collectors.toSet())
     }
 
+    @PostMapping("/move")
+    fun applyMove(
+        @RequestParam userId: String,
+        @RequestParam gameId: Long,
+        @RequestBody move: MoveDTO
+    ): ChangesDTO {
 
-    @GetMapping("/{gameId}/state/{position}")
+        val game = gameService.findAndCheckGame(gameId)
+//        val pair = gameService.applyMove(game, move)
+//
+//        if (game.mode == GameMode.AI) {
+//            botService.applyBotMove(game, move.toExtendedMove(pair.getKey()))
+//            botService.applyBotMove(game, null)
+//        }
+//                return pair.getValue()
+//        throw UnsupportedOperationException()
+
+        return ChangesDTO(game.position + 1, move, PointDTO(7, 3))
+    }
+
+    @GetMapping("/board")
     fun getChessboardByPosition(
-        @PathVariable("gameId") gameId: Long,
-        @PathVariable("position") position: Int
+        @RequestParam userId: String,
+        @RequestParam gameId: Long,
+        @RequestParam position: Int
     ): ChessboardDTO {
 
         val game = gameService.findAndCheckGame(gameId)
@@ -68,22 +89,7 @@ class GameController @Autowired constructor(
 
 
 
-    @PostMapping("/{gameId}/move")
-    fun applyMove(
-        @PathVariable("gameId") gameId: Long,
-        @RequestBody move: MoveDTO
-    ): ChessboardDTO {
 
-        val game = gameService.findAndCheckGame(gameId)
-        val pair = gameService.applyMove(game, move)
-
-        if (game.mode == GameMode.AI) {
-//            botService.applyBotMove(game, move.toExtendedMove(pair.getKey()))
-            botService.applyBotMove(game, null)
-        }
-//                return pair.getValue()
-        throw UnsupportedOperationException()
-    }
 
 
 }
