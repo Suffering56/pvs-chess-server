@@ -1,6 +1,7 @@
 package com.example.chess.server.web
 
 import com.example.chess.server.App
+import com.example.chess.server.core.Authorized
 import com.example.chess.server.logic.Chessboard
 import com.example.chess.server.service.impl.GameService
 import com.example.chess.shared.dto.ChessboardDTO
@@ -20,10 +21,12 @@ import javax.servlet.http.HttpServletRequest
  */
 @RestController
 @RequestMapping("/api/debug")
-class DebugController @Autowired constructor(
-    private val gameService: GameService
-) {
+open class DebugController {
 
+    @Autowired
+    private lateinit var gameService: GameService
+
+    @Authorized
     @GetMapping("/version")
     fun get() = "version=${App.getVersion()}"
 

@@ -1,5 +1,6 @@
 package com.example.chess.server.web
 
+import com.example.chess.server.core.Authorized
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IChessboardService
@@ -21,7 +22,7 @@ import java.util.stream.Collectors
  */
 @RestController
 @RequestMapping("/api/game")
-class GameController @Autowired constructor(
+open class GameController @Autowired constructor(
     private val gameService: IGameService,
     private val chessboardService: IChessboardService,
     private val botService: IBotService
@@ -60,6 +61,8 @@ class GameController @Autowired constructor(
         return ChangesDTO(game.position + 1, move, PointDTO(7, 3))
     }
 
+
+    @Authorized
     @GetMapping("/board")
     fun getChessboardByPosition(
         @RequestParam userId: String,
