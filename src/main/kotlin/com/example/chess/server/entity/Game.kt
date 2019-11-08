@@ -40,6 +40,8 @@ data class Game(
     @MapKey(name = "side")
     val featuresMap: Map<Side, GameFeatures>
 ) {
+    //пустой конструктор нужен для того, чтобы Game можно было инжектить через @InjectGame
+    constructor() : this(null, 0, GameMode.UNSELECTED, EnumMap(Side::class.java))
 
     fun getSideFeatures(side: Side) = featuresMap.getValue(side)
 
@@ -47,8 +49,8 @@ data class Game(
         getSideFeatures(side).lastVisitDate = lastVisitDate
     }
 
-    fun setSessionId(side: Side, sessionId: String) {
-        getSideFeatures(side).sessionId = sessionId
+    fun setUserId(side: Side, userId: String) {
+        getSideFeatures(side).userId = userId
     }
 
     private fun disableShortCasting(side: Side) {
@@ -102,10 +104,10 @@ data class Game(
     fun getPlayerSide(): Side? {
         check(mode == GameMode.AI) { "Game mode is not AI!" }
 
-        if (getSideFeatures(Side.WHITE).sessionId != null && getSideFeatures(Side.BLACK).sessionId == null) {
+        if (getSideFeatures(Side.WHITE).userId != null && getSideFeatures(Side.BLACK).userId == null) {
             return Side.WHITE
         }
-        if (getSideFeatures(Side.BLACK).sessionId != null && getSideFeatures(Side.WHITE).sessionId == null) {
+        if (getSideFeatures(Side.BLACK).userId != null && getSideFeatures(Side.WHITE).userId == null) {
             return Side.BLACK
         }
         return null
@@ -132,7 +134,7 @@ data class Game(
         } else {
             side = null
             freeSideSlots = featuresMap.values.stream()
-                .filter { it.sessionId == null }
+                .filter { it.userId == null }
                 .map { it.side }
                 .toList()
         }
@@ -142,13 +144,13 @@ data class Game(
 
     fun toDTO() = GameDTO(id!!, position, mode, null, listOf(Side.WHITE, Side.BLACK))
 
-    fun isSessionRegistered(sessionId: String): Boolean {
-        return getUserSide(sessionId).isPresent
+    fun isUserRegistered(userId: String): Boolean {
+        return getUserSide(userId).isPresent
     }
 
     private fun getUserSide(userId: String): Optional<Side> {
         return featuresMap.values.stream()
-            .filter { it.sessionId == userId }
+            .filter { it.userId == userId }
             .map { it.side }
             .findAny()
     }

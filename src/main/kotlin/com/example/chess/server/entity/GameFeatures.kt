@@ -33,7 +33,7 @@ data class GameFeatures(
     val side: Side,
 
     @Column(nullable = true)
-    var sessionId: String?,
+    var userId: String?,
 
     @Column(nullable = true)
     var lastVisitDate: LocalDateTime?,
@@ -52,4 +52,16 @@ data class GameFeatures(
     @ColumnDefault("false")
     @Column(nullable = false)
     var isUnderCheck: Boolean
-)
+) {
+    override fun toString(): String {
+        return "GameFeatures(id=$id, " +
+                "gameId=${game.id}, " +         //берем только id во избежание StackOverflow
+                "side=$side, " +
+                "userId=$userId, " +
+                "lastVisitDate=$lastVisitDate, " +
+                "longCastlingAvailable=$longCastlingAvailable, " +
+                "shortCastlingAvailable=$shortCastlingAvailable, " +
+                "pawnLongMoveColumnIndex=$pawnLongMoveColumnIndex, " +
+                "isUnderCheck=$isUnderCheck)"
+    }
+}

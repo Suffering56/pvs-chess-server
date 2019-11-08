@@ -32,7 +32,7 @@ class GameService @Autowired constructor(
         return gameRepository.findById(gameId).orElseThrow { RuntimeException("Game with id=$gameId not found") }
     }
 
-    override fun getMovesByPoint(gameId: Long, point: Point): Stream<Point> {
+    override fun getMovesByPoint(game: Game, point: Point): Stream<Point> {
 //        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
 
         return setOf(

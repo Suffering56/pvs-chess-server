@@ -22,7 +22,7 @@ create table if not exists game_features
 	last_visit_date timestamp,
 	long_castling_available boolean default true not null,
 	pawn_long_move_column_index integer,
-	session_id varchar(255),
+	user_id varchar(255),
 	short_castling_available boolean default true not null,
 	side varchar(255) not null,
 	game_id bigint not null

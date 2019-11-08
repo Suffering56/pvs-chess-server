@@ -17,7 +17,7 @@ interface IGameService {
 
     fun findAndCheckGame(gameId: Long): Game
 
-    fun getMovesByPoint(gameId: Long, point: Point): Stream<Point>
+    fun getMovesByPoint(game: Game, point: Point): Stream<Point>
 
     fun applyMove(game: Game, move: MoveDTO): Any
 }

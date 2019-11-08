@@ -1,7 +1,7 @@
-update game_features set session_id =
-  (select session_id from game_features
-    where game_id in (select max(id) from game) and session_id is not null)
-    where game_id = 375 and session_id is not null;
+update game_features set user_id =
+  (select user_id from game_features
+    where game_id in (select max(id) from game) and user_id is not null)
+    where game_id = 375 and user_id is not null;
 
 update game set position = 46 where id = 375;
 delete from history where game_id = 375;

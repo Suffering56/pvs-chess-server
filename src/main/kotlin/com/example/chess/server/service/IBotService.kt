@@ -8,5 +8,5 @@ import com.example.chess.server.entity.Game
  */
 interface IBotService {
 
-    fun applyBotMove(game: Game, nothing: Nothing?)
+    fun fireBotMove(game: Game, nothing: Nothing?)
 }

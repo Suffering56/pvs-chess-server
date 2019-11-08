@@ -1,7 +1,6 @@
 package com.example.chess.server.web
 
 import com.example.chess.server.App
-import com.example.chess.server.core.Authorized
 import com.example.chess.server.logic.Chessboard
 import com.example.chess.server.service.impl.GameService
 import com.example.chess.shared.dto.ChessboardDTO
@@ -13,7 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import javax.servlet.http.HttpServletRequest
 
 /**
  * @author v.peschaniy
@@ -21,38 +19,38 @@ import javax.servlet.http.HttpServletRequest
  */
 @RestController
 @RequestMapping("/api/debug")
-open class DebugController {
+class DebugController {
 
     @Autowired
     private lateinit var gameService: GameService
 
-    @Authorized
     @GetMapping("/version")
     fun get() = "version=${App.getVersion()}"
 
     /**
-     * да-да... меняем данные в GET запросе... здесь можно - это debug!!!
-     * через GET удобнее - потому что это дает возможность перерегистрировать игрока через браузер
+     * Принудительная регистрация игрока с указанным userId в партии с указанным gameId за сторону side
      */
-    @GetMapping("/{gameId}/register/{side}")
+    @GetMapping("/{gameId}/register/{side}/user/{userId}")
     fun registerPlayerForced(
         @PathVariable("gameId") gameId: Long,
         @PathVariable("side") side: Side,
-        request: HttpServletRequest                 //TODO: create new annotation: @SessionId
+        @PathVariable("userId") userId: String
     ): GameDTO {
 
         val game = gameService.findAndCheckGame(gameId)
 
-        //проставляем sessionId принудительно, чтобы продолжить игру после рестарта сервера (когда session.id клиента поменяется)
-        game.setSessionId(side, request.session.id)
+        //проставляем userId принудительно
+        game.setUserId(side, userId)
         return gameService.saveGame(game).toDTO()
     }
 
+    //temp
     @GetMapping("/chessboard")
     fun getInitialChessboard(): ChessboardDTO {
         return Chessboard.byInitial().toDTO()
     }
 
+    //temp
     @GetMapping("/point")
     fun getPoint(): PointDTO {
         return PointDTO(3, 4)

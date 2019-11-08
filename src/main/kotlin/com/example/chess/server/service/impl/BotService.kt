@@ -3,7 +3,7 @@ package com.example.chess.server.service.impl
 import com.example.chess.server.entity.Game
 import com.example.chess.server.service.IBotService
 import org.springframework.stereotype.Service
-
+import java.util.concurrent.ConcurrentSkipListSet
 /**
  * @author v.peschaniy
  *      Date: 22.07.2019
@@ -11,7 +11,15 @@ import org.springframework.stereotype.Service
 @Service
 class BotService : IBotService {
 
-    override fun applyBotMove(game: Game, nothing: Nothing?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    var processingGameIds: MutableSet<Long> = ConcurrentSkipListSet()
+
+    override fun fireBotMove(game: Game, nothing: Nothing?) {
+        if (processingGameIds.add(game.id!!)) {
+            try {
+                //if bot turn -> process apply bot move
+            } finally {
+                processingGameIds.remove(game.id)
+            }
+        }
     }
 }

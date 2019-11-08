@@ -33,7 +33,7 @@ class EntityProvider {
             id = null,
             game = game,
             side = side,
-            sessionId = null,
+            userId = null,
             lastVisitDate = null,
             longCastlingAvailable = true,
             shortCastlingAvailable = true,
