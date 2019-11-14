@@ -1,6 +1,7 @@
 package com.example.chess.server.logic.misc
 
 import com.example.chess.shared.Constants.BOARD_SIZE
+import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.PointDTO
 import com.google.common.collect.Range
 
@@ -9,15 +10,14 @@ import com.google.common.collect.Range
  *      Date: 22.07.2019
  */
 class Point private constructor(
-    val rowIndex: Int,
-    val columnIndex: Int
-) {
+    override val row: Int,
+    override val col: Int
+) : IPoint {
 
-    fun toDTO() = PointDTO(rowIndex, columnIndex)
+    override fun toDTO() = PointDTO(row, col)
 
     companion object {
 
-        //TODO: замерить производительность с проверкой и без нее
         private val availableIndexesRange = Range.closedOpen(0, BOARD_SIZE)
 
         private val pointsPool = Array(BOARD_SIZE) { rowIndex ->
@@ -26,11 +26,13 @@ class Point private constructor(
             }
         }
 
-        fun valueOf(rowIndex: Int, columnIndex: Int): Point {
+        fun of(rowIndex: Int, columnIndex: Int): Point {
             require(availableIndexesRange.contains(rowIndex)) { "incorrect rowIndex=$rowIndex" }
             require(availableIndexesRange.contains(columnIndex)) { "incorrect columnIndex=$columnIndex" }
 
             return pointsPool[rowIndex][columnIndex]
         }
+
+        fun of(dto: PointDTO) = of(dto.row, dto.col)
     }
 }

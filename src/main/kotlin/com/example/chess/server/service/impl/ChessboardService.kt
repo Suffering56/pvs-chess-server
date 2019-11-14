@@ -1,11 +1,12 @@
 package com.example.chess.server.service.impl
 
 import com.example.chess.server.entity.Game
-import com.example.chess.server.entity.History
 import com.example.chess.server.logic.Chessboard
-import com.example.chess.server.logic.IChessboard
+import com.example.chess.server.logic.IMutableChessboard
+import com.example.chess.server.repository.HistoryRepository
 import com.example.chess.server.service.IChessboardService
-import com.example.chess.shared.dto.ChessboardDTO
+import com.google.common.collect.Range
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 
 /**
@@ -15,19 +16,15 @@ import org.springframework.stereotype.Service
 @Service
 class ChessboardService : IChessboardService {
 
-    override fun createChessboardForGame(game: Game, position: Int): IChessboard {
-        val history: List<History> = emptyList()
-        if (position == 0) {
-            return Chessboard.byInitial()
-        }
+    @Autowired
+    private lateinit var historyRepository: HistoryRepository
+
+    override fun createChessboardForGame(game: Game, position: Int): IMutableChessboard {
+        val availablePositionsRange = Range.closed(0, game.position)
+
+        require(availablePositionsRange.contains(position)) { "position must be in range: $availablePositionsRange" }
+
+        val history = historyRepository.findByGameIdAndPositionLessThanEqualOrderByPositionAsc(game.id!!, position)
         return Chessboard.byHistory(history)
-    }
-
-    private fun createChessboardByHistory(): ChessboardDTO {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    private fun createInitialChessboard() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 }

@@ -40,14 +40,14 @@ class DebugController {
         val game = gameService.findAndCheckGame(gameId)
 
         //проставляем userId принудительно
-        game.setUserId(side, userId)
-        return gameService.saveGame(game).toDTO()
+        game.registerUser(side, userId)
+        return gameService.saveGame(game).toDTO(userId)
     }
 
     //temp
     @GetMapping("/chessboard")
     fun getInitialChessboard(): ChessboardDTO {
-        return Chessboard.byInitial().toDTO()
+        return Chessboard.byHistory(emptyList()).toDTO()
     }
 
     //temp

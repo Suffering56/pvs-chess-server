@@ -2,7 +2,11 @@ package com.example.chess.server.entity.provider
 
 import com.example.chess.server.entity.Game
 import com.example.chess.server.entity.GameFeatures
+import com.example.chess.server.entity.History
+import com.example.chess.server.logic.misc.toChessString
+import com.example.chess.shared.api.IMove
 import com.example.chess.shared.enums.GameMode
+import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.Side
 import org.springframework.stereotype.Component
 
@@ -41,17 +45,17 @@ class EntityProvider {
             isUnderCheck = false
         )
 
-//    fun createHistoryItem(gameId: Long, position: Int, move: MoveDTO, pieceFrom: Piece): History {
-//        return History(
-//            id = null,
-//            gameId = gameId,
-//            position = position,
-//            rowIndexFrom = move.rowIndexFrom,
-//            columnIndexFrom = move.columnIndexFrom,
-//            rowIndexTo = move.rowIndexTo,
-//            columnIndexTo = move.columnIndexTo,
-//            pieceFromPawn = move.pieceFromPawn,
-//            description = move.createDescription(pieceFrom)
-//        )
-//    }
+    fun createHistoryItem(gameId: Long, position: Int, move: IMove, pieceFrom: Piece): History {
+        return History(
+            id = null,
+            gameId = gameId,
+            position = position,
+            rowIndexFrom = move.from.row,
+            columnIndexFrom = move.from.col,
+            rowIndexTo = move.to.row,
+            columnIndexTo = move.to.col,
+            pieceFromPawn = move.pawnTransformationPieceType,
+            description = move.toChessString(pieceFrom)
+        )
+    }
 }

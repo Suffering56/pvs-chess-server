@@ -14,7 +14,6 @@ import com.example.chess.shared.dto.MoveDTO
 import com.example.chess.shared.dto.PointDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
-import com.google.common.collect.Range
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
 import java.util.stream.Collectors
@@ -39,7 +38,7 @@ class GameController @Autowired constructor(
         @RequestParam columnIndex: Int
     ): Set<PointDTO> {
 
-        return gameService.getMovesByPoint(game, Point.valueOf(rowIndex, columnIndex))
+        return gameService.getMovesByPoint(game, Point.of(rowIndex, columnIndex))
             .map(Point::toDTO)
             .collect(Collectors.toSet())
     }
@@ -50,8 +49,9 @@ class GameController @Autowired constructor(
         @InjectGame game: Game,
         @RequestBody move: MoveDTO
     ): ChangesDTO {
-//        val pair = gameService.applyMove(game, move)
-//
+        val chessboard = chessboardService.createChessboardForGame(game)
+        val changes = gameService.applyMove(game, chessboard, move)
+
 //        if (game.mode == GameMode.AI) {
 //            botService.fireBotMove(game, move.toExtendedMove(pair.getKey()))
 //            botService.fireBotMove(game, null)
@@ -59,33 +59,25 @@ class GameController @Autowired constructor(
 //                return pair.getValue()
 //        throw UnsupportedOperationException()
 
-        return ChangesDTO(game.position + 1, move, PointDTO(7, 3))
+        return changes
     }
 
-    @Authorized(viewerMode = true)
+    @Authorized(false)
     @GetMapping("/chessboard")
     fun getChessboardByPosition(
         @InjectGame game: Game,
         @InjectUserId userId: String,
         @RequestParam(required = false) position: Int?
     ): ChessboardDTO {
+        val chessboard = chessboardService.createChessboardForGame(game, position ?: game.position)
 
-        position?.also {
-            val availablePositionsRange = Range.closed(0, game.position)
-            require(availablePositionsRange.contains(position)) { "position must be in range: $availablePositionsRange" }
-        }
-
-        val result = chessboardService.createChessboardForGame(game, position ?: game.position)
-        val isViewer = !game.isUserRegistered(userId)
-
-        if (!isViewer
-            && game.position == 0
+        if (game.position == 0
             && game.mode == GameMode.AI
-            && game.getPlayerSide() == Side.BLACK
+            && game.getUserSide(userId).orElseGet(null) == Side.BLACK   //если null - значит это зритель -> а зритель не должен триггерить бота
         ) {
             //еще никто не ходил, а игрок(человек) играет за черных -> нужно пнуть бота, чтобы тот походил
             botService.fireBotMove(game, null)
         }
-        return result.toDTO()
+        return chessboard.toDTO()
     }
 }

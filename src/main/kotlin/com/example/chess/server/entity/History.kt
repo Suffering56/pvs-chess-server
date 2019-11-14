@@ -1,5 +1,8 @@
 package com.example.chess.server.entity
 
+import com.example.chess.server.logic.misc.Move
+import com.example.chess.server.logic.misc.Point
+import com.example.chess.shared.api.IMove
 import com.example.chess.shared.enums.PieceType
 import org.hibernate.annotations.GenericGenerator
 import javax.persistence.Column
@@ -48,12 +51,18 @@ data class History(
     val description: String?
 ) {
 
+    fun toMove(): IMove = Move(
+        Point.of(rowIndexFrom, columnIndexFrom),
+        Point.of(rowIndexTo, columnIndexTo),
+        pieceFromPawn
+    )
 
-//    val pointFrom: PointDTO
+
+//    val from: PointDTO
 //        @Transient
 //        get() = PointDTO.valueOf(rowIndexFrom, columnIndexFrom)
 //
-//    val pointTo: PointDTO
+//    val to: PointDTO
 //        @Transient
 //        get() = PointDTO.valueOf(rowIndexTo, columnIndexTo)
 //
@@ -63,13 +72,13 @@ data class History(
 //
 //    @Transient
 //    fun toExtendedMove(matrix: CellsMatrix): ExtendedMove {
-//        val from = matrix.getCell(pointFrom)
-//        val to = matrix.getCell(pointTo)
+//        val from = matrix.getCell(from)
+//        val to = matrix.getCell(to)
 //        return ExtendedMove(from, to)
 //    }
 //
 //    @Transient
 //    fun toReadableString(): String {
-//        return pointFrom + "-" + pointTo
+//        return from + "-" + to
 //    }
 }

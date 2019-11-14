@@ -1,8 +1,10 @@
 package com.example.chess.server.service
 
 import com.example.chess.server.entity.Game
+import com.example.chess.server.logic.IMutableChessboard
 import com.example.chess.server.logic.misc.Point
-import com.example.chess.shared.dto.MoveDTO
+import com.example.chess.shared.api.IMove
+import com.example.chess.shared.dto.ChangesDTO
 import java.util.stream.Stream
 
 /**
@@ -19,5 +21,5 @@ interface IGameService {
 
     fun getMovesByPoint(game: Game, point: Point): Stream<Point>
 
-    fun applyMove(game: Game, move: MoveDTO): Any
+    fun applyMove(game: Game, chessboard: IMutableChessboard, move: IMove): ChangesDTO
 }

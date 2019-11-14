@@ -24,7 +24,7 @@ class InitController @Autowired constructor(
     @GetMapping("/new")
     fun createGame(): GameDTO {
         val game = gameService.createNewGame()
-        return game.toDTO()
+        return game.toDTO(null)
     }
 
     @Authorized
@@ -36,7 +36,7 @@ class InitController @Autowired constructor(
         return game.toDTO(userId)
     }
 
-    @Authorized
+    @Authorized(false)   //TODO
     @PostMapping("/mode")
     fun setMode(
         @InjectGame game: Game,
@@ -49,7 +49,7 @@ class InitController @Autowired constructor(
         return gameService.saveGame(game).toDTO(userId)
     }
 
-    @Authorized
+    @Authorized(false)   //TODO
     @PostMapping("/side")
     fun setSide(
         @InjectGame game: Game,

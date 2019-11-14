@@ -1,7 +1,7 @@
 package com.example.chess.server.service
 
 import com.example.chess.server.entity.Game
-import com.example.chess.server.logic.IChessboard
+import com.example.chess.server.logic.IMutableChessboard
 
 /**
  * @author v.peschaniy
@@ -9,5 +9,5 @@ import com.example.chess.server.logic.IChessboard
  */
 interface IChessboardService {
 
-    fun createChessboardForGame(game: Game, position: Int): IChessboard
+    fun createChessboardForGame(game: Game, position: Int = game.position): IMutableChessboard
 }

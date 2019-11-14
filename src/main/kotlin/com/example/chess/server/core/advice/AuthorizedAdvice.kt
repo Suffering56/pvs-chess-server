@@ -31,41 +31,38 @@ class AuthorizedAdvice {
         val authorized = signature.method.getAnnotation(Authorized::class.java)
         val args = joinPoint.args
 
-        if (authorized.enabled) {
+        val request = (RequestContextHolder
+            .getRequestAttributes() as ServletRequestAttributes).request
 
-            val request = (RequestContextHolder
-                .getRequestAttributes() as ServletRequestAttributes).request
+        val gameId = requireNotNull(
+            request.getParameter("gameId")
+        ) { "couldn't find required parameter 'gameId' in authorized request" }
+            .toLong()
 
-            val gameId = requireNotNull(
-                request.getParameter("gameId")
-            ) { "couldn't find required parameter 'gameId' in authorized request" }
-                .toLong()
+        val userId = requireNotNull(
+            request.getParameter("userId")
+        ) { "couldn't find required parameter 'userId' in authorized request" }
 
-            val userId = requireNotNull(
-                request.getParameter("userId")
-            ) { "couldn't find required parameter 'userId' in authorized request" }
+        val game = gameService.findAndCheckGame(gameId)
 
-            val game = gameService.findAndCheckGame(gameId)
-
-            if (!authorized.viewerMode) {
-                require(game.isUserRegistered(userId)) {
-                    "user(id=$userId) has no access to game=$gameId"
-                }
-                //TODO: можно еще защиту паролем потом прикрутить
+        if (authorized.youShallNotPass) {
+            require(game.isUserRegistered(userId)) {
+                "user(id=$userId) has no access to game=$gameId"
             }
+            //TODO: можно еще защиту паролем потом прикрутить
+        }
 
-            val parameters = signature.method.parameters
+        val parameters = signature.method.parameters
 
-            for (i in parameters.indices) {
-                if (parameters[i].isAnnotationPresent(InjectGameId::class.java)) {
-                    args[i] = gameId
-                }
-                if (parameters[i].isAnnotationPresent(InjectUserId::class.java)) {
-                    args[i] = userId
-                }
-                if (parameters[i].isAnnotationPresent(InjectGame::class.java)) {
-                    args[i] = game
-                }
+        for (i in parameters.indices) {
+            if (parameters[i].isAnnotationPresent(InjectGameId::class.java)) {
+                args[i] = gameId
+            }
+            if (parameters[i].isAnnotationPresent(InjectUserId::class.java)) {
+                args[i] = userId
+            }
+            if (parameters[i].isAnnotationPresent(InjectGame::class.java)) {
+                args[i] = game
             }
         }
 
