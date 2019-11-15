@@ -1,5 +1,6 @@
 package com.example.chess.server.entity
 
+import com.example.chess.server.logic.IGameFeatures
 import com.example.chess.shared.enums.Side
 import com.fasterxml.jackson.annotation.JsonIgnore
 import org.hibernate.annotations.ColumnDefault
@@ -40,19 +41,26 @@ data class GameFeatures(
 
     @ColumnDefault("true")
     @Column(nullable = false)
-    var longCastlingAvailable: Boolean,
+    override var longCastlingAvailable: Boolean,
 
     @ColumnDefault("true")
     @Column(nullable = false)
-    var shortCastlingAvailable: Boolean,
+    override var shortCastlingAvailable: Boolean,
 
     @Column(nullable = true)
-    var pawnLongMoveColumnIndex: Int?,   //если пешка сделала длинный ход (на 2 клетки вперед) здесь храним индекс
+    override var pawnLongMoveColumnIndex: Int?,   //если пешка сделала длинный ход (на 2 клетки вперед) здесь храним индекс
 
     @ColumnDefault("false")
     @Column(nullable = false)
     var isUnderCheck: Boolean
-) {
+
+) : IGameFeatures {
+
+    fun disableCastling() {
+        longCastlingAvailable = false
+        shortCastlingAvailable = false
+    }
+
     override fun toString(): String {
         return "GameFeatures(id=$id, " +
                 "gameId=${game.id}, " +         //берем только id во избежание StackOverflow

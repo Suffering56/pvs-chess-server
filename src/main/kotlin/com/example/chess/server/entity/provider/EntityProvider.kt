@@ -3,7 +3,7 @@ package com.example.chess.server.entity.provider
 import com.example.chess.server.entity.Game
 import com.example.chess.server.entity.GameFeatures
 import com.example.chess.server.entity.History
-import com.example.chess.server.logic.misc.toChessString
+import com.example.chess.server.logic.misc.toPrettyString
 import com.example.chess.shared.api.IMove
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Piece
@@ -55,7 +55,7 @@ class EntityProvider {
             rowIndexTo = move.to.row,
             columnIndexTo = move.to.col,
             pieceFromPawn = move.pawnTransformationPieceType,
-            description = move.toChessString(pieceFrom)
+            description = move.toPrettyString(pieceFrom)
         )
     }
 }

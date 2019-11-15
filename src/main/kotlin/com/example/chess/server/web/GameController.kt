@@ -8,6 +8,7 @@ import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IChessboardService
 import com.example.chess.server.service.IGameService
+import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.MoveDTO
@@ -37,9 +38,11 @@ class GameController @Autowired constructor(
         @RequestParam rowIndex: Int,
         @RequestParam columnIndex: Int
     ): Set<PointDTO> {
+        val chessboard = chessboardService.createChessboardForGame(game)
 
-        return gameService.getMovesByPoint(game, Point.of(rowIndex, columnIndex))
-            .map(Point::toDTO)
+        return gameService.getMovesByPoint(game, chessboard, Point.of(rowIndex, columnIndex))
+            .stream()
+            .map(IPoint::toDTO)
             .collect(Collectors.toSet())
     }
 
@@ -52,13 +55,9 @@ class GameController @Autowired constructor(
         val chessboard = chessboardService.createChessboardForGame(game)
         val changes = gameService.applyMove(game, chessboard, move)
 
-//        if (game.mode == GameMode.AI) {
-//            botService.fireBotMove(game, move.toExtendedMove(pair.getKey()))
-//            botService.fireBotMove(game, null)
-//        }
-//                return pair.getValue()
-//        throw UnsupportedOperationException()
-
+        if (game.mode == GameMode.AI) {
+            botService.fireBotMove(game, chessboard)
+        }
         return changes
     }
 

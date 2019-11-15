@@ -1,9 +1,9 @@
 package com.example.chess.server.logic.misc
 
 import com.example.chess.shared.Constants.BOARD_SIZE
+import com.example.chess.shared.Constants.POINT_OFFSET
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.PointDTO
-import com.google.common.collect.Range
 
 /**
  * @author v.peschaniy
@@ -18,8 +18,6 @@ class Point private constructor(
 
     companion object {
 
-        private val availableIndexesRange = Range.closedOpen(0, BOARD_SIZE)
-
         private val pointsPool = Array(BOARD_SIZE) { rowIndex ->
             Array(BOARD_SIZE) { columnIndex ->
                 Point(rowIndex, columnIndex)
@@ -27,12 +25,30 @@ class Point private constructor(
         }
 
         fun of(rowIndex: Int, columnIndex: Int): Point {
-            require(availableIndexesRange.contains(rowIndex)) { "incorrect rowIndex=$rowIndex" }
-            require(availableIndexesRange.contains(columnIndex)) { "incorrect columnIndex=$columnIndex" }
+            checkBoardIndex(rowIndex) { "incorrect rowIndex=$rowIndex" }
+            checkBoardIndex(columnIndex) { "incorrect columnIndex=$columnIndex" }
 
             return pointsPool[rowIndex][columnIndex]
         }
 
         fun of(dto: PointDTO) = of(dto.row, dto.col)
+
+        private fun checkBoardIndex(index: Int, lazyMessage: () -> Any) {
+            if (index < 0 || index >= BOARD_SIZE) {
+                throw IndexOutOfBoundsException(lazyMessage().toString())
+            }
+        }
     }
+
+    //TODO: возможно пригодится в будущем
+    fun Int.toPoint(): Point {
+        val rowIndex = this shr POINT_OFFSET
+        val columnIndex = this - (rowIndex shl POINT_OFFSET)
+        return of(rowIndex, columnIndex)
+    }
+}
+
+fun main() {
+    val x: Short = 1 shl 3
+    print(x)
 }

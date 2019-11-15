@@ -4,6 +4,8 @@ import com.example.chess.server.entity.History
 import com.example.chess.server.logic.misc.*
 import com.example.chess.shared.ArrayTable
 import com.example.chess.shared.Constants.BOARD_SIZE
+import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
+import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.api.IMove
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.CellDTO
@@ -23,11 +25,7 @@ open class Chessboard private constructor(
     private val kingPoints: MutableMap<Side, IPoint>
 ) : IMutableChessboard {
 
-    override fun getPieceNullable(point: IPoint) = matrix[point.row][point.col]
-
-    override fun getPiece(point: IPoint) = requireNotNull(getPieceNullable(point)) {
-        "piece on position=[${point.toChessString()}] cannot be null:\r\n${toPrettyString()}"
-    }
+    override fun getPieceNullable(rowIndex: Int, columnIndex: Int) = matrix[rowIndex][columnIndex]
 
     override fun applyMove(move: IMove) {
         val pieceFrom = getPiece(move.from)
@@ -50,7 +48,7 @@ open class Chessboard private constructor(
         val transformationPiece =
             requireNotNull(move.pawnTransformationPieceType) {
                 "transformation piece cannot be null: " +
-                        "move=${move.toChessString(pieceFrom)}\r\n${toPrettyString()}"
+                        "move=${move.toPrettyString(pieceFrom)}\r\n${toPrettyString()}"
             }
 
         applySimpleMove(move, Piece.of(pieceFrom.side, transformationPiece))
@@ -59,11 +57,11 @@ open class Chessboard private constructor(
     private fun applyEnPassant(move: IMove, pawn: Piece) {
         val attackedPiece = requireNotNull(matrix[move.from.row][move.to.col]) {
             "attacked piece[en passant] cannot be null: " +
-                    "move=${move.toChessString(pawn)}\r\n${toPrettyString()}"
+                    "move=${move.toPrettyString(pawn)}\r\n${toPrettyString()}"
         }
         require(pawn.side != attackedPiece.side) {
             "attacked piece side must be opposite to the side of moved pawn:" +
-                    "move=${move.toChessString(pawn)}\r\n${toPrettyString()}"
+                    "move=${move.toPrettyString(pawn)}\r\n${toPrettyString()}"
         }
 
         //move pawn
@@ -76,7 +74,7 @@ open class Chessboard private constructor(
         move: IMove,
         king: Piece
     ) {
-        require(move.from.row == move.to.row) { "castling row must be unchangeable: move=${move.toChessString(king)}" }
+        require(move.from.row == move.to.row) { "castling row must be unchangeable: move=${move.toPrettyString(king)}" }
 
         val rowIndex = move.from.row
         val kingColumnFrom = move.from.col
@@ -94,7 +92,7 @@ open class Chessboard private constructor(
         val rook = matrix[rowIndex][rookColumnFrom]
         require(rook == Piece.of(king.side, PieceType.ROOK)) {
             "required castling rook not found: " +
-                    "move=${move.toChessString(king)}\r\n${toPrettyString()}"
+                    "move=${move.toPrettyString(king)}\r\n${toPrettyString()}"
         }
 
         //move king
@@ -174,16 +172,22 @@ open class Chessboard private constructor(
         }
     }
 
-    //TODO: цвет фигур еще надо выводить
-    fun toPrettyString(): String {
-        var result = "   a  b  c  d  e  f  g  h\r\n"
-        result += "  -----------------------\r\n"
+    override fun toPrettyString(): String {
+        var result = "   a   b   c   d   e   f   g   h\r\n"
+        result += "  ------------------------------\r\n"
 
         for (rowIndex in 7 downTo 0) {
             result += "${rowIndex + 1}| "
             for (columnIndex in 7 downTo 0) {
                 val piece = getPieceNullable(Point.of(rowIndex, columnIndex))
                 result += if (piece?.isPawn() == true) "P" else piece?.shortName ?: "."
+
+                result += when (piece?.side) {
+                    Side.WHITE -> "+"
+                    Side.BLACK -> "-"
+                    null -> " "
+                }
+
                 if (columnIndex != 0) {
                     result += "  "
                 }
@@ -191,9 +195,9 @@ open class Chessboard private constructor(
             result += " |${rowIndex + 1}\r\n"
         }
 
-        result += "  -----------------------\n"
-        result += "   a  b  c  d  e  f  g  h"
+        result += "  ------------------------------\n"
+        result += "   a   b   c   d   e   f   g   h"
 
-        return result;
+        return result
     }
 }

@@ -1,11 +1,8 @@
 package com.example.chess.server.web
 
 import com.example.chess.server.App
-import com.example.chess.server.logic.Chessboard
 import com.example.chess.server.service.impl.GameService
-import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.GameDTO
-import com.example.chess.shared.dto.PointDTO
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.GetMapping
@@ -42,17 +39,5 @@ class DebugController {
         //проставляем userId принудительно
         game.registerUser(side, userId)
         return gameService.saveGame(game).toDTO(userId)
-    }
-
-    //temp
-    @GetMapping("/chessboard")
-    fun getInitialChessboard(): ChessboardDTO {
-        return Chessboard.byHistory(emptyList()).toDTO()
-    }
-
-    //temp
-    @GetMapping("/point")
-    fun getPoint(): PointDTO {
-        return PointDTO(3, 4)
     }
 }

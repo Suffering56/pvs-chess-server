@@ -1,5 +1,6 @@
 package com.example.chess.server.entity
 
+import com.example.chess.server.logic.IGame
 import com.example.chess.shared.dto.GameDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
@@ -36,9 +37,9 @@ data class Game(
     @OneToMany(mappedBy = "game", fetch = FetchType.EAGER, cascade = [CascadeType.ALL])
     @MapKey(name = "side")
     val featuresMap: Map<Side, GameFeatures> = emptyMap()
-) {
+) : IGame {
 
-    fun getSideFeatures(side: Side) = featuresMap.getValue(side)
+    override fun getSideFeatures(side: Side) = featuresMap.getValue(side)
 
     fun isUserRegistered(userId: String): Boolean {
         return getUserSide(userId).isPresent
@@ -98,40 +99,6 @@ data class Game(
         return GameDTO(id!!, position, mode, side, freeSideSlots)
     }
 
-//    fun setLastVisitDate(side: Side, lastVisitDate: LocalDateTime) {
-//        getSideFeatures(side).lastVisitDate = lastVisitDate
-//    }
-//
-//    private fun disableShortCasting(side: Side) {
-//        getSideFeatures(side).shortCastlingAvailable = false
-//    }
-//
-//    private fun disableLongCasting(side: Side) {
-//        getSideFeatures(side).longCastlingAvailable = false
-//    }
-//
-//    fun disableCasting(side: Side) {
-//        disableLongCasting(side)
-//        disableShortCasting(side)
-//    }
-//
-//    fun disableCasting(side: Side, rookColumnIndex: Int) {
-//        when (rookColumnIndex) {
-//            ROOK_SHORT_COLUMN_INDEX -> disableShortCasting(side)
-//            ROOK_LONG_COLUMN_INDEX -> disableLongCasting(side)
-//        }
-//    }
-//
-//    fun isShortCastlingAvailable(side: Side) = getSideFeatures(side).shortCastlingAvailable
-//
-//    fun isLongCastlingAvailable(side: Side) = getSideFeatures(side).longCastlingAvailable
-//
-//    fun getPawnLongMoveColumnIndex(side: Side) = getSideFeatures(side).pawnLongMoveColumnIndex
-//
-//    fun setPawnLongMoveColumnIndex(side: Side, columnIndex: Int) {
-//        getSideFeatures(side).pawnLongMoveColumnIndex = columnIndex
-//    }
-//
 //    fun getUnderCheckSide(): Side? {
 //        return featuresMap.values
 //            .stream()
@@ -139,12 +106,6 @@ data class Game(
 //            .findAny()
 //            .map { it.side }
 //            .orElse(null)
-//    }
-//
-//    fun setUnderCheckSide(side: Side?) {
-//        featuresMap.values.forEach {
-//            it.isUnderCheck = it.side == side
-//        }
 //    }
 //
 //    /**

@@ -13,7 +13,7 @@ class BotService : IBotService {
 
     var processingGameIds: MutableSet<Long> = ConcurrentSkipListSet()
 
-    override fun fireBotMove(game: Game, nothing: Nothing?) {
+    override fun fireBotMove(game: Game, nothing: Any?) {
         if (processingGameIds.add(game.id!!)) {
             try {
                 //if bot turn -> process apply bot move

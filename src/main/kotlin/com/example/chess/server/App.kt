@@ -10,7 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
  *      Date: 22.07.2019
  */
 @SpringBootApplication
-open class App : CommandLineRunner {
+class App : CommandLineRunner {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
