@@ -5,6 +5,7 @@ import com.example.chess.server.logic.misc.toPrettyString
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.enums.Piece
+import com.example.chess.shared.enums.Side
 
 /**
  * @author v.peschaniy
@@ -28,4 +29,6 @@ interface IChessboard {
     fun getPiece(rowIndex: Int, columnIndex: Int) = requireNotNull(getPieceNullable(rowIndex, columnIndex)) {
         "piece on position=[${Point.of(rowIndex, columnIndex).toPrettyString()}] cannot be null:\r\n${toPrettyString()}"
     }
+
+    fun getKingPoint(sideFrom: Side): IPoint
 }

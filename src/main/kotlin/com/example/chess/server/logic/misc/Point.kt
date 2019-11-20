@@ -34,7 +34,7 @@ class Point private constructor(
         fun of(dto: PointDTO) = of(dto.row, dto.col)
 
         private fun checkBoardIndex(index: Int, lazyMessage: () -> Any) {
-            if (index < 0 || index >= BOARD_SIZE) {
+            if (isIndexOutOfBounds(index)) {
                 throw IndexOutOfBoundsException(lazyMessage().toString())
             }
         }

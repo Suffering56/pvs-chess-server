@@ -1,5 +1,6 @@
 package com.example.chess.server.logic.misc
 
+import com.example.chess.shared.Constants
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.api.IMove
@@ -56,4 +57,8 @@ fun IMove.toPrettyString(pieceFrom: Piece): String {
 
 fun IPoint.toPrettyString(): String {
     return "${columnNamesMap[col]}${row + 1}"
+}
+
+fun isIndexOutOfBounds(index: Int): Boolean {
+    return index < 0 || index >= Constants.BOARD_SIZE
 }

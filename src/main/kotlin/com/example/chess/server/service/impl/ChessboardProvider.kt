@@ -4,17 +4,17 @@ import com.example.chess.server.entity.Game
 import com.example.chess.server.logic.Chessboard
 import com.example.chess.server.logic.IMutableChessboard
 import com.example.chess.server.repository.HistoryRepository
-import com.example.chess.server.service.IChessboardService
+import com.example.chess.server.service.IChessboardProvider
 import com.google.common.collect.Range
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.stereotype.Service
+import org.springframework.stereotype.Component
 
 /**
  * @author v.peschaniy
  *      Date: 24.07.2019
  */
-@Service
-class ChessboardService : IChessboardService {
+@Component
+class ChessboardProvider : IChessboardProvider {
 
     @Autowired
     private lateinit var historyRepository: HistoryRepository

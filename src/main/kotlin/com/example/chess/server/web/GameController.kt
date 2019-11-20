@@ -6,7 +6,7 @@ import com.example.chess.server.core.InjectUserId
 import com.example.chess.server.entity.Game
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
-import com.example.chess.server.service.IChessboardService
+import com.example.chess.server.service.IChessboardProvider
 import com.example.chess.server.service.IGameService
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.ChangesDTO
@@ -27,7 +27,7 @@ import java.util.stream.Collectors
 @RequestMapping("/api/game")
 class GameController @Autowired constructor(
     private val gameService: IGameService,
-    private val chessboardService: IChessboardService,
+    private val chessboardProvider: IChessboardProvider,
     private val botService: IBotService
 ) {
 
@@ -38,7 +38,7 @@ class GameController @Autowired constructor(
         @RequestParam rowIndex: Int,
         @RequestParam columnIndex: Int
     ): Set<PointDTO> {
-        val chessboard = chessboardService.createChessboardForGame(game)
+        val chessboard = chessboardProvider.createChessboardForGame(game)
 
         return gameService.getMovesByPoint(game, chessboard, Point.of(rowIndex, columnIndex))
             .stream()
@@ -52,7 +52,7 @@ class GameController @Autowired constructor(
         @InjectGame game: Game,
         @RequestBody move: MoveDTO
     ): ChangesDTO {
-        val chessboard = chessboardService.createChessboardForGame(game)
+        val chessboard = chessboardProvider.createChessboardForGame(game)
         val changes = gameService.applyMove(game, chessboard, move)
 
         if (game.mode == GameMode.AI) {
@@ -68,7 +68,7 @@ class GameController @Autowired constructor(
         @InjectUserId userId: String,
         @RequestParam(required = false) position: Int?
     ): ChessboardDTO {
-        val chessboard = chessboardService.createChessboardForGame(game, position ?: game.position)
+        val chessboard = chessboardProvider.createChessboardForGame(game, position ?: game.position)
 
         if (game.position == 0
             && game.mode == GameMode.AI

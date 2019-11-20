@@ -11,6 +11,7 @@ import com.example.chess.server.logic.misc.toPrettyString
 import com.example.chess.server.repository.GameRepository
 import com.example.chess.server.repository.HistoryRepository
 import com.example.chess.server.service.IGameService
+import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.api.IMove
@@ -28,7 +29,8 @@ import org.springframework.stereotype.Service
 class GameService @Autowired constructor(
     private val gameRepository: GameRepository,
     private val historyRepository: HistoryRepository,
-    private val entityProvider: EntityProvider
+    private val entityProvider: EntityProvider,
+    private val movesProvider: IMovesProvider
 ) : IGameService {
 
     override fun createNewGame(): Game {
@@ -45,17 +47,7 @@ class GameService @Autowired constructor(
     }
 
     override fun getMovesByPoint(game: IGame, chessboard: IChessboard, point: IPoint): Set<Point> {
-        //TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-        //TODO: longPawnMoveIndex надо обрабатывать где-то здесь
-
-        return setOf(
-            Point.of(0, 0),
-            Point.of(4, 3),
-            Point.of(4, 4),
-            Point.of(4, 5),
-            Point.of(4, 6),
-            Point.of(5, 2)
-        )
+        return movesProvider.getAvailableMoves(game, chessboard, point)
     }
 
     override fun applyMove(game: Game, chessboard: IMutableChessboard, move: IMove): ChangesDTO {

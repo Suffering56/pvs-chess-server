@@ -25,6 +25,8 @@ open class Chessboard private constructor(
     private val kingPoints: MutableMap<Side, IPoint>
 ) : IMutableChessboard {
 
+    override fun getKingPoint(side: Side) = kingPoints[side]!!
+
     override fun getPieceNullable(rowIndex: Int, columnIndex: Int) = matrix[rowIndex][columnIndex]
 
     override fun applyMove(move: IMove) {

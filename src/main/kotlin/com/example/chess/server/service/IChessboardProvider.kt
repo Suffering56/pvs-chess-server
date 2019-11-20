@@ -7,7 +7,7 @@ import com.example.chess.server.logic.IMutableChessboard
  * @author v.peschaniy
  *      Date: 24.07.2019
  */
-interface IChessboardService {
+interface IChessboardProvider {
 
     fun createChessboardForGame(game: Game, position: Int = game.position): IMutableChessboard
 }
