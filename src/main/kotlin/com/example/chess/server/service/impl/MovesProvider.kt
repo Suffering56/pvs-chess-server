@@ -7,20 +7,18 @@ import com.example.chess.server.logic.misc.isIndexOutOfBounds
 import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.enums.Piece
-import com.example.chess.shared.enums.Piece.*
 import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.PieceType.*
 import com.example.chess.shared.enums.Side
-import com.google.common.collect.Iterables
 import org.eclipse.collections.api.set.primitive.IntSet
+import org.eclipse.collections.api.tuple.Twin
 import org.eclipse.collections.api.tuple.primitive.IntIntPair
 import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet
-import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples
+import org.eclipse.collections.impl.tuple.Tuples
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples.pair
 import org.springframework.stereotype.Component
 import java.lang.UnsupportedOperationException
 import java.util.*
-import java.util.stream.Collectors
-import java.util.stream.Stream
 import kotlin.collections.HashSet
 
 /**
@@ -54,31 +52,44 @@ class MovesProvider : IMovesProvider {
     ) {
         companion object {
             val pieceVectorsMap = EnumMap<PieceType, Set<IntIntPair>>(PieceType::class.java)
+            val knightOffsets = setOf(
+                pair(1, 2),
+                pair(2, 1),
+                pair(1, -2),
+                pair(2, -1),
+
+                pair(-1, 2),
+                pair(-2, 1),
+                pair(-1, -2),
+                pair(-2, -1)
+            )
 
             init {
                 pieceVectorsMap[ROOK] = setOf(
-                    PrimitiveTuples.pair(1, 0),
-                    PrimitiveTuples.pair(-1, 0),
-                    PrimitiveTuples.pair(0, 1),
-                    PrimitiveTuples.pair(0, -1)
+                    pair(1, 0),
+                    pair(-1, 0),
+                    pair(0, 1),
+                    pair(0, -1)
                 )
                 pieceVectorsMap[BISHOP] = setOf(
-                    PrimitiveTuples.pair(1, 1),
-                    PrimitiveTuples.pair(1, -1),
-                    PrimitiveTuples.pair(-1, 1),
-                    PrimitiveTuples.pair(-1, -1)
+                    pair(1, 1),
+                    pair(1, -1),
+                    pair(-1, 1),
+                    pair(-1, -1)
                 )
                 pieceVectorsMap[QUEEN] = setOf(
-                    PrimitiveTuples.pair(1, 1),
-                    PrimitiveTuples.pair(1, -1),
-                    PrimitiveTuples.pair(-1, 1),
-                    PrimitiveTuples.pair(-1, -1),
-
-                    PrimitiveTuples.pair(1, 1),
-                    PrimitiveTuples.pair(1, -1),
-                    PrimitiveTuples.pair(-1, 1),
-                    PrimitiveTuples.pair(-1, -1)
+                    //ROOK
+                    pair(1, 1),
+                    pair(1, -1),
+                    pair(-1, 1),
+                    pair(-1, -1),
+                    //BISHOP
+                    pair(1, 1),
+                    pair(1, -1),
+                    pair(-1, 1),
+                    pair(-1, -1)
                 )
+                pieceVectorsMap[KING] = pieceVectorsMap[QUEEN]
 
             }
         }
@@ -144,6 +155,115 @@ class MovesProvider : IMovesProvider {
             TODO("NYI")
         }
 
+        private fun getKingAttackers(): Twin<Point>? {
+            var result: Twin<Point>? = findVectorPieceThreatsToKing()
+
+            if (result != null && result.two != null) {
+                return result
+            }
+
+            val knightAttacker = findKnightThreatsToKing()
+
+            if (knightAttacker != null) {
+                if (result == null) {
+                    result = Tuples.twin(knightAttacker, null)
+                } else {
+                    //тройной шах в этой игре невозможен
+                    return Tuples.twin(result.one, knightAttacker)
+                }
+            }
+
+            val pawnAttacker = findPawnThreatsToKing()
+
+            if (pawnAttacker != null) {
+                return if (result == null) {
+                    Tuples.twin(pawnAttacker, null)
+                } else {
+                    //тройной шах в этой игре невозможен
+                    Tuples.twin(result.one, pawnAttacker)
+                }
+            }
+
+            return result
+        }
+
+
+        private fun findPawnThreatsToKing(): Point? {
+            val rowOffset = if (sideFrom == Side.WHITE) 1 else -1   //TODO: to set[side]
+
+            var row = kingPoint.row + rowOffset
+            var col = kingPoint.col + 1
+
+            val piece = chessboard.getPieceNullable(row, col)
+            if (piece != null && piece.side != sideFrom && piece.isPawn()) {
+                return Point.of(col, row)
+            }
+
+            row = kingPoint.row + rowOffset
+            col = kingPoint.col - 1
+
+            if (piece != null && piece.side != sideFrom && piece.isPawn()) {
+                return Point.of(col, row)
+            }
+
+            return null
+        }
+
+        private fun findKnightThreatsToKing(): Point? {
+            for (offset in knightOffsets) {
+                val row = kingPoint.row + offset.one
+                val col = kingPoint.col + offset.two
+
+                if (isOutOfBoard(row, col)) {
+                    continue
+                }
+
+                val foundPiece = chessboard.getPieceNullable(row, col)
+
+                if (foundPiece != null && foundPiece.side != sideFrom && foundPiece.type == KNIGHT) {
+                    //сразу выходим, потому что двойного шаха от двух коней быть не может
+                    return Point.of(row, col)
+                }
+            }
+            return null
+        }
+
+        private fun findVectorPieceThreatsToKing(): Twin<Point>? {
+            var result: Twin<Point>? = null
+
+            val allPossibleAttackerVectors = pieceVectorsMap[QUEEN]!!
+
+            for (vector in allPossibleAttackerVectors) {
+                val notEmptyPoint = nextPieceByVector(vector.one, vector.two, kingPoint)
+                    ?: continue // ничего не нашли и уперлись в край доски
+
+                val foundPiece = chessboard.getPiece(notEmptyPoint)
+                if (foundPiece.side == sideFrom || !isVectorPiece(foundPiece.type)) {
+                    //мы ищем только вражеского слона/ладью/ферзя
+                    continue
+                }
+
+                result = if (result == null) {
+                    Tuples.twin(notEmptyPoint, null)
+                } else {
+                    //двойной шах (оч редкий кейс)
+                    //тройной шах в этой игре невозможен
+                    return Tuples.twin(result.one, notEmptyPoint)
+                }
+            }
+
+            return result
+        }
+
+        private fun isVectorPiece(pieceType: PieceType): Boolean {
+            return when (pieceType) {
+                BISHOP -> true
+                ROOK -> true
+                QUEEN -> true
+                else -> false
+            }
+        }
+
         private fun getKingThreatPointForObstacle(rowDirection: Int, colDirection: Int): Point? {
             var row: Int = kingPoint.row
             var col: Int = kingPoint.col
@@ -153,7 +273,7 @@ class MovesProvider : IMovesProvider {
                 row += rowDirection
                 col += colDirection
 
-                if (isIndexOutOfBounds(row) || isIndexOutOfBounds(col)) {
+                if (isOutOfBoard(row, col)) {
                     // угроза до сих пор не найдена, а доска кончилась
                     return null
                 }
@@ -182,7 +302,7 @@ class MovesProvider : IMovesProvider {
             }
         }
 
-        private fun nextPieceByVector(rowDirection: Int, colDirection: Int, sourcePoint: IPoint): Piece? {
+        private fun nextPieceByVector(rowDirection: Int, colDirection: Int, sourcePoint: IPoint): Point? {
             var row: Int = sourcePoint.row
             var col: Int = sourcePoint.col
 
@@ -190,15 +310,17 @@ class MovesProvider : IMovesProvider {
                 row += rowDirection
                 col += colDirection
 
-                if (isIndexOutOfBounds(row) || isIndexOutOfBounds(col)) {
+                if (isOutOfBoard(row, col)) {
                     return null
                 }
 
                 val piece = chessboard.getPieceNullable(row, col)
                 if (piece != null) {
-                    return piece
+                    return Point.of(row, col)
                 }
             }
         }
+
+        private fun isOutOfBoard(row: Int, col: Int) = isIndexOutOfBounds(row) || isIndexOutOfBounds(col)
     }
 }
