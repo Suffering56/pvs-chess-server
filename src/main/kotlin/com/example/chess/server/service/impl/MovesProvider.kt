@@ -3,6 +3,7 @@ package com.example.chess.server.service.impl
 import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IGame
 import com.example.chess.server.logic.misc.Point
+import com.example.chess.server.logic.misc.hasCommonVectorWith
 import com.example.chess.server.logic.misc.isIndexOutOfBounds
 import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.api.IPoint
@@ -10,14 +11,12 @@ import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.PieceType.*
 import com.example.chess.shared.enums.Side
-import org.eclipse.collections.api.set.primitive.IntSet
 import org.eclipse.collections.api.tuple.Twin
 import org.eclipse.collections.api.tuple.primitive.IntIntPair
-import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet
 import org.eclipse.collections.impl.tuple.Tuples
 import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples.pair
 import org.springframework.stereotype.Component
-import java.lang.UnsupportedOperationException
+import java.lang.Integer.signum
 import java.util.*
 import kotlin.collections.HashSet
 
@@ -27,6 +26,10 @@ import kotlin.collections.HashSet
  */
 @Component
 class MovesProvider : IMovesProvider {
+
+    companion object {
+        internal val EMPTY_MOVES: Set<Point> = HashSet()
+    }
 
     //TODO: longPawnMoveIndex надо обрабатывать где-то здесь
     override fun getAvailableMoves(game: IGame, chessboard: IChessboard, point: IPoint): Set<Point> {
@@ -90,69 +93,34 @@ class MovesProvider : IMovesProvider {
                     pair(-1, -1)
                 )
                 pieceVectorsMap[KING] = pieceVectorsMap[QUEEN]
-
             }
         }
-
-        val set: IntSet = IntHashSet()
 
         internal fun getAvailableMoves(): Set<Point> {
             if (pieceFrom.isKing()) {
+                //ходы короля слишком непохожи на другие, т.к. нас уже неинтересуют текущие шахи, а так же препятствия
                 return getKingMoves()
             }
 
-            when (pieceFrom.type) {
-                PAWN -> TODO()
-                KNIGHT -> TODO()
-                BISHOP -> TODO()
-                ROOK -> TODO()
-                QUEEN -> TODO()
+            val kingAttackersPair = getKingAttackers()
+            if (kingAttackersPair != null) {
+                if (kingAttackersPair.two != null) {
+                    //двойной шах, ходить можно только королем
+                    return EMPTY_MOVES
+                }
+            }
+
+            val kingAttacker = kingAttackersPair?.one
+            val kingPossibleAttackerForObstacle = getPossibleKingAttackerForCurrentObstacle()
+
+            return when (pieceFrom.type) {
+                PAWN -> getPawnMoves(kingAttacker, kingPossibleAttackerForObstacle)
+                KNIGHT -> getKnightMoves(kingAttacker, kingPossibleAttackerForObstacle)
+                BISHOP -> getBishopMoves(kingAttacker, kingPossibleAttackerForObstacle)
+                ROOK -> getRookMoves(kingAttacker, kingPossibleAttackerForObstacle)
+                QUEEN -> getQueenMoves(kingAttacker, kingPossibleAttackerForObstacle)
                 else -> throw UnsupportedOperationException("unsupported piece type: ${pieceFrom.type}")
             }
-
-
-            getPotentialAttackerPiece()
-            getCurrentAttackerPiece()
-
-
-            if (isKingObstacle() && !canDefendKing()) {
-                return HashSet()
-            }
-            if (isKingUnderCheck() && !canDefendKing()) {
-                return HashSet()
-            }
-        }
-
-
-        private fun getPotentialAttackerPiece() {
-            //0) if pieceFrom != KING
-            //1) сначала найти вектор по которому pointFrom может являться препятствием (vector or null)
-            //2) если вектор есть
-            //3) getKingThreatPointForObstacle()
-        }
-
-        private fun getPawnMoves() {
-
-        }
-
-        private fun getKnightMoves() {
-
-        }
-
-        private fun getBishopMoves() {
-
-        }
-
-        private fun getRookMoves() {
-
-        }
-
-        private fun getQueenMoves() {
-
-        }
-
-        private fun getKingMoves(): Set<Point> {
-            TODO("NYI")
         }
 
         private fun getKingAttackers(): Twin<Point>? {
@@ -189,20 +157,21 @@ class MovesProvider : IMovesProvider {
 
 
         private fun findPawnThreatsToKing(): Point? {
-            val rowOffset = if (sideFrom == Side.WHITE) 1 else -1   //TODO: to set[side]
+            val rowOffset = if (sideFrom == Side.WHITE) 1 else -1
 
             var row = kingPoint.row + rowOffset
             var col = kingPoint.col + 1
 
             val piece = chessboard.getPieceNullable(row, col)
-            if (piece != null && piece.side != sideFrom && piece.isPawn()) {
+            if (piece != null && piece.isPawn() && piece.side != sideFrom) {
+                //короля не могут атаковать две пешки одновременно. поэтому сразу выходим
                 return Point.of(col, row)
             }
 
             row = kingPoint.row + rowOffset
             col = kingPoint.col - 1
 
-            if (piece != null && piece.side != sideFrom && piece.isPawn()) {
+            if (piece != null && piece.isPawn() && piece.side != sideFrom) {
                 return Point.of(col, row)
             }
 
@@ -264,6 +233,10 @@ class MovesProvider : IMovesProvider {
             }
         }
 
+        /**
+         * Предполагается что если идти от короля по заданному вектору, то сначала обязательно встретится pointFrom.
+         * Если встретится что-то другое или конец доски, будет брошен IllegalArgumentException
+         */
         private fun getKingThreatPointForObstacle(rowDirection: Int, colDirection: Int): Point? {
             var row: Int = kingPoint.row
             var col: Int = kingPoint.col
@@ -274,8 +247,13 @@ class MovesProvider : IMovesProvider {
                 col += colDirection
 
                 if (isOutOfBoard(row, col)) {
-                    // угроза до сих пор не найдена, а доска кончилась
-                    return null
+                    if (isPossibleObstacleFound) {
+                        // препятствие ни от кого не защищает. за ним по направлению вектора - конец доски. => можно ходить сколько душе угодно
+                        return null
+                    } else {
+                        // доска кончилась, а мы не даже не нашли obstacle(pointFrom), значит был выбран плохой вектор поиска
+                        throw IllegalArgumentException("moving piece(pieceFrom) is not an obstacle to the king, please use correct direction")
+                    }
                 }
 
                 val piece = chessboard.getPieceNullable(row, col)
@@ -286,8 +264,7 @@ class MovesProvider : IMovesProvider {
                             // по заданным векторам нашлась перемещаемая фигура, которая может оказаться возможным препятствием
                             isPossibleObstacleFound = true
                         } else {
-                            // нас уже атакуют  TODO: возможно стоит кидать UnsupportedOperationException
-                            return null
+                            throw IllegalArgumentException("moving piece(pieceFrom) is not an obstacle to the king, please use correct direction")
                         }
                     } else {
                         return if (piece.side == sideFrom) {
@@ -300,6 +277,110 @@ class MovesProvider : IMovesProvider {
                     }
                 }
             }
+        }
+
+        private fun getPossibleKingAttackerForCurrentObstacle(): Point? {
+            if (pointFrom.hasCommonVectorWith(kingPoint)) {
+                var rowDirection = 0
+                var colDirection = 0
+
+                when {
+                    // horizontal vector
+                    pointFrom.row == kingPoint.row -> colDirection = signum(pointFrom.col - kingPoint.col)
+                    // vertical vector
+                    pointFrom.col == kingPoint.col -> rowDirection = signum(pointFrom.row - kingPoint.row)
+                    // diagonal vector
+                    else -> {
+                        colDirection = signum(pointFrom.col - kingPoint.col)
+                        rowDirection = signum(pointFrom.row - kingPoint.row)
+                    }
+                }
+                return getKingThreatPointForObstacle(rowDirection, colDirection)
+            }
+
+            return null
+        }
+
+
+        private fun getPawnMoves(kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Set<Point> {
+            TODO("NYI")
+        }
+
+        private fun getKnightMoves(kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Set<Point> {
+            TODO("NYI")
+        }
+
+        private fun getBishopMoves(kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Set<Point> {
+            TODO("NYI")
+        }
+
+        private fun getRookMoves(kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Set<Point> {
+            TODO("NYI")
+        }
+
+
+        private fun getMovesByDirections(
+            directions: Set<IntIntPair>,
+            kingAttacker: Point?,
+            kingPossibleAttackerForObstacle: Point?
+        ): Set<Point> {
+
+            val result: MutableSet<Point> = HashSet()
+
+            var row: Int = pointFrom.row
+            var col: Int = pointFrom.col
+
+            for (direction in directions) {
+                while (true) {
+                    row += direction.one
+                    col += direction.two
+
+                    if (isOutOfBoard(row, col)) {
+                        break
+                    }
+
+                    val piece = chessboard.getPieceNullable(row, col)
+
+                    if (piece == null) {
+                        // здесь не занято - ход доступен
+                        result.add(Point.of(row, col))
+                        continue
+                    }
+
+                    if (piece.side != sideFrom) {
+                        // рубим врага - текущая точка доступна для хода, но перепрыгнуть ее нельзя, поэтому делаем после break
+                        result.add(Point.of(row, col))
+                    }
+                    // дальнейшее следование по вектору невозможно, потому что мы уперлись в фигуру(свою или чужую - не важно)
+                    break
+                }
+            }
+
+
+            while (true) {
+
+
+                if (kingAttacker != null) {
+                    //мы можем либо срубить атакующую фигуру, либо загородиться от нее
+                    //иными словами, ходить можно только внутри диапазона [kingPoint -> attackerPoint) при векторном шахе,
+                    //либо, если атакующий - конь [attackerPoint]
+                }
+
+                if (kingPossibleAttackerForObstacle != null) {
+                    //мы можем ходить только внутри диапазона (pointFrom -> possibleAttackerPoint]
+                    //для ускорения - я бы сделал проверку на совместимость фигур: например если obstacle - ладья, а нас атакует слон. то ходить нельзя.
+                }
+
+                TODO("NYI")
+            }
+        }
+
+        private fun getQueenMoves(kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Set<Point> {
+            TODO("NYI")
+        }
+
+        private fun getKingMoves(): Set<Point> {
+            TODO("NYI")
         }
 
         private fun nextPieceByVector(rowDirection: Int, colDirection: Int, sourcePoint: IPoint): Point? {

@@ -62,3 +62,12 @@ fun IPoint.toPrettyString(): String {
 fun isIndexOutOfBounds(index: Int): Boolean {
     return index < 0 || index >= Constants.BOARD_SIZE
 }
+
+fun IPoint.hasCommonVectorWith(other: IPoint): Boolean {
+    return this.row == other.row
+            || this.col == other.col
+            || (abs(this.row - other.row) == abs(this.col - other.col))
+}
+
+//fun IPoint.between(p1: IPoint, p2: IPoint): Boolean {
+//}
