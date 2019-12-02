@@ -63,10 +63,21 @@ fun isIndexOutOfBounds(index: Int): Boolean {
     return index < 0 || index >= Constants.BOARD_SIZE
 }
 
-fun IPoint.hasCommonVectorWith(other: IPoint): Boolean {
-    return this.row == other.row
-            || this.col == other.col
-            || (abs(this.row - other.row) == abs(this.col - other.col))
+fun IPoint.hasCommonVectorWith(other: IPoint): Boolean = hasCommonVectorWith(other.row, other.col)
+
+fun IPoint.hasCommonVectorWith(otherRow: Int, otherCol: Int): Boolean {
+    return this.row == otherRow
+            || this.col == otherCol
+            || (abs(this.row - otherRow) == abs(this.col - otherCol))
+}
+
+fun IPoint.isBorderedWith(otherRow: Int, otherCol: Int): Boolean {
+    check(this.row != otherRow || this.col != otherCol) {
+        "is bordered with self? are you serious?, self: $this"
+    }
+
+    return abs(this.row - otherRow) <= 1
+            && abs(this.col - otherCol) <= 1
 }
 
 //fun IPoint.between(p1: IPoint, p2: IPoint): Boolean {

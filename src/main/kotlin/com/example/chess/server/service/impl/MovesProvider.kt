@@ -4,6 +4,7 @@ import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IGame
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.logic.misc.hasCommonVectorWith
+import com.example.chess.server.logic.misc.isBorderedWith
 import com.example.chess.server.logic.misc.isIndexOutOfBounds
 import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.api.IPoint
@@ -16,9 +17,10 @@ import org.eclipse.collections.api.tuple.primitive.IntIntPair
 import org.eclipse.collections.impl.tuple.Tuples
 import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples.pair
 import org.springframework.stereotype.Component
-import java.lang.Integer.signum
+import java.lang.Integer.*
 import java.util.*
 import kotlin.collections.HashSet
+import kotlin.math.abs
 
 /**
  * @author v.peschaniy
@@ -307,17 +309,56 @@ class MovesProvider : IMovesProvider {
         }
 
         private fun getKnightMoves(kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Set<Point> {
-            TODO("NYI")
+            return getMovesByOffsets(knightOffsets, kingAttacker, kingPossibleAttackerForObstacle)
         }
 
         private fun getBishopMoves(kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Set<Point> {
-            TODO("NYI")
+            return getMovesByDirections(pieceVectorsMap[BISHOP]!!, kingAttacker, kingPossibleAttackerForObstacle)
         }
 
         private fun getRookMoves(kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Set<Point> {
-            TODO("NYI")
+            return getMovesByDirections(pieceVectorsMap[ROOK]!!, kingAttacker, kingPossibleAttackerForObstacle)
         }
 
+        private fun getQueenMoves(kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Set<Point> {
+            return getMovesByDirections(pieceVectorsMap[QUEEN]!!, kingAttacker, kingPossibleAttackerForObstacle)
+        }
+
+        private fun getMovesByOffsets(
+            offsets: Set<IntIntPair>,
+            kingAttacker: Point?,
+            kingPossibleAttackerForObstacle: Point?
+        ): Set<Point> {
+            val result: MutableSet<Point> = HashSet()
+
+            var row: Int = pointFrom.row
+            var col: Int = pointFrom.col
+
+            for (offset in offsets) {
+                row += offset.one
+                col += offset.two
+
+                if (isOutOfBoard(row, col)) {
+                    continue
+                }
+
+                val piece = chessboard.getPieceNullable(row, col)
+
+                if (piece == null) {
+                    // свободная точка - ход доступен (если пройдет проверки)
+                    if (isAvailableMove(row, col, kingAttacker, kingPossibleAttackerForObstacle)) {
+                        result.add(Point.of(row, col))
+                    }
+                } else if (piece.side != sideFrom) {
+                    // рубим врага (если ход пройдет проверки)
+                    if (isDestroyingThreatMove(row, col, kingAttacker, kingPossibleAttackerForObstacle)) {
+                        result.add(Point.of(row, col))
+                    }
+                }
+            }
+
+            return result
+        }
 
         private fun getMovesByDirections(
             directions: Set<IntIntPair>,
@@ -342,42 +383,132 @@ class MovesProvider : IMovesProvider {
                     val piece = chessboard.getPieceNullable(row, col)
 
                     if (piece == null) {
-                        // здесь не занято - ход доступен
-                        result.add(Point.of(row, col))
+                        // свободная точка - ход доступен (если пройдет проверки)
+                        if (isAvailableMove(row, col, kingAttacker, kingPossibleAttackerForObstacle)) {
+                            result.add(Point.of(row, col))
+                        }
                         continue
                     }
 
                     if (piece.side != sideFrom) {
-                        // рубим врага - текущая точка доступна для хода, но перепрыгнуть ее нельзя, поэтому делаем после break
-                        result.add(Point.of(row, col))
+                        // рубим врага - текущая точка доступна для хода (если пройдет проверки), но перепрыгнуть ее нельзя, поэтому делаем после break
+                        if (isDestroyingThreatMove(row, col, kingAttacker, kingPossibleAttackerForObstacle)) {
+                            result.add(Point.of(row, col))
+                        }
                     }
                     // дальнейшее следование по вектору невозможно, потому что мы уперлись в фигуру(свою или чужую - не важно)
                     break
                 }
             }
 
+            return result
+        }
 
-            while (true) {
+        private fun isDestroyingThreatMove(rowTo: Int, colTo: Int, kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Boolean {
+            if (kingAttacker != null && kingPossibleAttackerForObstacle != null) {
+                return false
+            }
 
+            if (kingAttacker != null) {
+                return kingAttacker.isEqual(rowTo, colTo)
+            }
 
-                if (kingAttacker != null) {
-                    //мы можем либо срубить атакующую фигуру, либо загородиться от нее
-                    //иными словами, ходить можно только внутри диапазона [kingPoint -> attackerPoint) при векторном шахе,
-                    //либо, если атакующий - конь [attackerPoint]
+            if (kingPossibleAttackerForObstacle != null) {
+                return kingPossibleAttackerForObstacle.isEqual(rowTo, colTo)
+            }
+
+            return true
+        }
+
+        private fun isAvailableMove(rowTo: Int, colTo: Int, kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Boolean {
+            if (kingAttacker != null && kingPossibleAttackerForObstacle != null) {
+                // нам шах, но при этом текущая фигура еще и является припятствием. в таком случае:
+                // вектора '1: (kingPoint -> kingAttacker]' и '2: (kingPoint -> kingPossibleAttackerForObstacle]' не могут лежать в одном направлении,
+                // соответственно мы не можем оставшись в рамках вектора 1, заслониться от фигуры из вектора 2, или срубить ее.
+
+                // PS: единственный ход, где мы рубим фигуру, но при этом не встаем на ее место - взятие на проходе,
+                // но оно тоже не сможет помочь, т.к. шах королю пешка может сделать только по диагонали, и если такое было, то после взятия
+                // наша пешка окажется по отношению к королю буквой Г, а такое положение не может прикрыть ни от какого векторного шаха
+                return false
+            }
+
+            if (kingAttacker != null) {
+                return canDefendKing(rowTo, colTo, kingAttacker)
+            }
+
+            if (kingPossibleAttackerForObstacle != null) {
+                return canMoveObstacle(rowTo, colTo, kingPossibleAttackerForObstacle)
+            }
+
+            // ничем не ограниченный ход: kingAttacker == null && kingPossibleAttackerForObstacle == null
+            return true
+        }
+
+        private fun canMoveObstacle(rowTo: Int, colTo: Int, kingPossibleAttackerForObstacle: Point): Boolean {
+            if (kingPossibleAttackerForObstacle.isEqual(rowTo, colTo)) {
+                // рубим фигуру, из-за которой перемещаемая фигура являлась obstacle
+                return true
+            }
+            // перемещение в рамках вектора допустимо
+            return canBeObstacle(rowTo, colTo, kingPossibleAttackerForObstacle)
+        }
+
+        /**
+         * return может ли данный ход защитить короля от шаха, источником которого являеится kingAttacker
+         *
+         * Защитить короля можно срубив атакующую фигуру, либо закрыться (если возможно)
+         */
+        private fun canDefendKing(rowTo: Int, colTo: Int, kingAttacker: Point): Boolean {
+            if (kingAttacker.isEqual(rowTo, colTo)) {
+                // рубим фигуру, объявившую шах.
+                return true
+            }
+
+            if (kingAttacker.isBorderedWith(rowTo, colTo)) {
+                // фигура, объявившая шах стоит вплотную к нашему королю, но при этом мы ее не рубим. такой ход недопустим
+                return false
+            }
+
+            val kingAttackerPiece = chessboard.getPiece(kingAttacker)
+
+            if (kingAttackerPiece.type == KNIGHT) {
+                // нам объявили шах или конем
+                // мы его не рубим, а загородиться от коня невозможно. false
+                return false
+            }
+
+            return canBeObstacle(rowTo, colTo, kingAttacker)
+        }
+
+        private fun canBeObstacle(rowTo: Int, colTo: Int, kingThreat: Point): Boolean {
+            if (!kingThreat.hasCommonVectorWith(rowTo, colTo)) {
+                // данный ход находится где-то сбоку от вектора шаха и никак не защищает короля
+                return false
+            }
+
+            return when {
+                // horizontal vector
+                kingPoint.row == kingThreat.row -> rowTo == kingPoint.row && between(kingPoint.col, colTo, kingThreat.col)
+                // vertical vector
+                kingPoint.col == kingThreat.col -> colTo == kingPoint.col && between(kingPoint.row, rowTo, kingThreat.row)
+                // diagonal vector
+                else -> {
+                    val rowOffset = kingThreat.row - kingPoint.row
+                    val colOffset = kingThreat.col - kingPoint.col
+
+                    val absAttackerRowOffset = abs(rowOffset)
+                    check(absAttackerRowOffset == abs(colOffset)) {
+                        "kingThreat($kingThreat) has different diagonal vector with kingPoint($kingPoint)"
+                    }
+
+                    return between(kingPoint.row, rowTo, kingThreat.row)
+                            && between(kingPoint.col, colTo, kingThreat.col)
+                            // moveTo доложен быть на одной диагонали с атакуемым королем
+                            && abs(rowTo - kingPoint.row) == abs(colTo - kingPoint.col)
                 }
-
-                if (kingPossibleAttackerForObstacle != null) {
-                    //мы можем ходить только внутри диапазона (pointFrom -> possibleAttackerPoint]
-                    //для ускорения - я бы сделал проверку на совместимость фигур: например если obstacle - ладья, а нас атакует слон. то ходить нельзя.
-                }
-
-                TODO("NYI")
             }
         }
 
-        private fun getQueenMoves(kingAttacker: Point?, kingPossibleAttackerForObstacle: Point?): Set<Point> {
-            TODO("NYI")
-        }
 
         private fun getKingMoves(): Set<Point> {
             TODO("NYI")
@@ -403,5 +534,22 @@ class MovesProvider : IMovesProvider {
         }
 
         private fun isOutOfBoard(row: Int, col: Int) = isIndexOutOfBounds(row) || isIndexOutOfBounds(col)
+
+        private fun between(fromExclusive: Int, checkedValue: Int, toExclusive: Int): Boolean {
+            return checkedValue > min(fromExclusive, toExclusive)
+                    && checkedValue < (max(fromExclusive, toExclusive))
+        }
     }
 }
+//
+//fun main() {
+//    val from = 0
+//    val to = 8
+//
+//    val checked = -4
+//
+//    val between = checked > min(from, to) && checked < (max(from, to))
+//
+////    val between = x in to..from
+//    println("between = ${between}")
+//}
