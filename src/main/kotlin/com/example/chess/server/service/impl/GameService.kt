@@ -47,7 +47,7 @@ class GameService @Autowired constructor(
     }
 
     override fun getMovesByPoint(game: IGame, chessboard: IChessboard, point: IPoint): Set<Point> {
-        return movesProvider.getAvailableMoves(game, chessboard, point)
+        return movesProvider.getAvailableMoves(point, chessboard, game)
     }
 
     override fun applyMove(game: Game, chessboard: IMutableChessboard, move: IMove): ChangesDTO {
@@ -58,13 +58,18 @@ class GameService @Autowired constructor(
             "cannot execute move=${move.toPrettyString(piece)}, because it not contains in available moves set: $availableMoves"
         }
 
+        val enemySide = piece.side.reverse()
         val sideFeatures = game.getSideFeatures(piece.side)
+        val enemySideFeatures = game.getSideFeatures(enemySide)
 
         chessboard.applyMove(move)
 
         game.position = chessboard.position
         sideFeatures.pawnLongMoveColumnIndex = null
-        sideFeatures.isUnderCheck = false   //TODO: NYI
+
+        val underCheck = movesProvider.isUnderCheck(enemySide, chessboard)
+        sideFeatures.isUnderCheck = false               // мы не можем сделать такой ход, после которого окажемся под шахом
+        enemySideFeatures.isUnderCheck = underCheck     // но наш ход, может причинить шах противнику
 
         when (piece.type) {
             PieceType.KING -> {
@@ -95,7 +100,7 @@ class GameService @Autowired constructor(
         return ChangesDTO(
             chessboard.position,
             move.toDTO(),
-            null    //TODO: NYI
+            if (!underCheck) null else chessboard.getKingPoint(enemySide).toDTO()
         )
     }
 }

@@ -1,7 +1,6 @@
 package com.example.chess.server.logic.misc
 
 import com.example.chess.shared.Constants.BOARD_SIZE
-import com.example.chess.shared.Constants.POINT_OFFSET
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.PointDTO
 
@@ -40,15 +39,31 @@ class Point private constructor(
         }
     }
 
-    //TODO: возможно пригодится в будущем
-    fun Int.toPoint(): Point {
-        val rowIndex = this shr POINT_OFFSET
-        val columnIndex = this - (rowIndex shl POINT_OFFSET)
-        return of(rowIndex, columnIndex)
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Point
+
+        if (row != other.row) return false
+        if (col != other.col) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return this.compressToInt()
     }
 }
 
-fun main() {
-    val x: Short = 1 shl 3
-    print(x)
-}
+//fun main() {
+//    val x: Short = 1 shl 3
+//    print(x)
+//}
+//
+//TODO: возможно пригодится в будущем
+//fun Int.toPoint(): Point {
+//    val rowIndex = this shr Constants.POINT_OFFSET
+//    val columnIndex = this - (rowIndex shl Constants.POINT_OFFSET)
+//    return Point.of(rowIndex, columnIndex)
+//}
