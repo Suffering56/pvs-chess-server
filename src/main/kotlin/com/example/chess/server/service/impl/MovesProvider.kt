@@ -60,10 +60,10 @@ class MovesProvider : IMovesProvider {
             )
             pieceVectorsMap[QUEEN] = setOf(
                 //ROOK
-                pair(1, 1),
-                pair(1, -1),
-                pair(-1, 1),
-                pair(-1, -1),
+                pair(1, 0),
+                pair(-1, 0),
+                pair(0, 1),
+                pair(0, -1),
                 //BISHOP
                 pair(1, 1),
                 pair(1, -1),
