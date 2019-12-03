@@ -79,6 +79,3 @@ fun IPoint.isBorderedWith(otherRow: Int, otherCol: Int): Boolean {
     return abs(this.row - otherRow) <= 1
             && abs(this.col - otherCol) <= 1
 }
-
-//fun IPoint.between(p1: IPoint, p2: IPoint): Boolean {
-//}
