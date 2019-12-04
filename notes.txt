@@ -5,5 +5,9 @@
 - constructor + continue game support (after chessboard validation)
 - move cost support
 - available moves tree viewer support
+
+- client: Socket Timeout Exception handling
+- client: enqueue -> refactor
+- client: rotation
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
 - подумать об отвлавливании рассинхронов chessboard-ов
