@@ -111,10 +111,10 @@ data class Game(
 //    /**
 //     * @return side, which has next move (not paused)
 //     */
-//    fun getNextTurnSideByPosition(): Side {
-//        return if (position % 2 == 0)
-//            Side.WHITE
-//        else
-//            Side.BLACK
-//    }
+    fun getNextTurnSideByPosition(): Side {
+        return if (position % 2 == 0)
+            Side.WHITE
+        else
+            Side.BLACK
+    }
 }

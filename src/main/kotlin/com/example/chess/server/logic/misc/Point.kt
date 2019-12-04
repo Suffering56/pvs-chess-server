@@ -55,6 +55,10 @@ class Point private constructor(
     override fun hashCode(): Int {
         return this.compressToInt()
     }
+
+    override fun toString(): String {
+        return "[$row, $col]:${toPrettyString()}"
+    }
 }
 
 //fun main() {

@@ -6,6 +6,9 @@ import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.api.IMove
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.enums.Piece
+import com.example.chess.shared.enums.PieceType
+import com.example.chess.shared.enums.PieceType.BISHOP
+import com.example.chess.shared.enums.PieceType.ROOK
 import kotlin.math.abs
 
 /**
@@ -65,10 +68,20 @@ fun isIndexOutOfBounds(index: Int): Boolean {
 
 fun IPoint.hasCommonVectorWith(other: IPoint): Boolean = hasCommonVectorWith(other.row, other.col)
 
+fun IPoint.hasCommonVectorWith(other: IPoint, otherPieceType: PieceType): Boolean = hasCommonVectorWith(other.row, other.col, otherPieceType)
+
 fun IPoint.hasCommonVectorWith(otherRow: Int, otherCol: Int): Boolean {
     return this.row == otherRow
             || this.col == otherCol
             || (abs(this.row - otherRow) == abs(this.col - otherCol))
+}
+
+fun IPoint.hasCommonVectorWith(otherRow: Int, otherCol: Int, otherPieceType: PieceType): Boolean {
+    return when (otherPieceType) {
+        ROOK -> return this.row == otherRow || this.col == otherCol
+        BISHOP -> abs(this.row - otherRow) == abs(this.col - otherCol)
+        else -> throw UnsupportedOperationException("unsupported piece type: $otherPieceType")
+    }
 }
 
 fun IPoint.isBorderedWith(otherRow: Int, otherCol: Int): Boolean {
@@ -79,3 +92,5 @@ fun IPoint.isBorderedWith(otherRow: Int, otherCol: Int): Boolean {
     return abs(this.row - otherRow) <= 1
             && abs(this.col - otherCol) <= 1
 }
+
+fun IPoint.isBorderedWith(other: IPoint) = isBorderedWith(other.row, other.col)

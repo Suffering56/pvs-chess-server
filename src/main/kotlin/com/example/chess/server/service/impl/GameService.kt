@@ -5,7 +5,6 @@ import com.example.chess.server.entity.provider.EntityProvider
 import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IGame
 import com.example.chess.server.logic.IMutableChessboard
-import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.logic.misc.isLongPawnMove
 import com.example.chess.server.logic.misc.toPrettyString
 import com.example.chess.server.repository.GameRepository
@@ -20,6 +19,7 @@ import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.enums.PieceType
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import kotlin.streams.toList
 
 /**
  * @author v.peschaniy
@@ -46,7 +46,7 @@ class GameService @Autowired constructor(
             .orElseThrow { IllegalArgumentException("Game with id=$gameId not found") }
     }
 
-    override fun getMovesByPoint(game: IGame, chessboard: IChessboard, point: IPoint): Set<Point> {
+    override fun getMovesByPoint(game: IGame, chessboard: IChessboard, point: IPoint): Set<IPoint> {
         return movesProvider.getAvailableMoves(point, chessboard, game)
     }
 
@@ -55,20 +55,22 @@ class GameService @Autowired constructor(
         val availableMoves = getMovesByPoint(game, chessboard, move.from)
 
         require(availableMoves.contains(move.to)) {
-            "cannot execute move=${move.toPrettyString(piece)}, because it not contains in available moves set: $availableMoves"
+            "cannot execute move=${move.toPrettyString(piece)}, because it not contains in available moves set: ${availableMoves.stream().map { it.toPrettyString() }.toList()}"
         }
 
         val enemySide = piece.side.reverse()
         val sideFeatures = game.getSideFeatures(piece.side)
         val enemySideFeatures = game.getSideFeatures(enemySide)
 
-        chessboard.applyMove(move)
+        val additionalMove = chessboard.applyMove(move)
 
         game.position = chessboard.position
+        // очищаем стейт взятия на проходе, т.к. оно допустимо только в течении 1го раунда
         sideFeatures.pawnLongMoveColumnIndex = null
 
         val underCheck = movesProvider.isUnderCheck(enemySide, chessboard)
-        sideFeatures.isUnderCheck = false               // мы не можем сделать такой ход, после которого окажемся под шахом
+        sideFeatures.isUnderCheck =
+            false               // мы не можем сделать такой ход, после которого окажемся под шахом
         enemySideFeatures.isUnderCheck = underCheck     // но наш ход, может причинить шах противнику
 
         when (piece.type) {
@@ -100,6 +102,7 @@ class GameService @Autowired constructor(
         return ChangesDTO(
             chessboard.position,
             move.toDTO(),
+            additionalMove?.toDTO(),
             if (!underCheck) null else chessboard.getKingPoint(enemySide).toDTO()
         )
     }

@@ -7,7 +7,6 @@ import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.api.IMove
-import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.CellDTO
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.PointDTO
@@ -22,28 +21,35 @@ import com.example.chess.shared.enums.Side
 open class Chessboard private constructor(
     override var position: Int,
     private val matrix: ArrayTable<Piece?>,
-    private val kingPoints: MutableMap<Side, IPoint>
+    private val kingPoints: MutableMap<Side, Point>
 ) : IMutableChessboard {
 
     override fun getKingPoint(side: Side) = kingPoints[side]!!
 
     override fun getPieceNullable(rowIndex: Int, columnIndex: Int) = matrix[rowIndex][columnIndex]
 
-    override fun applyMove(move: IMove) {
+    override fun applyMove(move: IMove): IMove? {
         val pieceFrom = getPiece(move.from)
 
         if (pieceFrom.isKing()) {
-            kingPoints[pieceFrom.side] = move.to
+            kingPoints[pieceFrom.side] = Point.of(move.to.toDTO())
         }
 
-        when {
+        val additionalMove = when {
             move.isCastling(pieceFrom) -> applyCastling(move, pieceFrom)
-            move.isPawnTransformation(pieceFrom) -> applyPawnTransformation(move, pieceFrom)
+            move.isPawnTransformation(pieceFrom) -> {
+                applyPawnTransformation(move, pieceFrom)
+                null
+            }
             move.isEnPassant(pieceFrom, getPieceNullable(move.to)) -> applyEnPassant(move, pieceFrom)
-            else -> applySimpleMove(move, pieceFrom)
+            else -> {
+                applySimpleMove(move, pieceFrom)
+                null
+            }
         }
 
         position++
+        return additionalMove
     }
 
     private fun applyPawnTransformation(move: IMove, pieceFrom: Piece) {
@@ -56,7 +62,7 @@ open class Chessboard private constructor(
         applySimpleMove(move, Piece.of(pieceFrom.side, transformationPiece))
     }
 
-    private fun applyEnPassant(move: IMove, pawn: Piece) {
+    private fun applyEnPassant(move: IMove, pawn: Piece): IMove? {
         val attackedPiece = requireNotNull(matrix[move.from.row][move.to.col]) {
             "attacked piece[en passant] cannot be null: " +
                     "move=${move.toPrettyString(pawn)}\r\n${toPrettyString()}"
@@ -70,12 +76,13 @@ open class Chessboard private constructor(
         applySimpleMove(move, pawn)
         //cut attacked piece
         matrix[move.from.row][move.to.col] = null
+
+        return Move.cut(
+            Point.of(move.from.row, move.to.col)
+        )
     }
 
-    private fun applyCastling(
-        move: IMove,
-        king: Piece
-    ) {
+    private fun applyCastling(move: IMove, king: Piece): IMove? {
         require(move.from.row == move.to.row) { "castling row must be unchangeable: move=${move.toPrettyString(king)}" }
 
         val rowIndex = move.from.row
@@ -102,6 +109,12 @@ open class Chessboard private constructor(
         //move rook
         matrix[rowIndex][rookColumnFrom] = null
         matrix[rowIndex][rookColumnTo] = rook
+
+        return Move(
+            Point.of(rowIndex, rookColumnFrom),
+            Point.of(rowIndex, rookColumnTo),
+            null
+        )
     }
 
     private fun applySimpleMove(move: IMove, pieceFrom: Piece) {
@@ -133,7 +146,7 @@ open class Chessboard private constructor(
         }
 
         private fun generate(position: Int, pieceGenerator: (Int, Int) -> Piece?): Chessboard {
-            val kingPoints = mutableMapOf<Side, IPoint>()
+            val kingPoints = mutableMapOf<Side, Point>()
 
             val matrix = Array(BOARD_SIZE) row@{ row ->
                 Array(BOARD_SIZE) cell@{ col ->

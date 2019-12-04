@@ -4,6 +4,7 @@ import com.example.chess.server.core.Authorized
 import com.example.chess.server.core.InjectGame
 import com.example.chess.server.core.InjectUserId
 import com.example.chess.server.entity.Game
+import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IChessboardProvider
@@ -40,6 +41,11 @@ class GameController @Autowired constructor(
     ): Set<PointDTO> {
         val chessboard = chessboardProvider.createChessboardForGame(game)
 
+        check(game.getNextTurnSideByPosition() == chessboard.getPiece(rowIndex, columnIndex).side) {
+            "incorrect side of pointFrom. expected:${game.getNextTurnSideByPosition()}, " +
+                    "found: ${chessboard.getPiece(rowIndex, columnIndex).side}"
+        }
+
         return gameService.getMovesByPoint(game, chessboard, Point.of(rowIndex, columnIndex))
             .stream()
             .map(IPoint::toDTO)
@@ -53,7 +59,7 @@ class GameController @Autowired constructor(
         @RequestBody move: MoveDTO
     ): ChangesDTO {
         val chessboard = chessboardProvider.createChessboardForGame(game)
-        val changes = gameService.applyMove(game, chessboard, move)
+        val changes = gameService.applyMove(game, chessboard, Move.of(move))
 
         if (game.mode == GameMode.AI) {
             botService.fireBotMove(game, chessboard)

@@ -64,3 +64,19 @@ class InitController @Autowired constructor(
         return gameService.saveGame(game).toDTO(userId)
     }
 }
+
+//fun main() {
+//   x()
+//}
+//
+//fun x() {
+//    val map: IntObjectMap<Int?> = IntObjectHashMap.newWithKeysValues(1, 100, 2, 200, 3, 300)
+//
+//    for (i in 10 downTo 1) {
+//        val x = map.getIfAbsent(i) { null }?.let {
+//            return
+//        }
+//        println("x = ${x}")
+//    }
+//    println("end")
+//}

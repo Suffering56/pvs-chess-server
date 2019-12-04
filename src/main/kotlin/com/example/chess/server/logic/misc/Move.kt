@@ -14,7 +14,11 @@ class Move(
     override val pawnTransformationPieceType: PieceType?
 ) : IMove {
 
-    constructor(move: MoveDTO) : this(Point.of(move.from), Point.of(move.to), move.pawnTransformationPieceType)
-
     override fun toDTO() = MoveDTO(from.toDTO(), to.toDTO(), pawnTransformationPieceType)
+
+    companion object {
+        fun of(move: MoveDTO) = Move(Point.of(move.from), Point.of(move.to), move.pawnTransformationPieceType)
+
+        fun cut(point: Point) = Move(point, point, null)
+    }
 }
