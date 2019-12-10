@@ -1,5 +1,7 @@
-- client: row and col legend
++ client: row and col legend
 - client: pawnTransformation chooser
+- client: legend refactoring
+
 - тесты для Chessboard, MovesProvider
 - rollback support
 - constructor + continue game support (after chessboard validation)
