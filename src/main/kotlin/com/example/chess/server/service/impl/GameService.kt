@@ -6,6 +6,7 @@ import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IGame
 import com.example.chess.server.logic.IMutableChessboard
 import com.example.chess.server.logic.misc.isLongPawnMove
+import com.example.chess.server.logic.misc.isPawnTransformation
 import com.example.chess.server.logic.misc.toPrettyString
 import com.example.chess.server.repository.GameRepository
 import com.example.chess.server.repository.HistoryRepository
@@ -56,6 +57,11 @@ class GameService @Autowired constructor(
 
         require(availableMoves.contains(move.to)) {
             "cannot execute move=${move.toPrettyString(piece)}, because it not contains in available moves set: ${availableMoves.stream().map { it.toPrettyString() }.toList()}"
+        }
+
+        require(move.isPawnTransformation(piece) == (move.pawnTransformationPieceType != null)) {
+            "incorrect pawn transformation piece: ${move.pawnTransformationPieceType}, expected: " +
+                    "${move.pawnTransformationPieceType?.let { "null" } ?: "not null"}, for move: ${move.toPrettyString(piece)}"
         }
 
         val enemySide = piece.side.reverse()
