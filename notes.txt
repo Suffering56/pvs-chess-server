@@ -1,9 +1,8 @@
 + client: row and col legend
-- client: pawnTransformation chooser
-- client: legend refactoring
++ client: pawnTransformation chooser
+- rollback support + client: moves history
 
 - тесты для Chessboard, MovesProvider
-- rollback support
 - constructor + continue game support (after chessboard validation)
 - move cost support
 - available moves tree viewer support
@@ -13,3 +12,4 @@
 - client: rotation
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
 - подумать об отвлавливании рассинхронов chessboard-ов
+- client: legend refactoring    (LayoutInflater)
