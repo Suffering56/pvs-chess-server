@@ -20,6 +20,7 @@ import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.enums.PieceType
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import kotlin.streams.toList
 
 /**
@@ -34,10 +35,11 @@ class GameService @Autowired constructor(
     private val movesProvider: IMovesProvider
 ) : IGameService {
 
+    @Transactional
     override fun createNewGame(): Game {
         return gameRepository.save(entityProvider.createNewGame())
     }
-
+    @Transactional
     override fun saveGame(game: Game): Game {
         return gameRepository.save(game)
     }
@@ -51,6 +53,7 @@ class GameService @Autowired constructor(
         return movesProvider.getAvailableMoves(point, chessboard, game)
     }
 
+    @Transactional
     override fun applyMove(game: Game, chessboard: IMutableChessboard, move: IMove): ChangesDTO {
         val piece = chessboard.getPiece(move.from)
         val availableMoves = getMovesByPoint(game, chessboard, move.from)
@@ -61,7 +64,9 @@ class GameService @Autowired constructor(
 
         require(move.isPawnTransformation(piece) == (move.pawnTransformationPieceType != null)) {
             "incorrect pawn transformation piece: ${move.pawnTransformationPieceType}, expected: " +
-                    "${move.pawnTransformationPieceType?.let { "null" } ?: "not null"}, for move: ${move.toPrettyString(piece)}"
+                    "${move.pawnTransformationPieceType?.let { "null" } ?: "not null"}, for move: ${move.toPrettyString(
+                        piece
+                    )}"
         }
 
         val enemySide = piece.side.reverse()
@@ -111,5 +116,16 @@ class GameService @Autowired constructor(
             additionalMove?.toDTO(),
             if (!underCheck) null else chessboard.getKingPoint(enemySide).toDTO()
         )
+    }
+
+    @Transactional
+    override fun rollback(game: Game, positionsOffset: Int): Game {
+        val newPosition = game.position - positionsOffset
+        require(newPosition >= 0) { "position offset is too large" }
+
+        game.position = newPosition
+        historyRepository.removeAllByGameIdAndPositionGreaterThan(game.id!!, newPosition)
+
+        return saveGame(game)
     }
 }

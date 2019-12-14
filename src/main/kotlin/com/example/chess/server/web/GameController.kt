@@ -33,7 +33,7 @@ class GameController @Autowired constructor(
 ) {
 
     @Authorized
-    @GetMapping("/move")
+    @GetMapping("/moves")
     fun getAvailableMoves(
         @InjectGame game: Game,
         @RequestParam rowIndex: Int,
@@ -41,8 +41,8 @@ class GameController @Autowired constructor(
     ): Set<PointDTO> {
         val chessboard = chessboardProvider.createChessboardForGame(game)
 
-        check(game.getNextTurnSideByPosition() == chessboard.getPiece(rowIndex, columnIndex).side) {
-            "incorrect side of pointFrom. expected:${game.getNextTurnSideByPosition()}, " +
+        check(Side.ofPosition(game.position) == chessboard.getPiece(rowIndex, columnIndex).side) {
+            "incorrect side of pointFrom. expected:${Side.ofPosition(game.position)}, " +
                     "found: ${chessboard.getPiece(rowIndex, columnIndex).side}"
         }
 
@@ -84,5 +84,17 @@ class GameController @Autowired constructor(
             botService.fireBotMove(game, null)
         }
         return chessboard.toDTO()
+    }
+
+    @Authorized
+    @PostMapping("/rollback")
+    fun rollbackMoves(
+        @InjectGame game: Game,
+        @RequestParam("positionsOffset") positionsOffset: Int
+    ): ChessboardDTO {
+        require(positionsOffset > 0) { "position offset must be positive" }
+
+        val rollbackGame = gameService.rollback(game, positionsOffset)
+        return chessboardProvider.createChessboardForGame(rollbackGame).toDTO()
     }
 }

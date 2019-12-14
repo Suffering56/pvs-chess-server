@@ -23,4 +23,6 @@ interface IGameService {
     fun getMovesByPoint(game: IGame, chessboard: IChessboard, point: IPoint): Set<IPoint>
 
     fun applyMove(game: Game, chessboard: IMutableChessboard, move: IMove): ChangesDTO
+
+    fun rollback(game: Game, positionsOffset: Int): Game
 }

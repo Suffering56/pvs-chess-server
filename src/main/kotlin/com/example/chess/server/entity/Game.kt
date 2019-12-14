@@ -107,14 +107,4 @@ data class Game(
 //            .map { it.side }
 //            .orElse(null)
 //    }
-//
-//    /**
-//     * @return side, which has next move (not paused)
-//     */
-    fun getNextTurnSideByPosition(): Side {
-        return if (position % 2 == 0)
-            Side.WHITE
-        else
-            Side.BLACK
-    }
 }

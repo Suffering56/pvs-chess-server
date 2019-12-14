@@ -10,4 +10,6 @@ interface HistoryRepository : CrudRepository<History, Long> {
     fun findByGameIdAndPositionLessThanEqualOrderByPositionAsc(gameId: Long, position: Int): List<History>
 
     fun findByGameIdAndPosition(gameId: Long, position: Int): History
+
+    fun removeAllByGameIdAndPositionGreaterThan(gameId: Long, newGamePosition: Int)
 }
