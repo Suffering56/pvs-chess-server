@@ -5,6 +5,7 @@ import com.example.chess.server.logic.Chessboard
 import com.example.chess.server.logic.IMutableChessboard
 import com.example.chess.server.repository.HistoryRepository
 import com.example.chess.server.service.IChessboardProvider
+import com.example.chess.shared.enums.GameMode
 import com.google.common.collect.Range
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
@@ -25,6 +26,11 @@ class ChessboardProvider : IChessboardProvider {
         require(availablePositionsRange.contains(position)) { "position must be in range: $availablePositionsRange" }
 
         val history = historyRepository.findByGameIdAndPositionLessThanEqualOrderByPositionAsc(game.id!!, position)
-        return Chessboard.byHistory(history)
+
+        return if (game.mode == GameMode.CONSTRUCTOR) {
+            Chessboard.byConstructorHistory(history)
+        } else {
+            Chessboard.byHistory(history)
+        }
     }
 }

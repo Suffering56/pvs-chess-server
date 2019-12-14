@@ -28,6 +28,10 @@ open class Chessboard private constructor(
 
     override fun getPieceNullable(rowIndex: Int, columnIndex: Int) = matrix[rowIndex][columnIndex]
 
+    override fun applyConstructorMove(move: IMove) {
+        val pieceFrom = move.pawnTransformationPiece
+    }
+
     override fun applyMove(move: IMove): IMove? {
         val pieceFrom = getPiece(move.from)
 
@@ -54,12 +58,15 @@ open class Chessboard private constructor(
 
     private fun applyPawnTransformation(move: IMove, pieceFrom: Piece) {
         val transformationPiece =
-            requireNotNull(move.pawnTransformationPieceType) {
+            requireNotNull(move.pawnTransformationPiece) {
                 "transformation piece cannot be null: " +
                         "move=${move.toPrettyString(pieceFrom)}\r\n${toPrettyString()}"
             }
 
-        applySimpleMove(move, Piece.of(pieceFrom.side, transformationPiece))
+        require(pieceFrom.side == transformationPiece.side) {
+            "wrong pawn transformation piece side: ${transformationPiece.side}, expected: ${pieceFrom.side}"
+        }
+        applySimpleMove(move, transformationPiece)
     }
 
     private fun applyEnPassant(move: IMove, pawn: Piece): IMove? {
@@ -142,6 +149,12 @@ open class Chessboard private constructor(
         fun byHistory(history: List<History>): Chessboard {
             val chessboard = generate(0, initialChessboardGenerator())
             history.forEach { chessboard.applyMove(it.toMove()) }
+            return chessboard
+        }
+
+        fun byConstructorHistory(history: List<History>): Chessboard {
+            val chessboard = generate(0) { _, _ -> null }
+            history.forEach { chessboard.applyConstructorMove(it.toMove()) }
             return chessboard
         }
 

@@ -3,12 +3,9 @@ package com.example.chess.server.entity
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.shared.api.IMove
-import com.example.chess.shared.enums.PieceType
+import com.example.chess.shared.enums.Piece
 import org.hibernate.annotations.GenericGenerator
-import javax.persistence.Column
-import javax.persistence.Entity
-import javax.persistence.GeneratedValue
-import javax.persistence.Id
+import javax.persistence.*
 
 /**
  * @author v.peschaniy
@@ -44,8 +41,9 @@ data class History(
     @Column(nullable = false)
     val columnIndexTo: Int,
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = true)
-    val pieceFromPawn: PieceType?,
+    val pieceFromPawn: Piece?,
 
     @Column
     val description: String?

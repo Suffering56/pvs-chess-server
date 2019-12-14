@@ -62,9 +62,9 @@ class GameService @Autowired constructor(
             "cannot execute move=${move.toPrettyString(piece)}, because it not contains in available moves set: ${availableMoves.stream().map { it.toPrettyString() }.toList()}"
         }
 
-        require(move.isPawnTransformation(piece) == (move.pawnTransformationPieceType != null)) {
-            "incorrect pawn transformation piece: ${move.pawnTransformationPieceType}, expected: " +
-                    "${move.pawnTransformationPieceType?.let { "null" } ?: "not null"}, for move: ${move.toPrettyString(
+        require(move.isPawnTransformation(piece) == (move.pawnTransformationPiece != null)) {
+            "incorrect pawn transformation piece: ${move.pawnTransformationPiece}, expected: " +
+                    "${move.pawnTransformationPiece?.let { "null" } ?: "not null"}, for move: ${move.toPrettyString(
                         piece
                     )}"
         }

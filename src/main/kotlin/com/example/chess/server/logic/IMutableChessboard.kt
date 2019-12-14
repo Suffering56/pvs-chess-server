@@ -9,4 +9,6 @@ import com.example.chess.shared.api.IMove
 interface IMutableChessboard : IChessboard {
 
     fun applyMove(move: IMove): IMove?
+
+    fun applyConstructorMove(move: IMove)
 }

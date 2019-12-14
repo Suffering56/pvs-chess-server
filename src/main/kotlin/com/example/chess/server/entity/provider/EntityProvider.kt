@@ -54,7 +54,7 @@ class EntityProvider {
             columnIndexFrom = move.from.col,
             rowIndexTo = move.to.row,
             columnIndexTo = move.to.col,
-            pieceFromPawn = move.pawnTransformationPieceType,
+            pieceFromPawn = move.pawnTransformationPiece,
             description = move.toPrettyString(pieceFrom)
         )
     }

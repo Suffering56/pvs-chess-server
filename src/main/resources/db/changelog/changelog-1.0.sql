@@ -33,20 +33,21 @@ alter table game_features owner to postgres;
 create sequence game_features_id_seq;
 alter sequence game_features_id_seq owner to postgres;
 
-create table if not exists history
+create table history
 (
-	id bigint not null
-		constraint history_pkey
-			primary key,
-	column_index_from integer not null,
-	column_index_to integer not null,
-	description varchar(255),
-	game_id bigint not null,
-	piece_from_pawn integer,
-	position integer not null,
-	row_index_from integer not null,
-	row_index_to integer not null
+    id bigint not null
+        constraint history_pkey
+            primary key,
+    column_index_from integer not null,
+    column_index_to integer not null,
+    description varchar(255),
+    game_id bigint not null,
+    piece_from_pawn varchar(255),
+    position integer not null,
+    row_index_from integer not null,
+    row_index_to integer not null
 );
+
 alter table history owner to postgres;
 create sequence history_id_seq;
 alter sequence history_id_seq owner to postgres;

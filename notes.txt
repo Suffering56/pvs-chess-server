@@ -1,15 +1,17 @@
 + client: row and col legend
++ client: Socket Timeout Exception handling
++ client: enqueue -> refactor
 + client: pawnTransformation chooser
-- rollback support + client: moves history
++ rollback button support
+
+- constructor + continue game support (after chessboard validation)
 
 - тесты для Chessboard, MovesProvider
-- constructor + continue game support (after chessboard validation)
 - move cost support
 - available moves tree viewer support
 
-- client: Socket Timeout Exception handling
-- client: enqueue -> refactor
-- client: rotation
+- client: rotation fix
+- client: moves history
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
 - подумать об отвлавливании рассинхронов chessboard-ов
 - client: legend refactoring    (LayoutInflater)

@@ -1,7 +1,7 @@
 package com.example.chess.shared.api
 
 import com.example.chess.shared.dto.MoveDTO
-import com.example.chess.shared.enums.PieceType
+import com.example.chess.shared.enums.Piece
 
 /**
  * @author v.peschaniy
@@ -10,7 +10,7 @@ import com.example.chess.shared.enums.PieceType
 interface IMove {
     val from: IPoint
     val to: IPoint
-    val pawnTransformationPieceType: PieceType?
+    val pawnTransformationPiece: Piece?
     
     fun toDTO(): MoveDTO
 }
