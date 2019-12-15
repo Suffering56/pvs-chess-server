@@ -28,11 +28,13 @@ open class Chessboard private constructor(
 
     override fun getPieceNullable(rowIndex: Int, columnIndex: Int) = matrix[rowIndex][columnIndex]
 
-    override fun applyConstructorMove(move: IMove) {
-        val pieceFrom = move.pawnTransformationPiece
-    }
-
     override fun applyMove(move: IMove): IMove? {
+        if (move is ConstructorMove) {
+            applyConstructorMove(move)
+            position++
+            return null
+        }
+
         val pieceFrom = getPiece(move.from)
 
         if (pieceFrom.isKing()) {
@@ -129,6 +131,10 @@ open class Chessboard private constructor(
         matrix[move.to.row][move.to.col] = pieceFrom
     }
 
+    private fun applyConstructorMove(move: ConstructorMove) {
+        matrix[move.to.row][move.to.col] = move.pieceFrom
+    }
+
     override fun toDTO(): ChessboardDTO {
         val matrixDto = Array(BOARD_SIZE) row@{ rowIndex ->
             val row = matrix[rowIndex]
@@ -146,15 +152,9 @@ open class Chessboard private constructor(
         /**
          * Создает chessboard на основе переданной истории ходов(которая может быть пустой)
          */
-        fun byHistory(history: List<History>): Chessboard {
+        fun byHistory(history: Sequence<History>): Chessboard {
             val chessboard = generate(0, initialChessboardGenerator())
             history.forEach { chessboard.applyMove(it.toMove()) }
-            return chessboard
-        }
-
-        fun byConstructorHistory(history: List<History>): Chessboard {
-            val chessboard = generate(0) { _, _ -> null }
-            history.forEach { chessboard.applyConstructorMove(it.toMove()) }
             return chessboard
         }
 

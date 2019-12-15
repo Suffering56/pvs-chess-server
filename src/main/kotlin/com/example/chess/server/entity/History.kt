@@ -1,5 +1,6 @@
 package com.example.chess.server.entity
 
+import com.example.chess.server.logic.misc.ConstructorMove
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.shared.api.IMove
@@ -46,15 +47,27 @@ data class History(
     val pieceFromPawn: Piece?,
 
     @Column
-    val description: String?
+    val description: String?,
+
+    @Column(nullable = true)
+    val isConstructor: Boolean?
 ) {
 
-    fun toMove(): IMove = Move(
-        Point.of(rowIndexFrom, columnIndexFrom),
-        Point.of(rowIndexTo, columnIndexTo),
-        pieceFromPawn
-    )
-
+    fun toMove(): IMove {
+        return if (isConstructor == true) {
+            ConstructorMove(
+                Point.of(0, 0),
+                Point.of(rowIndexTo, columnIndexTo),
+                pieceFromPawn
+            )
+        } else {
+            Move(
+                Point.of(rowIndexFrom, columnIndexFrom),
+                Point.of(rowIndexTo, columnIndexTo),
+                pieceFromPawn
+            )
+        }
+    }
 
 //    val from: PointDTO
 //        @Transient

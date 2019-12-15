@@ -5,6 +5,7 @@ import com.example.chess.server.entity.GameFeatures
 import com.example.chess.server.entity.History
 import com.example.chess.server.logic.misc.toPrettyString
 import com.example.chess.shared.api.IMove
+import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.Side
@@ -55,7 +56,23 @@ class EntityProvider {
             rowIndexTo = move.to.row,
             columnIndexTo = move.to.col,
             pieceFromPawn = move.pawnTransformationPiece,
-            description = move.toPrettyString(pieceFrom)
+            description = move.toPrettyString(pieceFrom),
+            isConstructor = null
+        )
+    }
+
+    fun createConstructorHistoryItem(gameId: Long, position: Int, pointTo: IPoint, pieceFrom: Piece?): History {
+        return History(
+            id = null,
+            gameId = gameId,
+            position = position,
+            rowIndexFrom = 0,
+            columnIndexFrom = 0,
+            rowIndexTo = pointTo.row,
+            columnIndexTo = pointTo.col,
+            pieceFromPawn = pieceFrom,
+            description = "${pointTo.toPrettyString()}: ${pieceFrom?.shortName ?: "clean"}",
+            isConstructor = true
         )
     }
 }

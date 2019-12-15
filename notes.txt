@@ -10,9 +10,11 @@
 - тесты для Chessboard, MovesProvider
 - move cost support
 - available moves tree viewer support
+- CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
 
 - client: rotation fix
 - client: moves history
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
 - подумать об отвлавливании рассинхронов chessboard-ов
 - client: legend refactoring    (LayoutInflater)
+
