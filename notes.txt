@@ -4,7 +4,12 @@
 + client: pawnTransformation chooser
 + rollback button support
 
-- constructor + continue game support (after chessboard validation)
+- constructor + continue game support (after chessboard validation):
+    - onSizeChanged: менять только высоту TableRow
+    - кнопка удаления фигур с доски
+    - разрешить перемещение фигур внутри доски в любую точку
+
+
 - create new game -> ../game/new?mode=selectedMove&side=selectedSide
 
 - тесты для Chessboard, MovesProvider
