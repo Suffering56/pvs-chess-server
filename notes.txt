@@ -20,6 +20,7 @@
 - client: rotation fix
 - client: moves history
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
+- про rollback-е теряется инфа о lastMove. fix it
 - подумать об отвлавливании рассинхронов chessboard-ов
 - client: legend refactoring    (LayoutInflater)
 

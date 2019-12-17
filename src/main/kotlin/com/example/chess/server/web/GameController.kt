@@ -143,16 +143,17 @@ class GameController @Autowired constructor(
                 history.add(historyItem)
             }
 
-        historyRepository.saveAll(history)
+        val updatedHistory = historyRepository.saveAll(history)
 
         val chessboard = chessboardProvider.createChessboardForGame(game)
         //TODO: validate chessboard
         val underCheck = movesProvider.isUnderCheck(userSide.reverse(), chessboard)
+        val lastMove = updatedHistory.maxBy { it.position }?.toMove()?.toDTO()
 
         return ChangesDTO(
             position,
-            MoveDTO(PointDTO(0,0), PointDTO(0,1), null),
-            null,
+            MoveDTO(PointDTO(0, 0), PointDTO(0, 1), null),
+            lastMove,
             if (!underCheck) null else chessboard.getKingPoint(userSide.reverse()).toDTO()
         )
     }
