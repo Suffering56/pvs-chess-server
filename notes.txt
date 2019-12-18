@@ -8,6 +8,8 @@
     - onSizeChanged: менять только высоту TableRow
     - кнопка удаления фигур с доски
     - разрешить перемещение фигур внутри доски в любую точку
+    - drag and drop?
+    -
 
 
 - create new game -> ../game/new?mode=selectedMove&side=selectedSide
