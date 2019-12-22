@@ -6,9 +6,7 @@ import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
 import org.hibernate.annotations.ColumnDefault
 import org.hibernate.annotations.GenericGenerator
-import java.util.*
 import javax.persistence.*
-import kotlin.streams.toList
 
 /**
  * @author v.peschaniy
@@ -52,60 +50,42 @@ data class Game(
     override fun getSideFeatures(side: Side) = featuresMap.getValue(side)
 
     fun isUserRegistered(userId: String): Boolean {
-        return getUserSide(userId).isPresent
+        return getUserSide(userId) != null
     }
 
     fun registerUser(side: Side, userId: String) {
         getSideFeatures(side).userId = userId
     }
 
-    fun getUserSide(userId: String): Optional<Side> {
+    fun getUserSide(userId: String): Side? {
         return featuresMap.values.stream()
             .filter { it.userId == userId }
             .map { it.side }
             .findAny()
-    }
-
-    private fun getFreeSideSlots(): List<Side> {
-        return featuresMap.values.stream()
-            .filter { it.userId == null }
-            .map { it.side }
-            .toList()
+            .orElseGet(null)
     }
 
     /**
      * Возвращает базовую информацию об игре:
      * - id игры
      * - position последнего хода
-     * - на чьей стороне (side) сражается игрок с userId
-     * - если сторона данным игроком еще не выбиралась (side == null), то вернет список незанятых сторон(freeSideSlots),
-     *                                  которые игрок может занять, если он хочет присоединиться к игре.
-     *                                  Если список пуст - значит все занято и user может принять участие в игре лишь как зритель
-     * - если userId не указан, значит вернет
+     * - side: на чьей стороне (side) сражается игрок с userId
+     * - freeSide: сторону свободного слота (если таковой имеется) или null
      */
-    fun toDTO(userId: String?): GameDTO {
-        if (userId == null) {
-            return GameDTO(
-                id!!,
-                position,
-                mode,
-                null,
-                getFreeSideSlots()
-            )
+    fun toDTO(userId: String): GameDTO {
+        val userSide = requireNotNull(getUserSide(userId)) {
+            "user with id: $userId was not register in current game(id=$id)"
         }
 
-        val userSide = getUserSide(userId)
-        val side: Side?
-        val freeSideSlots: List<Side>
+        val opponentSide = userSide.reverse()
+        val hasFreeSlot = getSideFeatures(opponentSide).userId == null
 
-        if (!userSide.isPresent) {
-            side = null
-            freeSideSlots = getFreeSideSlots()
-        } else {
-            side = userSide.get()
-            freeSideSlots = emptyList()
-        }
-
-        return GameDTO(id!!, position, mode, side, freeSideSlots)
+        return GameDTO(
+            id!!,
+            position,
+            mode,
+            userSide,
+            if (hasFreeSlot) opponentSide else null
+        )
     }
 }

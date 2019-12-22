@@ -33,12 +33,6 @@ open class Chessboard private constructor(
     override fun getPieceNullable(rowIndex: Int, columnIndex: Int) = matrix[rowIndex][columnIndex]
 
     override fun applyMove(move: IMove): IMove? {
-        if (move is ConstructorMove) {
-            applyConstructorMove(move)
-            position++
-            return null
-        }
-
         val pieceFrom = getPiece(move.from)
 
         if (pieceFrom.isKing()) {
@@ -133,14 +127,6 @@ open class Chessboard private constructor(
     private fun applySimpleMove(move: IMove, pieceFrom: Piece) {
         matrix[move.from.row][move.from.col] = null
         matrix[move.to.row][move.to.col] = pieceFrom
-    }
-
-    private fun applyConstructorMove(move: ConstructorMove) {
-        matrix[move.to.row][move.to.col] = move.pieceFrom
-
-        if (move.pieceFrom?.isKing() == true) {
-            kingPoints[move.pieceFrom!!.side] = Point.of(move.to.toDTO())
-        }
     }
 
     override fun toDTO(): ChessboardDTO {

@@ -30,5 +30,5 @@ interface IChessboard {
         "piece on position=[${Point.of(rowIndex, columnIndex).toPrettyString()}] cannot be null:\r\n${toPrettyString()}"
     }
 
-    fun getKingPoint(sideFrom: Side): IPoint
+    fun getKingPoint(side: Side): IPoint
 }

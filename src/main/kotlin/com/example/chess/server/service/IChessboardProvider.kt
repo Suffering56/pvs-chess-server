@@ -10,11 +10,11 @@ import com.example.chess.server.logic.IMutableChessboard
  */
 interface IChessboardProvider {
 
-    fun createChessboardForGame(game: Game, position: Int): IMutableChessboard
+    fun createChessboardForGame(game: Game, position: Int = game.position): IMutableChessboard
 
-    fun createChessboardForGame(
+    fun createChessboardForGameWithArrangement(
         game: Game,
-        position: Int = game.position,
+        position: Int,
         initialArrangement: Iterable<ArrangementItem>? = null
     ): IMutableChessboard
 }

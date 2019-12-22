@@ -21,17 +21,24 @@ class EntityProvider {
 
     fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean): Game {
         val gameFeatures = mutableMapOf<Side, GameFeatures>()
+        val initialPosition = defineInitialPosition(side, isConstructor)
 
         val game = Game(
             null,
-            0,
+            initialPosition,
             mode,
-            defineInitialPosition(side, isConstructor),
+            initialPosition,
             gameFeatures
         )
 
         gameFeatures[Side.WHITE] = gameFeatures(game = game, side = Side.WHITE)
         gameFeatures[Side.BLACK] = gameFeatures(game = game, side = Side.BLACK)
+
+        if (isConstructor) {
+            //TODO: вообще лучше проверять расстановку и затем уже запрещать, если нужно
+            gameFeatures[Side.WHITE]?.disableCastling()
+            gameFeatures[Side.BLACK]?.disableCastling()
+        }
 
         game.registerUser(side, userId)
         return game

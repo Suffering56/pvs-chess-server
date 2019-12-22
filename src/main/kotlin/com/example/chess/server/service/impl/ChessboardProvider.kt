@@ -28,14 +28,14 @@ class ChessboardProvider : IChessboardProvider {
         val arrangement = if (game.initialPosition == 0) null
         else arrangementRepository.findAllByGameId(gameId)
 
-        return createChessboardForGame(
+        return createChessboardForGameWithArrangement(
             game,
             position,
             if (arrangement?.isEmpty() == false) arrangement else null
         )
     }
 
-    override fun createChessboardForGame(
+    override fun createChessboardForGameWithArrangement(
         game: Game,
         position: Int,
         initialArrangement: Iterable<ArrangementItem>?

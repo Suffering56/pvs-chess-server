@@ -6,8 +6,8 @@ import com.example.chess.server.core.InjectUserId
 import com.example.chess.server.entity.Game
 import com.example.chess.server.service.IConstructorService
 import com.example.chess.server.service.IGameService
-import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.dto.ChessboardDTO
+import com.example.chess.shared.dto.ConstructorGameDTO
 import com.example.chess.shared.dto.GameDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
@@ -32,7 +32,7 @@ class InitController @Autowired constructor(
         @RequestParam side: Side
     ): GameDTO {
         val game = gameService.createNewGame(userId, mode, side)
-        return game.toDTO(null)
+        return game.toDTO(userId)
     }
 
     @PostMapping("/constructor/new")
@@ -41,7 +41,7 @@ class InitController @Autowired constructor(
         @RequestParam mode: GameMode,
         @RequestParam side: Side,
         @RequestBody chessboard: ChessboardDTO
-    ): ChangesDTO {
+    ): ConstructorGameDTO {
         val game = gameService.createNewGame(userId, mode, side, true)
         return constructorService.initArrangement(game, side, chessboard)
     }

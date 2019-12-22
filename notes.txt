@@ -12,17 +12,20 @@
         + continue game
         - validate board
 
-- create new game -> ../game/new?mode=selectedMove&side=selectedSide
++ create new game -> ../game/new?mode=selectedMove&side=selectedSide
++ CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
+
+- для PVP режима проверять: side = pieceFrom.side
+- для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
 
 - тесты для Chessboard, MovesProvider
 - move cost support
 - available moves tree viewer support
-- CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
 
 - client: rotation fix
-- client: moves historyItem
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
 - про rollback-е теряется инфа о lastMove. fix it
 - подумать об отвлавливании рассинхронов chessboard-ов
 - client: legend refactoring    (LayoutInflater)
 - client: drag and drop in chessboard view
+- client: надо как-то победить долгий первый вызов ретрофита

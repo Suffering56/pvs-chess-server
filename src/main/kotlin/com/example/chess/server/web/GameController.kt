@@ -41,8 +41,8 @@ class GameController @Autowired constructor(
     ): Set<PointDTO> {
         val chessboard = chessboardProvider.createChessboardForGame(game)
 
-        check(Side.ofPosition(game.position) == chessboard.getPiece(rowIndex, columnIndex).side) {
-            "incorrect side of pointFrom. expected:${Side.ofPosition(game.position)}, " +
+        check(Side.nextTurnSide(game.position) == chessboard.getPiece(rowIndex, columnIndex).side) {
+            "incorrect side of pointFrom. expected:${Side.nextTurnSide(game.position)}, " +
                     "found: ${chessboard.getPiece(rowIndex, columnIndex).side}"
         }
 
@@ -78,7 +78,7 @@ class GameController @Autowired constructor(
 
         if (game.position == 0
             && game.mode == GameMode.AI
-            && game.getUserSide(userId).orElseGet(null) == Side.BLACK   //если null - значит это зритель -> а зритель не должен триггерить бота
+            && game.getUserSide(userId) == Side.BLACK   //если null - значит это зритель -> а зритель не должен триггерить бота
         ) {
             //еще никто не ходил, а игрок(человек) играет за черных -> нужно пнуть бота, чтобы тот походил
             botService.fireBotMove(game, null)

@@ -4,6 +4,7 @@ import com.example.chess.shared.enums.Piece
 import org.hibernate.annotations.GenericGenerator
 import javax.persistence.*
 
+@Entity
 @Table(name = "constructor_arrangement")
 class ArrangementItem(
 
