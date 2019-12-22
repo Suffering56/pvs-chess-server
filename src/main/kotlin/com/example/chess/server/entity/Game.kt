@@ -32,7 +32,17 @@ data class Game(
     @ColumnDefault("'UNSELECTED'")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    var mode: GameMode = GameMode.UNSELECTED,
+    val mode: GameMode = GameMode.UNSELECTED,
+
+
+    /**
+     * 0 - стандартная игра, созданная на основе расстановки по умолчанию
+     * 1 - игра, созданная на основе конструктора. первыми ходят - черные (Side.BLACK)
+     * 2 - игра, созданная на основе конструктора. первыми ходят - белые (Side.WHITE)
+     */
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    val initialPosition: Int = 0,
 
     @OneToMany(mappedBy = "game", fetch = FetchType.EAGER, cascade = [CascadeType.ALL])
     @MapKey(name = "side")
@@ -98,13 +108,4 @@ data class Game(
 
         return GameDTO(id!!, position, mode, side, freeSideSlots)
     }
-
-//    fun getUnderCheckSide(): Side? {
-//        return featuresMap.values
-//            .stream()
-//            .filter { it.isUnderCheck }
-//            .findAny()
-//            .map { it.side }
-//            .orElse(null)
-//    }
 }

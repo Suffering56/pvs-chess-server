@@ -7,6 +7,8 @@ import com.example.chess.server.logic.IMutableChessboard
 import com.example.chess.shared.api.IMove
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.ChangesDTO
+import com.example.chess.shared.enums.GameMode
+import com.example.chess.shared.enums.Side
 
 /**
  * @author v.peschaniy
@@ -14,7 +16,7 @@ import com.example.chess.shared.dto.ChangesDTO
  */
 interface IGameService {
 
-    fun createNewGame(): Game
+    fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean = false): Game
 
     fun saveGame(game: Game): Game
 

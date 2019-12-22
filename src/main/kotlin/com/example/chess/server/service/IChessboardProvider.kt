@@ -1,5 +1,6 @@
 package com.example.chess.server.service
 
+import com.example.chess.server.entity.ArrangementItem
 import com.example.chess.server.entity.Game
 import com.example.chess.server.logic.IMutableChessboard
 
@@ -9,5 +10,11 @@ import com.example.chess.server.logic.IMutableChessboard
  */
 interface IChessboardProvider {
 
-    fun createChessboardForGame(game: Game, position: Int = game.position): IMutableChessboard
+    fun createChessboardForGame(game: Game, position: Int): IMutableChessboard
+
+    fun createChessboardForGame(
+        game: Game,
+        position: Int = game.position,
+        initialArrangement: Iterable<ArrangementItem>? = null
+    ): IMutableChessboard
 }

@@ -17,7 +17,9 @@ import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.api.IMove
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.ChangesDTO
+import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.PieceType
+import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -36,9 +38,10 @@ class GameService @Autowired constructor(
 ) : IGameService {
 
     @Transactional
-    override fun createNewGame(): Game {
-        return gameRepository.save(entityProvider.createNewGame())
+    override fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean): Game {
+        return gameRepository.save(entityProvider.createNewGame(userId, mode, side, isConstructor))
     }
+
     @Transactional
     override fun saveGame(game: Game): Game {
         return gameRepository.save(game)

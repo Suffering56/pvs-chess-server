@@ -9,6 +9,7 @@
     + разрешить перемещение фигур внутри доски в любую точку
     + drag and drop?
     - continue game support:
+        + continue game
         - validate board
 
 - create new game -> ../game/new?mode=selectedMove&side=selectedSide
@@ -19,7 +20,7 @@
 - CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
 
 - client: rotation fix
-- client: moves history
+- client: moves historyItem
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
 - про rollback-е теряется инфа о lastMove. fix it
 - подумать об отвлавливании рассинхронов chessboard-ов

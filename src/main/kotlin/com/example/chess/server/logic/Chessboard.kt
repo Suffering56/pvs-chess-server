@@ -1,18 +1,22 @@
 package com.example.chess.server.logic
 
-import com.example.chess.server.entity.History
+import com.example.chess.server.entity.ArrangementItem
+import com.example.chess.server.entity.HistoryItem
 import com.example.chess.server.logic.misc.*
 import com.example.chess.shared.ArrayTable
 import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.api.IMove
+import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.CellDTO
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.PointDTO
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.Side
+import java.util.stream.Collectors
+import java.util.stream.StreamSupport
 
 /**
  * @author v.peschaniy
@@ -155,10 +159,26 @@ open class Chessboard private constructor(
 
         /**
          * Создает chessboard на основе переданной истории ходов(которая может быть пустой)
+         *      и начальной расстановки initialArrangement,
+         *      которая может быть null (в таком случае используется расстановка по умолчанию)
          */
-        fun byHistory(history: Sequence<History>): Chessboard {
-            val chessboard = generate(0, initialChessboardGenerator())
-            history.forEach { chessboard.applyMove(it.toMove()) }
+        fun create(
+            initialPosition: Int,
+            historyItem: Sequence<HistoryItem>,
+            initialArrangement: Iterable<ArrangementItem>? = null
+        ): Chessboard {
+
+            val arrangementMap = initialArrangement?.let {
+                val map: Map<out IPoint, Piece> = StreamSupport.stream(it.spliterator(), false)
+                    .collect(Collectors.toMap(
+                        { arrangementItem -> Point.of(arrangementItem.row, arrangementItem.col) },
+                        { arrangementItem -> arrangementItem.piece }
+                    ))
+                map
+            }
+
+            val chessboard = generate(initialPosition, initialChessboardGenerator(arrangementMap))
+            historyItem.forEach { chessboard.applyMove(it.toMove()) }
             return chessboard
         }
 
@@ -181,7 +201,11 @@ open class Chessboard private constructor(
             return Chessboard(position, matrix, kingPoints)
         }
 
-        private fun initialChessboardGenerator() = gen@{ row: Int, col: Int ->
+        private fun initialChessboardGenerator(initialArrangement: Map<out IPoint, Piece>?) = gen@{ row: Int, col: Int ->
+            initialArrangement?.let {
+                return@gen it[Point.of(row, col)]
+            }
+
             val side = when (row) {
                 0, 1 -> Side.WHITE
                 6, 7 -> Side.BLACK

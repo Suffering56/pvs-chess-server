@@ -4,7 +4,10 @@ import com.example.chess.server.core.Authorized
 import com.example.chess.server.core.InjectGame
 import com.example.chess.server.core.InjectUserId
 import com.example.chess.server.entity.Game
+import com.example.chess.server.service.IConstructorService
 import com.example.chess.server.service.IGameService
+import com.example.chess.shared.dto.ChangesDTO
+import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.GameDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
@@ -18,13 +21,29 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/init")
 class InitController @Autowired constructor(
-    private val gameService: IGameService
+    private val gameService: IGameService,
+    private val constructorService: IConstructorService
 ) {
 
     @GetMapping("/new")
-    fun createGame(): GameDTO {
-        val game = gameService.createNewGame()
+    fun createGame(
+        @RequestParam userId: String,
+        @RequestParam mode: GameMode,
+        @RequestParam side: Side
+    ): GameDTO {
+        val game = gameService.createNewGame(userId, mode, side)
         return game.toDTO(null)
+    }
+
+    @PostMapping("/constructor/new")
+    fun createConstructedGame(
+        @InjectUserId userId: String,
+        @RequestParam mode: GameMode,
+        @RequestParam side: Side,
+        @RequestBody chessboard: ChessboardDTO
+    ): ChangesDTO {
+        val game = gameService.createNewGame(userId, mode, side, true)
+        return constructorService.initArrangement(game, side, chessboard)
     }
 
     @Authorized
@@ -34,19 +53,6 @@ class InitController @Autowired constructor(
         @InjectUserId userId: String
     ): GameDTO {
         return game.toDTO(userId)
-    }
-
-    @Authorized(false)   //TODO
-    @PostMapping("/mode")
-    fun setMode(
-        @InjectGame game: Game,
-        @InjectUserId userId: String,
-        @RequestParam("mode") mode: GameMode
-    ): GameDTO {
-        check(game.mode == GameMode.UNSELECTED) { "cannot set game mode, because it already defined" }
-
-        game.mode = mode
-        return gameService.saveGame(game).toDTO(userId)
     }
 
     @Authorized(false)   //TODO
@@ -64,19 +70,3 @@ class InitController @Autowired constructor(
         return gameService.saveGame(game).toDTO(userId)
     }
 }
-
-//fun main() {
-//   x()
-//}
-//
-//fun x() {
-//    val map: IntObjectMap<Int?> = IntObjectHashMap.newWithKeysValues(1, 100, 2, 200, 3, 300)
-//
-//    for (i in 10 downTo 1) {
-//        val x = map.getIfAbsent(i) { null }?.let {
-//            return
-//        }
-//        println("x = ${x}")
-//    }
-//    println("end")
-//}

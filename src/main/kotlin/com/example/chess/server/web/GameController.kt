@@ -4,16 +4,11 @@ import com.example.chess.server.core.Authorized
 import com.example.chess.server.core.InjectGame
 import com.example.chess.server.core.InjectUserId
 import com.example.chess.server.entity.Game
-import com.example.chess.server.entity.History
-import com.example.chess.server.entity.provider.EntityProvider
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
-import com.example.chess.server.repository.HistoryRepository
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IChessboardProvider
 import com.example.chess.server.service.IGameService
-import com.example.chess.server.service.impl.MovesProvider
-import com.example.chess.shared.Constants.INITIAL_PIECES_COUNT
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.dto.ChessboardDTO
@@ -23,7 +18,6 @@ import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.web.bind.annotation.*
-import java.util.*
 import java.util.stream.Collectors
 
 /**
@@ -35,10 +29,7 @@ import java.util.stream.Collectors
 class GameController @Autowired constructor(
     private val gameService: IGameService,
     private val chessboardProvider: IChessboardProvider,
-    private val botService: IBotService,
-    private val entityProvider: EntityProvider,
-    private val historyRepository: HistoryRepository,
-    private val movesProvider: MovesProvider
+    private val botService: IBotService
 ) {
 
     @Authorized
@@ -105,65 +96,5 @@ class GameController @Autowired constructor(
 
         val rollbackGame = gameService.rollback(game, positionsOffset)
         return chessboardProvider.createChessboardForGame(rollbackGame).toDTO()
-    }
-
-    @Authorized
-    @PostMapping("/constructor/continue")
-    fun continueConstructedGame(
-        @InjectGame game: Game,
-        @InjectUserId userId: String,
-        @RequestBody arrangement: ChessboardDTO
-    ): ChangesDTO {
-        //TODO: этому коду здесь не место:
-        //  - либо перетащить в сервисы
-        //  - либо дождаться рефакторинга, где я все это перепишу
-        val userSide = game.getUserSide(userId).get()
-
-        val history: MutableList<History> = mutableListOf()
-        var position = INITIAL_PIECES_COUNT
-
-        val piecesCount = Arrays.stream(arrangement.matrix)
-            .flatMap { Arrays.stream(it) }
-            .map { it.piece != null }
-            .count()
-            .toInt()
-
-        if (userSide != Side.ofPosition(INITIAL_PIECES_COUNT + piecesCount)) {
-            val skipTurnHistoryItem = entityProvider.createConstructorHistoryItem(
-                game.id!!,
-                ++position,
-                Point.of(0, 0),
-                null
-            )
-            history.add(skipTurnHistoryItem)
-        }
-
-        Arrays.stream(arrangement.matrix)
-            .flatMap { Arrays.stream(it) }
-            .forEach {
-                val historyItem = entityProvider.createConstructorHistoryItem(
-                    game.id!!,
-                    ++position,
-                    Point.of(it.pointDTO),
-                    it.piece
-                )
-                history.add(historyItem)
-            }
-
-        val updatedHistory = historyRepository.saveAll(history)
-        game.position = position
-        val updatedGame = gameService.saveGame(game)
-
-        val chessboard = chessboardProvider.createChessboardForGame(updatedGame)
-        //TODO: validate chessboard
-        val underCheck = movesProvider.isUnderCheck(userSide.reverse(), chessboard)
-        val lastMove = updatedHistory.maxBy { it.position }?.toMove()?.toDTO()
-
-        return ChangesDTO(
-            position,
-            MoveDTO(PointDTO(0, 0), PointDTO(0, 1), null),
-            lastMove,
-            if (!underCheck) null else chessboard.getKingPoint(userSide.reverse()).toDTO()
-        )
     }
 }
