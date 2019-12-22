@@ -13,7 +13,7 @@ import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IChessboardProvider
 import com.example.chess.server.service.IGameService
 import com.example.chess.server.service.impl.MovesProvider
-import com.example.chess.shared.Constants.EXPECTED_FIRST_CONSTRUCTED_HISTORY_ITEM_POSITION
+import com.example.chess.shared.Constants.INITIAL_PIECES_COUNT
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.dto.ChessboardDTO
@@ -107,6 +107,7 @@ class GameController @Autowired constructor(
         return chessboardProvider.createChessboardForGame(rollbackGame).toDTO()
     }
 
+    @Authorized
     @PostMapping("/constructor/continue")
     fun continueConstructedGame(
         @InjectGame game: Game,
@@ -119,12 +120,18 @@ class GameController @Autowired constructor(
         val userSide = game.getUserSide(userId).get()
 
         val history: MutableList<History> = mutableListOf()
-        var position = EXPECTED_FIRST_CONSTRUCTED_HISTORY_ITEM_POSITION
+        var position = INITIAL_PIECES_COUNT
 
-        if (userSide == Side.BLACK) {
+        val piecesCount = Arrays.stream(arrangement.matrix)
+            .flatMap { Arrays.stream(it) }
+            .map { it.piece != null }
+            .count()
+            .toInt()
+
+        if (userSide != Side.ofPosition(INITIAL_PIECES_COUNT + piecesCount)) {
             val skipTurnHistoryItem = entityProvider.createConstructorHistoryItem(
                 game.id!!,
-                position++,
+                ++position,
                 Point.of(0, 0),
                 null
             )
@@ -136,7 +143,7 @@ class GameController @Autowired constructor(
             .forEach {
                 val historyItem = entityProvider.createConstructorHistoryItem(
                     game.id!!,
-                    position++,
+                    ++position,
                     Point.of(it.pointDTO),
                     it.piece
                 )
@@ -144,8 +151,10 @@ class GameController @Autowired constructor(
             }
 
         val updatedHistory = historyRepository.saveAll(history)
+        game.position = position
+        val updatedGame = gameService.saveGame(game)
 
-        val chessboard = chessboardProvider.createChessboardForGame(game)
+        val chessboard = chessboardProvider.createChessboardForGame(updatedGame)
         //TODO: validate chessboard
         val underCheck = movesProvider.isUnderCheck(userSide.reverse(), chessboard)
         val lastMove = updatedHistory.maxBy { it.position }?.toMove()?.toDTO()

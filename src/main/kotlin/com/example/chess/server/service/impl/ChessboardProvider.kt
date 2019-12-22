@@ -8,7 +8,7 @@ import com.example.chess.server.logic.IMutableChessboard
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.repository.HistoryRepository
 import com.example.chess.server.service.IChessboardProvider
-import com.example.chess.shared.Constants.EXPECTED_FIRST_CONSTRUCTED_HISTORY_ITEM_POSITION
+import com.example.chess.shared.Constants.INITIAL_PIECES_COUNT
 import com.example.chess.shared.enums.GameMode
 import com.google.common.collect.Range
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,6 +23,7 @@ class ChessboardProvider : IChessboardProvider {
 
     @Autowired
     private lateinit var historyRepository: HistoryRepository
+    @Autowired
     private lateinit var entityProvider: EntityProvider
 
     override fun createChessboardForGame(game: Game, position: Int): IMutableChessboard {
@@ -36,8 +37,9 @@ class ChessboardProvider : IChessboardProvider {
         require((game.mode == GameMode.CONSTRUCTOR) == isConstructorMovesPresent) { "strange state: game.mode: ${game.mode}, isConstructorMovesPresent: $isConstructorMovesPresent" }   //TODO temp check (или перетащить в if)
 
         if (game.mode == GameMode.CONSTRUCTOR) {
-            require(history[0].position == EXPECTED_FIRST_CONSTRUCTED_HISTORY_ITEM_POSITION) {                                                                                           //TODO temp check (или сделать предварительный чек на history.isEmpty)
-                "wrong first recorded history item position: ${history[0].position}, expected: $EXPECTED_FIRST_CONSTRUCTED_HISTORY_ITEM_POSITION"
+            require(history[0].position == INITIAL_PIECES_COUNT + 1) {
+                //TODO temp check (или сделать предварительный чек на history.isEmpty)
+                "wrong first recorded history item position: ${history[0].position}, expected: ${INITIAL_PIECES_COUNT + 1}"
             }
             return Chessboard.byHistory(createCleanHistory(game.id).asSequence() + history.asSequence())
         }

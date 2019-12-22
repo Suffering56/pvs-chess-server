@@ -133,6 +133,10 @@ open class Chessboard private constructor(
 
     private fun applyConstructorMove(move: ConstructorMove) {
         matrix[move.to.row][move.to.col] = move.pieceFrom
+
+        if (move.pieceFrom?.isKing() == true) {
+            kingPoints[move.pieceFrom!!.side] = Point.of(move.to.toDTO())
+        }
     }
 
     override fun toDTO(): ChessboardDTO {
