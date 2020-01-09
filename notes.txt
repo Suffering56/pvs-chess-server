@@ -3,28 +3,28 @@
 + client: enqueue -> refactor
 + client: pawnTransformation chooser
 + rollback button support
-
-- constructor bar:
++ constructor bar:
     + кнопка удаления фигур с доски
     + разрешить перемещение фигур внутри доски в любую точку
     + drag and drop?
-    - continue game support:
-        + continue game
-        - validate board
-
+    + continue game
 + create new game -> ../game/new?mode=selectedMove&side=selectedSide
 + CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
 
-- для PVP режима проверять: side = pieceFrom.side
-- для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
-
-- тесты для Chessboard, MovesProvider
+- client: opponent move listener
 - move cost support
 - available moves tree viewer support
+
+- тесты для Chessboard, MovesProvider
+
+- для PVP режима проверять: side = pieceFrom.side
+- client: для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
 
 - client: rotation fix
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
 - про rollback-е теряется инфа о lastMove. fix it
+- constructor: validate board
+
 - подумать об отвлавливании рассинхронов chessboard-ов
 - client: legend refactoring    (LayoutInflater)
 - client: drag and drop in chessboard view
