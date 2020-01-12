@@ -11,7 +11,7 @@
 + create new game -> ../game/new?mode=selectedMove&side=selectedSide
 + CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
 
-- client: opponent move listener
++ client: opponent move listener
 - move cost support
 - available moves tree viewer support
 
@@ -24,6 +24,8 @@
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
 - про rollback-е теряется инфа о lastMove. fix it
 - constructor: validate board
+- client: ListenOpponentChangesTask -> stop/start if visible changed
+- client:  ListenOpponentChangesTask -> @SuppressLint("StaticFieldLeak")
 
 - подумать об отвлавливании рассинхронов chessboard-ов
 - client: legend refactoring    (LayoutInflater)

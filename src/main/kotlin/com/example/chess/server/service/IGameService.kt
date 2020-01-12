@@ -27,4 +27,6 @@ interface IGameService {
     fun applyMove(game: Game, chessboard: IMutableChessboard, move: IMove): ChangesDTO
 
     fun rollback(game: Game, positionsOffset: Int): Game
+
+    fun getNextMoveChanges(game: Game, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO?
 }

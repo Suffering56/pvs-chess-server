@@ -34,7 +34,8 @@ class GameService @Autowired constructor(
     private val gameRepository: GameRepository,
     private val historyRepository: HistoryRepository,
     private val entityProvider: EntityProvider,
-    private val movesProvider: IMovesProvider
+    private val movesProvider: IMovesProvider,
+    private val chessboardProvider: ChessboardProvider
 ) : IGameService {
 
     @Transactional
@@ -130,5 +131,28 @@ class GameService @Autowired constructor(
         historyRepository.removeAllByGameIdAndPositionGreaterThan(game.id!!, newPosition)
 
         return saveGame(game)
+    }
+
+    override fun getNextMoveChanges(game: Game, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO? {
+        val nextMoveHistory = historyRepository.findByGameIdAndPosition(game.id!!, chessboardPosition + 1)
+
+        nextMoveHistory?.let {
+
+            val chessboard = chessboardProvider.createChessboardForGame(game, chessboardPosition)
+            val move = nextMoveHistory.toMove()
+
+            val additionalMove = chessboard.applyMove(move)
+            val isUnderCheck = movesProvider.isUnderCheck(prevMoveSide, chessboard)
+
+            return ChangesDTO(
+                chessboard.position,
+                move.toDTO(),
+                additionalMove?.toDTO(),
+                if (isUnderCheck) chessboard.getKingPoint(prevMoveSide).toDTO() else null
+            )
+        }
+
+        // оппонент еще не совершил ход.
+        return null
     }
 }

@@ -17,6 +17,7 @@ class Move(
     override fun toDTO() = MoveDTO(from.toDTO(), to.toDTO(), pawnTransformationPiece)
 
     companion object {
+
         fun of(move: MoveDTO) = Move(Point.of(move.from), Point.of(move.to), move.pawnTransformationPiece)
 
         fun cut(point: Point) = Move(point, point, null)

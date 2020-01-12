@@ -56,13 +56,14 @@ class GameController @Autowired constructor(
     @PostMapping("/move")
     fun applyMove(
         @InjectGame game: Game,
+        @InjectUserId userId: String,
         @RequestBody move: MoveDTO
     ): ChangesDTO {
         val chessboard = chessboardProvider.createChessboardForGame(game)
         val changes = gameService.applyMove(game, chessboard, Move.of(move))
 
         if (game.mode == GameMode.AI) {
-            botService.fireBotMove(game, chessboard)
+            botService.fireBotMove(game, game.getUserSide(userId)!!.reverse(), chessboard)
         }
         return changes
     }
@@ -81,7 +82,7 @@ class GameController @Autowired constructor(
             && game.getUserSide(userId) == Side.BLACK   //если null - значит это зритель -> а зритель не должен триггерить бота
         ) {
             //еще никто не ходил, а игрок(человек) играет за черных -> нужно пнуть бота, чтобы тот походил
-            botService.fireBotMove(game, null)
+            botService.fireBotMove(game, game.getUserSide(userId)!!.reverse(), null)
         }
         return chessboard.toDTO()
     }
@@ -96,5 +97,26 @@ class GameController @Autowired constructor(
 
         val rollbackGame = gameService.rollback(game, positionsOffset)
         return chessboardProvider.createChessboardForGame(rollbackGame).toDTO()
+    }
+
+    /**
+     * @param chessboardPosition - позиция последнего хода пользователя
+     *      значит следующий ход (nextTurnSide) - за оппонентом. Его то мы и мониторим.
+     */
+    @Authorized
+    @GetMapping("/listen")
+    fun listenOpponentChanges(
+        @InjectGame game: Game,
+        @InjectUserId userId: String,
+        @RequestParam("chessboardPosition") chessboardPosition: Int
+    ): ChangesDTO {
+
+        val userSide = game.getUserSide(userId)!!
+
+        check(Side.nextTurnSide(chessboardPosition) == userSide.reverse()) {
+            "incorrect chessboardPosition: $chessboardPosition, because it is not equals with next turn(opponent move) side : ${userSide.reverse()}"
+        }
+
+        return gameService.getNextMoveChanges(game, userSide, chessboardPosition) ?: ChangesDTO.EMPTY
     }
 }
