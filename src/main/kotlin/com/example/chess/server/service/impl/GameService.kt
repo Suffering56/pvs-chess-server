@@ -14,7 +14,7 @@ import com.example.chess.server.service.IGameService
 import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
-import com.example.chess.shared.api.IMove
+import com.example.chess.server.logic.IMove
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.enums.GameMode

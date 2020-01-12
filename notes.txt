@@ -10,11 +10,13 @@
     + continue game
 + create new game -> ../game/new?mode=selectedMove&side=selectedSide
 + CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
-
 + client: opponent move listener
-- move cost support
-- available moves tree viewer support
 
+- move cost support:
+    - moves tree
+    -
+
+- available moves tree viewer support
 - тесты для Chessboard, MovesProvider
 
 - для PVP режима проверять: side = pieceFrom.side

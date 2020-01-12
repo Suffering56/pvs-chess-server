@@ -2,7 +2,7 @@ package com.example.chess.server.entity
 
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
-import com.example.chess.shared.api.IMove
+import com.example.chess.server.logic.IMove
 import com.example.chess.shared.enums.Piece
 import org.hibernate.annotations.GenericGenerator
 import javax.persistence.*

@@ -1,6 +1,7 @@
 package com.example.chess.server.service
 
 import com.example.chess.server.entity.Game
+import com.example.chess.server.logic.IMutableChessboard
 import com.example.chess.shared.enums.Side
 
 /**
@@ -9,5 +10,5 @@ import com.example.chess.shared.enums.Side
  */
 interface IBotService {
 
-    fun fireBotMove(game: Game, botSide: Side, nothing: Any?)
+    fun fireBotMove(game: Game, botSide: Side, chessboard: IMutableChessboard)
 }

@@ -1,6 +1,6 @@
 package com.example.chess.server.logic.misc
 
-import com.example.chess.shared.api.IMove
+import com.example.chess.server.logic.IMove
 import com.example.chess.shared.dto.MoveDTO
 import com.example.chess.shared.enums.Piece
 

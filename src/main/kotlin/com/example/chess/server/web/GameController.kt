@@ -82,7 +82,7 @@ class GameController @Autowired constructor(
             && game.getUserSide(userId) == Side.BLACK   //если null - значит это зритель -> а зритель не должен триггерить бота
         ) {
             //еще никто не ходил, а игрок(человек) играет за черных -> нужно пнуть бота, чтобы тот походил
-            botService.fireBotMove(game, game.getUserSide(userId)!!.reverse(), null)
+            botService.fireBotMove(game, game.getUserSide(userId)!!.reverse(), chessboard)
         }
         return chessboard.toDTO()
     }

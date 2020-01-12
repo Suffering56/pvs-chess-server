@@ -7,7 +7,6 @@ import com.example.chess.shared.ArrayTable
 import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
-import com.example.chess.shared.api.IMove
 import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.CellDTO
 import com.example.chess.shared.dto.ChessboardDTO
@@ -15,6 +14,7 @@ import com.example.chess.shared.dto.PointDTO
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.Side
+import java.util.*
 import java.util.stream.Collectors
 import java.util.stream.StreamSupport
 
@@ -24,13 +24,49 @@ import java.util.stream.StreamSupport
  */
 open class Chessboard private constructor(
     override var position: Int,
-    private val matrix: ArrayTable<Piece?>,
+    private val matrix: ArrayTable<Piece?>,         //может все-таки Map<Point, Piece>?
     private val kingPoints: MutableMap<Side, Point>
 ) : IMutableChessboard {
 
     override fun getKingPoint(side: Side) = kingPoints[side]!!
 
     override fun getPieceNullable(rowIndex: Int, columnIndex: Int) = matrix[rowIndex][columnIndex]
+
+    override fun rollbackMove(move: IMove, additionalMove: IMove?, fallenPiece: Piece?) {
+        val movedPiece = getPiece(move.to)
+
+        if (movedPiece.isKing()) {
+            kingPoints[movedPiece.side] = Point.of(move.from.toDTO())
+        }
+
+        additionalMove?.let {
+            when (movedPiece.type) {
+                PieceType.KING -> {
+                    val rook = getPiece(additionalMove.to)
+                    require(rook == Piece.of(movedPiece.side, PieceType.ROOK)) {
+                        "incorrect additionalMove, expected piece.to=${Piece.of(
+                            movedPiece.side,
+                            PieceType.ROOK
+                        )}, actual=$rook"
+                    }
+
+                    rollbackSimpleMove(it, Piece.of(movedPiece.side, PieceType.ROOK), null)
+                }
+
+                PieceType.PAWN -> {
+                    require(it.isCut()) {
+                        "incorrect additionalMove($it), expected cut-move"
+                    }
+                    rollbackEnPassant(it, movedPiece.side)
+                }
+                else -> throw IllegalStateException(
+                    "additional move used only for en-passant or castling moves: move=$move, movedPiece=$movedPiece"
+                )
+            }
+        }
+        rollbackSimpleMove(move, movedPiece, fallenPiece)
+        position--
+    }
 
     override fun applyMove(move: IMove): IMove? {
         val pieceFrom = getPiece(move.from)
@@ -129,6 +165,15 @@ open class Chessboard private constructor(
         matrix[move.to.row][move.to.col] = pieceFrom
     }
 
+    private fun rollbackSimpleMove(move: IMove, movedPiece: Piece, fallenPiece: Piece?) {
+        matrix[move.from.row][move.from.col] = movedPiece
+        matrix[move.to.row][move.to.col] = fallenPiece
+    }
+
+    private fun rollbackEnPassant(move: IMove, moverSide: Side) {
+        matrix[move.from.row][move.from.col] = Piece.of(moverSide.reverse(), PieceType.PAWN)
+    }
+
     override fun toDTO(): ChessboardDTO {
         val matrixDto = Array(BOARD_SIZE) row@{ rowIndex ->
             val row = matrix[rowIndex]
@@ -169,7 +214,7 @@ open class Chessboard private constructor(
         }
 
         private fun generate(position: Int, pieceGenerator: (Int, Int) -> Piece?): Chessboard {
-            val kingPoints = mutableMapOf<Side, Point>()
+            val kingPoints = EnumMap<Side, Point>(Side::class.java)
 
             val matrix = Array(BOARD_SIZE) row@{ row ->
                 Array(BOARD_SIZE) cell@{ col ->

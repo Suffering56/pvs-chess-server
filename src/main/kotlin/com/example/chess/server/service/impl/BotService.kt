@@ -5,7 +5,6 @@ import com.example.chess.server.logic.IMutableChessboard
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
-import com.example.chess.server.service.IChessboardProvider
 import com.example.chess.server.service.IGameService
 import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.enums.Side
@@ -20,22 +19,24 @@ import java.util.concurrent.ConcurrentSkipListSet
 @Service
 class BotService @Autowired constructor(
     private val gameService: IGameService,
-    private val chessboardProvider: IChessboardProvider
+    private val movesProvider: MovesProvider
 ) : IBotService {
-
 
     var processingGameIds: MutableSet<Long> = ConcurrentSkipListSet()
 
-    override fun fireBotMove(game: Game, botSide: Side, nothing: Any?) {
+    override fun fireBotMove(game: Game, botSide: Side, chessboard: IMutableChessboard) {
         if (processingGameIds.add(game.id!!)) {
             try {
-                if (Side.nextTurnSide(game.position) == botSide) {
-                    val chessboard = chessboardProvider.createChessboardForGame(game)
-                    applyFakeMove(game, chessboard)
-                }
+                processBotMove(game, botSide, chessboard)
             } finally {
                 processingGameIds.remove(game.id)
             }
+        }
+    }
+
+    private fun processBotMove(game: Game, botSide: Side, chessboard: IMutableChessboard) {
+        if (Side.nextTurnSide(game.position) == botSide) {
+            applyFakeMove(game, chessboard)
         }
     }
 
