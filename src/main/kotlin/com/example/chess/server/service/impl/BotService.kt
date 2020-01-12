@@ -1,11 +1,13 @@
 package com.example.chess.server.service.impl
 
 import com.example.chess.server.entity.Game
+import com.example.chess.server.logic.IMutableChessboard
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IChessboardProvider
 import com.example.chess.server.service.IGameService
+import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -28,22 +30,27 @@ class BotService @Autowired constructor(
         if (processingGameIds.add(game.id!!)) {
             try {
                 if (Side.nextTurnSide(game.position) == botSide) {
-                    if (game.position == 1) {
-                        val chessboard = chessboardProvider.createChessboardForGame(game)
-                        gameService.applyMove(
-                            game,
-                            chessboard,
-                            Move(
-                                Point.of(6, 3),
-                                Point.of(4, 3),
-                                null
-                            )
-                        )
-                    }
+                    val chessboard = chessboardProvider.createChessboardForGame(game)
+                    applyFakeMove(game, chessboard)
                 }
             } finally {
                 processingGameIds.remove(game.id)
             }
+        }
+    }
+
+    private fun applyFakeMove(game: Game, chessboard: IMutableChessboard) {
+        val col = (game.position / 2)
+        if (col < BOARD_SIZE) {
+            gameService.applyMove(
+                game,
+                chessboard,
+                Move(
+                    Point.of(6, col),
+                    Point.of(4, col),
+                    null
+                )
+            )
         }
     }
 }
