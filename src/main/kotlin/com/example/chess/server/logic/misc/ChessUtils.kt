@@ -1,21 +1,29 @@
 package com.example.chess.server.logic.misc
 
+import com.example.chess.server.logic.IMove
+import com.example.chess.server.logic.IPoint
 import com.example.chess.shared.Constants
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
-import com.example.chess.server.logic.IMove
-import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.PieceType.BISHOP
 import com.example.chess.shared.enums.PieceType.ROOK
+import java.util.stream.IntStream
+import java.util.stream.Stream
 import kotlin.math.abs
 
 /**
  * @author v.peschaniy
  *      Date: 11.11.2019
  */
-val columnNamesMap = mapOf(
+
+const val COMPRESS_POINT_OFFSET = 3
+
+const val COMPRESSED_POINT_FIRST = 0
+const val COMPRESSED_POINT_LAST = (Constants.BOARD_SIZE shl COMPRESS_POINT_OFFSET) - 1
+
+private val columnNamesMap = mapOf(
     Pair(0, "h"),
     Pair(1, "g"),
     Pair(2, "f"),
@@ -68,7 +76,8 @@ fun isIndexOutOfBounds(index: Int): Boolean {
 
 fun IPoint.hasCommonVectorWith(other: IPoint): Boolean = hasCommonVectorWith(other.row, other.col)
 
-fun IPoint.hasCommonVectorWith(other: IPoint, otherPieceType: PieceType): Boolean = hasCommonVectorWith(other.row, other.col, otherPieceType)
+fun IPoint.hasCommonVectorWith(other: IPoint, otherPieceType: PieceType): Boolean =
+    hasCommonVectorWith(other.row, other.col, otherPieceType)
 
 fun IPoint.hasCommonVectorWith(otherRow: Int, otherCol: Int): Boolean {
     return this.row == otherRow
@@ -94,3 +103,20 @@ fun IPoint.isBorderedWith(otherRow: Int, otherCol: Int): Boolean {
 }
 
 fun IPoint.isBorderedWith(other: IPoint) = isBorderedWith(other.row, other.col)
+
+fun checkBoardIndices(rowIndex: Int, columnIndex: Int) {
+    require(!isIndexOutOfBounds(rowIndex)) { "incorrect rowIndex=$rowIndex" }
+    require(!isIndexOutOfBounds(columnIndex)) { "incorrect columnIndex=$columnIndex" }
+}
+
+fun boardPoints(): Stream<Point> {
+    return IntStream.range(COMPRESSED_POINT_FIRST, COMPRESSED_POINT_LAST)
+        .mapToObj { Point.of(it) }
+}
+
+fun compressPoint(row: Int, col: Int): Int {
+    checkBoardIndices(row, col)
+    return (row shl COMPRESS_POINT_OFFSET) + col
+}
+
+fun IPoint.compressToInt() = compressPoint(this.row, this.col)

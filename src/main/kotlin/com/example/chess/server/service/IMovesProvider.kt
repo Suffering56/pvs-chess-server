@@ -2,7 +2,7 @@ package com.example.chess.server.service
 
 import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IGame
-import com.example.chess.shared.api.IPoint
+import com.example.chess.server.logic.IPoint
 import com.example.chess.shared.enums.Side
 
 /**

@@ -2,7 +2,6 @@ package com.example.chess.server.logic
 
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.logic.misc.toPrettyString
-import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.Side

@@ -35,6 +35,8 @@ class BotService @Autowired constructor(
     }
 
     private fun processBotMove(game: Game, botSide: Side, chessboard: IMutableChessboard) {
+//        chessboard.piecesStream(botSide)
+
         if (Side.nextTurnSide(game.position) == botSide) {
             applyFakeMove(game, chessboard)
         }
@@ -48,7 +50,7 @@ class BotService @Autowired constructor(
                 chessboard,
                 Move(
                     Point.of(6, col),
-                    Point.of(4, col),
+                    Point.of(5, col),
                     null
                 )
             )

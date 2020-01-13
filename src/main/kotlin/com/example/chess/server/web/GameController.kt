@@ -9,7 +9,7 @@ import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IChessboardProvider
 import com.example.chess.server.service.IGameService
-import com.example.chess.shared.api.IPoint
+import com.example.chess.server.logic.IPoint
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.MoveDTO

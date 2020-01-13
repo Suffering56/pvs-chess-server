@@ -7,7 +7,6 @@ import com.example.chess.shared.ArrayTable
 import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
-import com.example.chess.shared.api.IPoint
 import com.example.chess.shared.dto.CellDTO
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.PointDTO
@@ -16,6 +15,7 @@ import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.Side
 import java.util.*
 import java.util.stream.Collectors
+import java.util.stream.Stream
 import java.util.stream.StreamSupport
 
 /**
@@ -24,13 +24,31 @@ import java.util.stream.StreamSupport
  */
 open class Chessboard private constructor(
     override var position: Int,
-    private val matrix: ArrayTable<Piece?>,         //может все-таки Map<Point, Piece>?
+//    private val matrix: ArrayTable<Piece?>,                                 //может все-таки Map<Point, Piece>?
+    private val flatMatrix: Array<Piece?>,
     private val kingPoints: MutableMap<Side, Point>
 ) : IMutableChessboard {
 
+
+
+//    override fun cellsStream(side: Side): Stream<Cell> {
+//        return ChessUtils.boardPoints()
+//            .map {
+//                val piece = getPieceNullable(it)
+//                if (piece != null) {
+//                    Cell(it.row, it.col, piece)
+//                } else {
+//                    null
+//                }
+//            }
+//    }
+
     override fun getKingPoint(side: Side) = kingPoints[side]!!
 
-    override fun getPieceNullable(rowIndex: Int, columnIndex: Int) = matrix[rowIndex][columnIndex]
+    override fun getPieceNullable(rowIndex: Int, columnIndex: Int): Piece? {
+
+    }
+//    } matrix[rowIndex][columnIndex]
 
     override fun rollbackMove(move: IMove, additionalMove: IMove?, fallenPiece: Piece?) {
         val movedPiece = getPiece(move.to)
@@ -174,11 +192,12 @@ open class Chessboard private constructor(
         matrix[move.from.row][move.from.col] = Piece.of(moverSide.reverse(), PieceType.PAWN)
     }
 
+    //TODO
     override fun toDTO(): ChessboardDTO {
         val matrixDto = Array(BOARD_SIZE) row@{ rowIndex ->
-            val row = matrix[rowIndex]
+
             Array(BOARD_SIZE) cell@{ columnIndex ->
-                val piece = row[columnIndex]
+                val piece = getPieceNullable(rowIndex, columnIndex)
                 CellDTO(PointDTO(rowIndex, columnIndex), piece)
             }
         }
