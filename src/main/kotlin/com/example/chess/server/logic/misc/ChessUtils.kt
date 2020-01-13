@@ -19,9 +19,7 @@ import kotlin.math.abs
  */
 
 const val COMPRESS_POINT_OFFSET = 3
-
-const val COMPRESSED_POINT_FIRST = 0
-const val COMPRESSED_POINT_LAST = (Constants.BOARD_SIZE shl COMPRESS_POINT_OFFSET) - 1
+const val POINTS_POOL_SIZE = Constants.BOARD_SIZE shl COMPRESS_POINT_OFFSET
 
 private val columnNamesMap = mapOf(
     Pair(0, "h"),
@@ -110,7 +108,7 @@ fun checkBoardIndices(rowIndex: Int, columnIndex: Int) {
 }
 
 fun boardPoints(): Stream<Point> {
-    return IntStream.range(COMPRESSED_POINT_FIRST, COMPRESSED_POINT_LAST)
+    return IntStream.range(0, POINTS_POOL_SIZE)
         .mapToObj { Point.of(it) }
 }
 
@@ -119,4 +117,4 @@ fun compressPoint(row: Int, col: Int): Int {
     return (row shl COMPRESS_POINT_OFFSET) + col
 }
 
-fun IPoint.compressToInt() = compressPoint(this.row, this.col)
+fun IPoint.compress() = compressPoint(this.row, this.col)

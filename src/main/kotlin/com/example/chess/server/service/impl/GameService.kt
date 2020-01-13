@@ -2,9 +2,7 @@ package com.example.chess.server.service.impl
 
 import com.example.chess.server.entity.Game
 import com.example.chess.server.entity.provider.EntityProvider
-import com.example.chess.server.logic.IChessboard
-import com.example.chess.server.logic.IGame
-import com.example.chess.server.logic.IMutableChessboard
+import com.example.chess.server.logic.*
 import com.example.chess.server.logic.misc.isLongPawnMove
 import com.example.chess.server.logic.misc.isPawnTransformation
 import com.example.chess.server.logic.misc.toPrettyString
@@ -14,8 +12,6 @@ import com.example.chess.server.service.IGameService
 import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
-import com.example.chess.server.logic.IMove
-import com.example.chess.server.logic.IPoint
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.PieceType
@@ -133,26 +129,20 @@ class GameService @Autowired constructor(
         return saveGame(game)
     }
 
-    override fun getNextMoveChanges(game: Game, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO? {
-        val nextMoveHistory = historyRepository.findByGameIdAndPosition(game.id!!, chessboardPosition + 1)
+    override fun getNextMoveChanges(game: Game, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO {
+        val nextMoveHistory = historyRepository.findByGameIdAndPosition(game.id!!, chessboardPosition + 1)!!
 
-        nextMoveHistory?.let {
+        val chessboard = chessboardProvider.createChessboardForGame(game, chessboardPosition)
+        val move = nextMoveHistory.toMove()
 
-            val chessboard = chessboardProvider.createChessboardForGame(game, chessboardPosition)
-            val move = nextMoveHistory.toMove()
+        val additionalMove = chessboard.applyMove(move)
+        val isUnderCheck = movesProvider.isUnderCheck(prevMoveSide, chessboard)
 
-            val additionalMove = chessboard.applyMove(move)
-            val isUnderCheck = movesProvider.isUnderCheck(prevMoveSide, chessboard)
-
-            return ChangesDTO(
-                chessboard.position,
-                move.toDTO(),
-                additionalMove?.toDTO(),
-                if (isUnderCheck) chessboard.getKingPoint(prevMoveSide).toDTO() else null
-            )
-        }
-
-        // оппонент еще не совершил ход.
-        return null
+        return ChangesDTO(
+            chessboard.position,
+            move.toDTO(),
+            additionalMove?.toDTO(),
+            if (isUnderCheck) chessboard.getKingPoint(prevMoveSide).toDTO() else null
+        )
     }
 }

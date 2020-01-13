@@ -1,11 +1,7 @@
 package com.example.chess.server.service
 
 import com.example.chess.server.entity.Game
-import com.example.chess.server.logic.IChessboard
-import com.example.chess.server.logic.IGame
-import com.example.chess.server.logic.IMutableChessboard
-import com.example.chess.server.logic.IMove
-import com.example.chess.server.logic.IPoint
+import com.example.chess.server.logic.*
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
@@ -28,5 +24,5 @@ interface IGameService {
 
     fun rollback(game: Game, positionsOffset: Int): Game
 
-    fun getNextMoveChanges(game: Game, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO?
+    fun getNextMoveChanges(game: Game, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO
 }

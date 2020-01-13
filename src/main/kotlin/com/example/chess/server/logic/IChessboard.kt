@@ -1,10 +1,10 @@
 package com.example.chess.server.logic
 
-import com.example.chess.server.logic.misc.Point
-import com.example.chess.server.logic.misc.toPrettyString
+import com.example.chess.server.logic.misc.*
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.Side
+import java.util.stream.Stream
 
 /**
  * @author v.peschaniy
@@ -14,20 +14,33 @@ interface IChessboard {
 
     val position: Int
 
-    fun getPieceNullable(rowIndex: Int, columnIndex: Int): Piece?
+    fun getPieceNullable(compressedPoint: Int): Piece?
+
+    fun getPieceNullable(rowIndex: Int, columnIndex: Int): Piece? {
+        val index = compressPoint(rowIndex, columnIndex)
+        return getPieceNullable(index)
+    }
+
+    fun getPieceNullable(point: IPoint) = getPieceNullable(point.compress())
+
+    fun getPiece(compressedPoint: Int): Piece = requireNotNull(getPieceNullable(compressedPoint)) {
+        "piece on position=[${Point.of(compressedPoint).toPrettyString()}] cannot be null:\r\n${toPrettyString()}"
+    }
+
+    fun getPiece(rowIndex: Int, columnIndex: Int): Piece {
+        val index = compressPoint(rowIndex, columnIndex)
+        return getPiece(index)
+    }
+
+    fun getPiece(point: IPoint): Piece = getPiece(point.compress())
+
+    fun cellsStream(side: Side): Stream<Cell>
+
+    fun getKingPoint(side: Side): IPoint
 
     fun toDTO(): ChessboardDTO
 
     fun toPrettyString(): String
 
-    //default
-    fun getPieceNullable(point: IPoint) = getPieceNullable(point.row, point.col)
-
-    fun getPiece(point: IPoint) = getPiece(point.row, point.col)
-
-    fun getPiece(rowIndex: Int, columnIndex: Int) = requireNotNull(getPieceNullable(rowIndex, columnIndex)) {
-        "piece on position=[${Point.of(rowIndex, columnIndex).toPrettyString()}] cannot be null:\r\n${toPrettyString()}"
-    }
-
-    fun getKingPoint(side: Side): IPoint
+    fun copyOf(): IMutableChessboard
 }

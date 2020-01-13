@@ -4,12 +4,12 @@ import com.example.chess.server.core.Authorized
 import com.example.chess.server.core.InjectGame
 import com.example.chess.server.core.InjectUserId
 import com.example.chess.server.entity.Game
+import com.example.chess.server.logic.IPoint
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IChessboardProvider
 import com.example.chess.server.service.IGameService
-import com.example.chess.server.logic.IPoint
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.MoveDTO
@@ -91,12 +91,28 @@ class GameController @Autowired constructor(
     @PostMapping("/rollback")
     fun rollbackMoves(
         @InjectGame game: Game,
+        @InjectUserId userId: String,
         @RequestParam("positionsOffset") positionsOffset: Int
     ): ChessboardDTO {
         require(positionsOffset > 0) { "position offset must be positive" }
 
+        println("game.position = ${game.position}")
+
         val rollbackGame = gameService.rollback(game, positionsOffset)
-        return chessboardProvider.createChessboardForGame(rollbackGame).toDTO()
+        val chessboard = chessboardProvider.createChessboardForGame(rollbackGame)
+//        botService.cancelBotMove(game)
+
+        if (game.mode == GameMode.AI) {
+            val botSide = game.getUserSide(userId)!!.reverse()
+
+            if (botSide == Side.nextTurnSide(chessboard.position)) {
+                Thread {
+                    Thread.sleep(3000)
+                    botService.fireBotMove(game, botSide, chessboard.copyOf())
+                }.start()
+            }
+        }
+        return chessboard.toDTO()
     }
 
     /**
@@ -108,15 +124,19 @@ class GameController @Autowired constructor(
     fun listenOpponentChanges(
         @InjectGame game: Game,
         @InjectUserId userId: String,
-        @RequestParam("chessboardPosition") chessboardPosition: Int
+        @RequestParam("clientPosition") clientPosition: Int
     ): ChangesDTO {
+
+        if (game.position <= clientPosition) {
+            return ChangesDTO.EMPTY
+        }
 
         val userSide = game.getUserSide(userId)!!
 
-        check(Side.nextTurnSide(chessboardPosition) == userSide.reverse()) {
-            "incorrect chessboardPosition: $chessboardPosition, because it is not equals with next turn(opponent move) side : ${userSide.reverse()}"
+        check(Side.nextTurnSide(clientPosition) == userSide.reverse()) {
+            "incorrect clientPosition: $clientPosition, because it is not equals with next turn(opponent move) side : ${userSide.reverse()}"
         }
 
-        return gameService.getNextMoveChanges(game, userSide, chessboardPosition) ?: ChangesDTO.EMPTY
+        return gameService.getNextMoveChanges(game, userSide, clientPosition)
     }
 }

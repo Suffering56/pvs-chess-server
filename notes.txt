@@ -12,10 +12,14 @@
 + CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
 + client: opponent move listener
 
+- fireBotMove: make async with delay
+- botService.cancelByRollback
+
 - move cost support:
     - moves tree
     -
 
+- onServerRunning: fire bot move
 - available moves tree viewer support
 - тесты для Chessboard, MovesProvider
 

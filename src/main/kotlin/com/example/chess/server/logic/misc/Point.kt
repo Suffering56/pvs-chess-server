@@ -51,7 +51,7 @@ class Point private constructor(
     }
 
     override fun hashCode(): Int {
-        return this.compressToInt()
+        return this.compress()
     }
 
     override fun toString(): String {
