@@ -15,6 +15,7 @@ class App : CommandLineRunner {
     private val log = LoggerFactory.getLogger(javaClass)
 
     companion object {
+        const val DEBUG_ENABLED: Boolean = true
         fun getVersion() = "1.0.4"
     }
 

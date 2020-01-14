@@ -62,11 +62,7 @@ class InitController @Autowired constructor(
         @InjectUserId userId: String,
         @RequestParam("side") side: Side
     ): GameDTO {
-        val sideFeatures = game.getSideFeatures(side)
-
-        check(sideFeatures.userId == null) { "cannot set game mode, because it already taken by another player" }
-
-        sideFeatures.userId = userId
-        return gameService.saveGame(game).toDTO(userId)
+        return gameService.registerPlayer(userId, game.id!!, side)
+            .toDTO(userId)
     }
 }

@@ -1,12 +1,12 @@
 package com.example.chess.server.service.impl
 
 import com.example.chess.server.logic.IChessboard
-import com.example.chess.server.logic.IGame
+import com.example.chess.server.logic.IImmutableGame
+import com.example.chess.server.logic.IPoint
 import com.example.chess.server.logic.misc.*
 import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
-import com.example.chess.server.logic.IPoint
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.PieceType.*
@@ -77,7 +77,7 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    override fun getAvailableMoves(pointFrom: IPoint, chessboard: IChessboard, game: IGame): Set<IPoint> {
+    override fun getAvailableMoves(pointFrom: IPoint, chessboard: IChessboard, game: IImmutableGame): Set<IPoint> {
         val context = MoveContext(game, chessboard, pointFrom)
         return getAvailableMoves(context)
     }
@@ -285,13 +285,11 @@ class MovesProvider : IMovesProvider {
         }
 
         // try add castling moves
-        val sideFeatures = ctx.game.getSideFeatures(ctx.sideFrom)
-
-        if (sideFeatures.longCastlingAvailable) {
+        if (ctx.game.isLongCastlingAvailable(ctx.sideFrom)) {
             tryAddCastlingMove(ctx, result, true)
         }
 
-        if (sideFeatures.shortCastlingAvailable) {
+        if (ctx.game.isShortCastlingAvailable(ctx.sideFrom)) {
             tryAddCastlingMove(ctx, result, false)
         }
 
@@ -477,7 +475,7 @@ class MovesProvider : IMovesProvider {
             return
         }
 
-        if (ctx.game.getSideFeatures(ctx.enemySide).pawnLongMoveColumnIndex != colTo) {
+        if (ctx.game.getPawnLongColumnIndex(ctx.enemySide) != colTo) {
             // плохая вертикаль
             return
         }
@@ -837,7 +835,7 @@ class MovesProvider : IMovesProvider {
     }
 
     private data class MoveContext(
-        val game: IGame,
+        val game: IImmutableGame,
         val chessboard: IChessboard,
         val pointFrom: IPoint,
         val pieceFrom: Piece = chessboard.getPiece(pointFrom),

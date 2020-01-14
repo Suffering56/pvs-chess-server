@@ -4,9 +4,9 @@ import com.example.chess.server.entity.ArrangementItem
 import com.example.chess.server.entity.Game
 import com.example.chess.server.entity.GameFeatures
 import com.example.chess.server.entity.HistoryItem
+import com.example.chess.server.logic.IMove
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.logic.misc.toPrettyString
-import com.example.chess.server.logic.IMove
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.Side
@@ -40,7 +40,7 @@ class EntityProvider {
             gameFeatures[Side.BLACK]?.disableCastling()
         }
 
-        game.registerUser(side, userId)
+        game.registerUser(userId, side)
         return game
     }
 

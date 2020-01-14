@@ -1,5 +1,6 @@
 package com.example.chess.server.service.impl
 
+import com.example.chess.server.App
 import com.example.chess.server.entity.Game
 import com.example.chess.server.entity.provider.EntityProvider
 import com.example.chess.server.logic.*
@@ -16,9 +17,16 @@ import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.Side
+import com.google.common.cache.CacheBuilder
+import com.google.common.cache.CacheLoader
+import com.google.common.cache.LoadingCache
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import javax.annotation.PostConstruct
 import kotlin.streams.toList
 
 /**
@@ -34,17 +42,56 @@ class GameService @Autowired constructor(
     private val chessboardProvider: ChessboardProvider
 ) : IGameService {
 
-    @Transactional
-    override fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean): Game {
-        return gameRepository.save(entityProvider.createNewGame(userId, mode, side, isConstructor))
+    @Value("\${cache_spec.game:expireAfterAccess=1h,maximumSize=100,recordStats}")
+    private lateinit var gameCacheSpec: String
+    private lateinit var gameCache: LoadingCache<Long, Game>
+
+    @PostConstruct
+    private fun init() {
+        gameCache = CacheBuilder.from(gameCacheSpec).build(
+            CacheLoader.from<Long, Game> { gameId ->
+                //TODO: очень важно, чтобы вес в кэше был настроен так, чтобы в приоритете
+                //  было время обращения(т.е. только что рефрешнутый элемент обязательно остался в кэше)
+                loadGameFromDatabase(gameId!!)
+            }
+        )
     }
 
     @Transactional
-    override fun saveGame(game: Game): Game {
-        return gameRepository.save(game)
+    override fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean): Game {
+        val game = gameRepository.save(entityProvider.createNewGame(userId, mode, side, isConstructor))
+
+        return gameCache.asMap().compute(game.id!!) { gameId, existedGame ->
+            require(existedGame == null) { "game(id=$gameId) already registered" }
+            game
+        }!!
+    }
+
+    @Transactional
+    override fun registerPlayer(userId: String, gameId: Long, side: Side, forced: Boolean): IImmutableGame {
+        return processGameSync(gameId) { game ->
+
+            if (!App.DEBUG_ENABLED || !forced) {
+                check(game.isSideEmpty(side)) { "cannot set game mode, because it already taken by another player" }
+            }
+            game.registerUser(userId, side)
+            gameRepository.save(game)
+        }
     }
 
     override fun findAndCheckGame(gameId: Long): Game {
+        return gameCache.getUnchecked(gameId)
+    }
+
+    private fun processGameSync(gameId: Long, processHandler: (Game) -> Unit): Game {
+        return gameCache.asMap().compute(gameId) { _, game ->
+            requireNotNull(game) { "Game with id=$gameId not found" }
+            processHandler.invoke(game)
+            game
+        }!!
+    }
+
+    private fun loadGameFromDatabase(gameId: Long): Game {
         return gameRepository.findById(gameId)
             .orElseThrow { IllegalArgumentException("Game with id=$gameId not found") }
     }
@@ -69,35 +116,36 @@ class GameService @Autowired constructor(
                     )}"
         }
 
-        val enemySide = piece.side.reverse()
-        val sideFeatures = game.getSideFeatures(piece.side)
-        val enemySideFeatures = game.getSideFeatures(enemySide)
+        val initiatorSide = piece.side
+        val enemySide = initiatorSide.reverse()
+//        val sideFeatures = game.getSideFeatures(piece.side)
+//        val enemySideFeatures = game.getSideFeatures(enemySide)
 
         val additionalMove = chessboard.applyMove(move)
-
         game.position = chessboard.position
+
         // очищаем стейт взятия на проходе, т.к. оно допустимо только в течении 1го раунда
-        sideFeatures.pawnLongMoveColumnIndex = null
+        game.setPawnLongMoveColumnIndex(initiatorSide, null)
 
         val underCheck = movesProvider.isUnderCheck(enemySide, chessboard)
-        sideFeatures.isUnderCheck =
-            false               // мы не можем сделать такой ход, после которого окажемся под шахом
-        enemySideFeatures.isUnderCheck = underCheck     // но наш ход, может причинить шах противнику
+        game.setUnderCheck(initiatorSide, false) // мы не можем сделать такой ход, после которого окажемся под шахом
+        game.setUnderCheck(enemySide, underCheck)           // но наш ход, может причинить шах противнику
 
         when (piece.type) {
             PieceType.KING -> {
-                sideFeatures.disableCastling()
+                game.disableLongCastling(initiatorSide)
+                game.disableShortCastling(initiatorSide)
             }
             PieceType.ROOK -> {
-                if (sideFeatures.longCastlingAvailable && move.from.col == ROOK_LONG_COLUMN_INDEX) {
-                    sideFeatures.longCastlingAvailable = false
-                } else if (sideFeatures.shortCastlingAvailable && move.from.col == ROOK_SHORT_COLUMN_INDEX) {
-                    sideFeatures.shortCastlingAvailable = false
+                if (move.from.col == ROOK_LONG_COLUMN_INDEX) {
+                    game.disableLongCastling(initiatorSide)
+                } else if (move.from.col == ROOK_SHORT_COLUMN_INDEX) {
+                    game.disableShortCastling(initiatorSide)
                 }
             }
             PieceType.PAWN -> {
                 if (move.isLongPawnMove(piece)) {
-                    sideFeatures.pawnLongMoveColumnIndex = move.from.col
+                    game.setPawnLongMoveColumnIndex(initiatorSide, move.from.col)
                 }
             }
             else -> {
@@ -126,7 +174,7 @@ class GameService @Autowired constructor(
         game.position = newPosition
         historyRepository.removeAllByGameIdAndPositionGreaterThan(game.id!!, newPosition)
 
-        return saveGame(game)
+        return gameRepository.save(game)
     }
 
     override fun getNextMoveChanges(game: Game, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO {
@@ -145,4 +193,98 @@ class GameService @Autowired constructor(
             if (isUnderCheck) chessboard.getKingPoint(prevMoveSide).toDTO() else null
         )
     }
+}
+
+data class GameWrapper(val gameId: Long)
+
+fun load(gameId: Long) = GameWrapper(gameId)
+
+fun main() {
+
+    val poolSize = 10
+    val executorService = Executors.newFixedThreadPool(poolSize)
+    val gameCacheSpec = "expireAfterAccess=2s,maximumSize=4,recordStats"
+
+    val gameCache = CacheBuilder.from(gameCacheSpec).build(
+        CacheLoader.from<Long, GameWrapper> { gameId ->
+            load(gameId!!)
+        }
+    )
+
+//    val map = ConcurrentHashMap<Long, GameWrapper>()
+    val map = gameCache.asMap()
+
+
+//    for (i in 0..poolSize) {
+//        executorService.submit {
+//            map.compute(10) { k, v ->
+//                println("k = ${k}")
+//                Thread.sleep(1000)
+//                println("v = ${v}")
+//                null
+//            }
+//        }
+//    }
+//
+
+    map.compute(1) { k, v ->
+        val game = v ?: load(k)
+
+        println("k1 = ${k}")
+        Thread.sleep(1000)
+        println("v1 = ${v}")
+        println("v1g = ${game}")
+        game
+    }
+
+//    gameCache.refresh(1)
+//    gameCache.refresh(2)
+//    gameCache.refresh(3)
+//    gameCache.refresh(4)
+
+//    executorService.submit {
+//        map.compute(1) { k, v ->
+//            println("k1 = ${k}")
+//            Thread.sleep(1000)
+//            println("v1 = ${v}")
+//            GameWrapper(1)
+//        }
+//    }
+//
+//    executorService.submit {
+//        map.compute(2) { k, v ->
+//            println("k2 = ${k}")
+//            println("v2 = ${v}")
+//            GameWrapper(2)
+//        }
+//    }
+//
+//    map.compute(3) { k, v ->
+//        println("k3 = ${k}")
+//        println("v3 = ${v}")
+//        GameWrapper(3)
+//    }
+//
+//    map.compute(4) { k, v ->
+//        println("k4 = ${k}")
+//        println("v4 = ${v}")
+//        GameWrapper(4)
+//    }
+
+    Thread.sleep(3300)
+
+
+    println("gameCache.get(1) = ${gameCache.get(1)}")
+    println("gameCache.get(1) = ${map.get(1)}")
+//    println("gameCache.get(2) = ${gameCache.get(2)}")
+//    println("gameCache.get(3) = ${gameCache.get(3)}")
+//    println("gameCache.get(4) = ${gameCache.get(4)}")
+
+    println("gameCache.size() = ${gameCache.size()}")
+
+    executorService.shutdown()
+    while (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+    }
+    println("end")
+
 }

@@ -33,11 +33,7 @@ class DebugController {
         @PathVariable("side") side: Side,
         @PathVariable("userId") userId: String
     ): GameDTO {
-
-        val game = gameService.findAndCheckGame(gameId)
-
-        //проставляем userId принудительно
-        game.registerUser(side, userId)
-        return gameService.saveGame(game).toDTO(userId)
+        return gameService.registerPlayer(userId, gameId, side, true)
+            .toDTO(userId)
     }
 }

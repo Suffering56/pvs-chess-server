@@ -10,7 +10,9 @@ import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
-import java.util.concurrent.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentMap
+import java.util.concurrent.Executors
 
 /**
  * @author v.peschaniy
@@ -23,7 +25,7 @@ class BotService @Autowired constructor(
 ) : IBotService {
 
     private val taskMap: ConcurrentMap<Long, InternalTask> = ConcurrentHashMap()
-    private val taskQueue: ConcurrentLinkedQueue<Long> = ConcurrentLinkedQueue()
+    private val threadPool = Executors.newCachedThreadPool()
 
     internal data class InternalTask(
         val game: Game,
@@ -33,30 +35,32 @@ class BotService @Autowired constructor(
 
     override fun fireBotMoveSync(game: Game, botSide: Side, chessboard: IMutableChessboard) {
         taskMap.computeIfAbsent(game.id) {
-            InternalTask(game, botSide, chessboard)
+            processBotMove(game, botSide, chessboard)
+            null
         }
+    }
 
-        synchronized(game) {
-            if (processingGameIds.add(game.id!!)) {
-                try {
-                    processBotMove(game, botSide, chessboard)
-                } finally {
-                    processingGameIds.remove(game.id)
+    override fun fireBotMoveAsync(game: Game, botSide: Side, chessboard: IMutableChessboard, delay: Long) {
+        val gameId = game.id!!
+        taskMap.putIfAbsent(gameId, InternalTask(game, botSide, chessboard))
+
+        threadPool.submit {
+            Thread.sleep(delay)
+
+            taskMap.compute(gameId) { _, task ->
+                if (task != null) {
+                    processBotMove(task.game, task.botSide, task.chessboard)
                 }
+                null
             }
         }
     }
 
-    override fun fireBotMoveAsync(game: Game, botSide: Side, chessboard: IMutableChessboard) {
-        Thread {
-            Thread.sleep(3000)
-            fireBotMoveAsync(game, botSide, chessboard)
-        }
+    override fun cancelBotMove(gameId: Long): Boolean {
+        return taskMap.remove(gameId) != null
     }
 
     private fun processBotMove(game: Game, botSide: Side, chessboard: IMutableChessboard) {
-//        chessboard.piecesStream(botSide)
-
         if (Side.nextTurnSide(game.position) == botSide) {
             applyFakeMove(game, chessboard)
         }

@@ -59,6 +59,10 @@ class GameController @Autowired constructor(
         @InjectUserId userId: String,
         @RequestBody move: MoveDTO
     ): ChangesDTO {
+        if (game.mode == GameMode.AI) {
+            botService.cancelBotMove(game.id!!)
+        }
+
         val chessboard = chessboardProvider.createChessboardForGame(game)
         val changes = gameService.applyMove(game, chessboard, Move.of(move))
 
@@ -95,22 +99,18 @@ class GameController @Autowired constructor(
         @RequestParam("positionsOffset") positionsOffset: Int
     ): ChessboardDTO {
         require(positionsOffset > 0) { "position offset must be positive" }
-
         println("game.position = ${game.position}")
+
+        if (game.mode == GameMode.AI) {
+            botService.cancelBotMove(game.id!!)
+        }
 
         val rollbackGame = gameService.rollback(game, positionsOffset)
         val chessboard = chessboardProvider.createChessboardForGame(rollbackGame)
-//        botService.cancelBotMove(game)
 
         if (game.mode == GameMode.AI) {
             val botSide = game.getUserSide(userId)!!.reverse()
-
-            if (botSide == Side.nextTurnSide(chessboard.position)) {
-                Thread {
-                    Thread.sleep(3000)
-                    botService.fireBotMoveSync(game, botSide, chessboard.copyOf())
-                }.start()
-            }
+            botService.fireBotMoveAsync(game, botSide, chessboard.copyOf(), 3000)
         }
         return chessboard.toDTO()
     }

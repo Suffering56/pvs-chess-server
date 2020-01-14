@@ -14,7 +14,9 @@ interface IGameService {
 
     fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean = false): Game
 
-    fun saveGame(game: Game): Game
+    fun registerPlayer(userId: String, gameId: Long, side: Side, forced: Boolean = false): IImmutableGame
+
+//    fun saveGame(game: Game): Game
 
     fun findAndCheckGame(gameId: Long): Game
 

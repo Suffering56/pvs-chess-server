@@ -11,4 +11,8 @@ import com.example.chess.shared.enums.Side
 interface IBotService {
 
     fun fireBotMoveSync(game: Game, botSide: Side, chessboard: IMutableChessboard)
+
+    fun fireBotMoveAsync(game: Game, botSide: Side, chessboard: IMutableChessboard, delay: Long = 0)
+
+    fun cancelBotMove(gameId: Long): Boolean
 }

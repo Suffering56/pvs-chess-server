@@ -12,8 +12,13 @@
 + CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
 + client: opponent move listener
 
-- fireBotMove: make async with delay
-- botService.cancelByRollback
+- синхронизация
+    + fireBotMove: make async with delay
+    + botService.cancelByRollback
+
+    - game cache -> избавиться от @InjectGame etc;
+
+
 
 - move cost support:
     - moves tree
@@ -37,3 +42,9 @@
 - client: legend refactoring    (LayoutInflater)
 - client: drag and drop in chessboard view
 - client: надо как-то победить долгий первый вызов ретрофита
+
+
+game.save:
+    - gameService.rollback
+    - debugController.registerPlayerForced(setSide)
+    - initController.setSide

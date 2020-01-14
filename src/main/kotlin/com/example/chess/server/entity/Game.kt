@@ -21,16 +21,16 @@ data class Game(
         parameters = [org.hibernate.annotations.Parameter(name = "sequence", value = "game_id_seq")]
     )
     @GeneratedValue(generator = "game_id_seq")
-    val id: Long? = null,
+    override val id: Long? = null,
 
     @ColumnDefault("0")
     @Column(nullable = false)
-    var position: Int = 0,
+    override var position: Int = 0,
 
     @ColumnDefault("'UNSELECTED'")
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    val mode: GameMode = GameMode.UNSELECTED,
+    override val mode: GameMode = GameMode.UNSELECTED,
 
 
     /**
@@ -40,29 +40,61 @@ data class Game(
      */
     @ColumnDefault("0")
     @Column(nullable = false)
-    val initialPosition: Int = 0,
+    override val initialPosition: Int = 0,
 
     @OneToMany(mappedBy = "game", fetch = FetchType.EAGER, cascade = [CascadeType.ALL])
     @MapKey(name = "side")
     val featuresMap: Map<Side, GameFeatures> = emptyMap()
 ) : IGame {
 
-    override fun getSideFeatures(side: Side) = featuresMap.getValue(side)
+    private fun getSideFeatures(side: Side) = featuresMap.getValue(side)
 
-    fun isUserRegistered(userId: String): Boolean {
+    override fun isUserRegistered(userId: String): Boolean {
         return getUserSide(userId) != null
     }
 
-    fun registerUser(side: Side, userId: String) {
+    override fun isSideEmpty(side: Side): Boolean {
+        return getSideFeatures(side).userId == null
+    }
+
+    fun registerUser(userId: String, side: Side) {
         getSideFeatures(side).userId = userId
     }
 
-    fun getUserSide(userId: String): Side? {
+    override fun getUserSide(userId: String): Side? {
         return featuresMap.values.stream()
             .filter { it.userId == userId }
             .map { it.side }
             .findAny()
             .orElseGet(null)
+    }
+
+    override fun setPawnLongMoveColumnIndex(side: Side, index: Int?) {
+        getSideFeatures(side).pawnLongMoveColumnIndex = null
+    }
+
+    override fun setUnderCheck(side: Side, isUnderCheck: Boolean) {
+        getSideFeatures(side).isUnderCheck = isUnderCheck
+    }
+
+    override fun disableShortCastling(side: Side) {
+        getSideFeatures(side).shortCastlingAvailable = false
+    }
+
+    override fun disableLongCastling(side: Side) {
+        getSideFeatures(side).longCastlingAvailable = false
+    }
+
+    override fun isShortCastlingAvailable(side: Side): Boolean {
+        return getSideFeatures(side).shortCastlingAvailable
+    }
+
+    override fun isLongCastlingAvailable(side: Side): Boolean {
+        return getSideFeatures(side).longCastlingAvailable
+    }
+
+    override fun getPawnLongColumnIndex(side: Side): Int? {
+        return getSideFeatures(side).pawnLongMoveColumnIndex
     }
 
     /**
@@ -72,7 +104,7 @@ data class Game(
      * - side: на чьей стороне (side) сражается игрок с userId
      * - freeSide: сторону свободного слота (если таковой имеется) или null
      */
-    fun toDTO(userId: String): GameDTO {
+    override fun toDTO(userId: String): GameDTO {
         val userSide = requireNotNull(getUserSide(userId)) {
             "user with id: $userId was not register in current game(id=$id)"
         }
