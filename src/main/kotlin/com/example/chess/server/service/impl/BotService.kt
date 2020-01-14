@@ -10,7 +10,7 @@ import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
-import java.util.concurrent.ConcurrentSkipListSet
+import java.util.concurrent.*
 
 /**
  * @author v.peschaniy
@@ -22,15 +22,35 @@ class BotService @Autowired constructor(
     private val movesProvider: MovesProvider
 ) : IBotService {
 
-    var processingGameIds: MutableSet<Long> = ConcurrentSkipListSet()
+    private val taskMap: ConcurrentMap<Long, InternalTask> = ConcurrentHashMap()
+    private val taskQueue: ConcurrentLinkedQueue<Long> = ConcurrentLinkedQueue()
 
-    override fun fireBotMove(game: Game, botSide: Side, chessboard: IMutableChessboard) {
-        if (processingGameIds.add(game.id!!)) {
-            try {
-                processBotMove(game, botSide, chessboard)
-            } finally {
-                processingGameIds.remove(game.id)
+    internal data class InternalTask(
+        val game: Game,
+        val botSide: Side,
+        val chessboard: IMutableChessboard
+    )
+
+    override fun fireBotMoveSync(game: Game, botSide: Side, chessboard: IMutableChessboard) {
+        taskMap.computeIfAbsent(game.id) {
+            InternalTask(game, botSide, chessboard)
+        }
+
+        synchronized(game) {
+            if (processingGameIds.add(game.id!!)) {
+                try {
+                    processBotMove(game, botSide, chessboard)
+                } finally {
+                    processingGameIds.remove(game.id)
+                }
             }
+        }
+    }
+
+    override fun fireBotMoveAsync(game: Game, botSide: Side, chessboard: IMutableChessboard) {
+        Thread {
+            Thread.sleep(3000)
+            fireBotMoveAsync(game, botSide, chessboard)
         }
     }
 
@@ -57,3 +77,4 @@ class BotService @Autowired constructor(
         }
     }
 }
+

@@ -63,7 +63,7 @@ class GameController @Autowired constructor(
         val changes = gameService.applyMove(game, chessboard, Move.of(move))
 
         if (game.mode == GameMode.AI) {
-            botService.fireBotMove(game, game.getUserSide(userId)!!.reverse(), chessboard)
+            botService.fireBotMoveSync(game, game.getUserSide(userId)!!.reverse(), chessboard)
         }
         return changes
     }
@@ -82,7 +82,7 @@ class GameController @Autowired constructor(
             && game.getUserSide(userId) == Side.BLACK   //если null - значит это зритель -> а зритель не должен триггерить бота
         ) {
             //еще никто не ходил, а игрок(человек) играет за черных -> нужно пнуть бота, чтобы тот походил
-            botService.fireBotMove(game, game.getUserSide(userId)!!.reverse(), chessboard)
+            botService.fireBotMoveSync(game, game.getUserSide(userId)!!.reverse(), chessboard)
         }
         return chessboard.toDTO()
     }
@@ -108,7 +108,7 @@ class GameController @Autowired constructor(
             if (botSide == Side.nextTurnSide(chessboard.position)) {
                 Thread {
                     Thread.sleep(3000)
-                    botService.fireBotMove(game, botSide, chessboard.copyOf())
+                    botService.fireBotMoveSync(game, botSide, chessboard.copyOf())
                 }.start()
             }
         }
