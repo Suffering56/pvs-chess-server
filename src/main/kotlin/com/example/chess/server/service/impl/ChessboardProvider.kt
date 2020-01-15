@@ -2,7 +2,7 @@ package com.example.chess.server.service.impl
 
 import com.example.chess.server.entity.ArrangementItem
 import com.example.chess.server.logic.Chessboard
-import com.example.chess.server.logic.IMutableChessboard
+import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.repository.ArrangementRepository
 import com.example.chess.server.repository.HistoryRepository
@@ -23,7 +23,7 @@ class ChessboardProvider : IChessboardProvider {
     @Autowired
     private lateinit var arrangementRepository: ArrangementRepository
 
-    override fun createChessboardForGame(game: IUnmodifiableGame, position: Int): IMutableChessboard {
+    override fun createChessboardForGame(game: IUnmodifiableGame, position: Int): IChessboard {
         val gameId = requireGameId(game)
         val arrangement = if (game.initialPosition == 0) null
         else arrangementRepository.findAllByGameId(gameId)
@@ -39,7 +39,7 @@ class ChessboardProvider : IChessboardProvider {
         game: IUnmodifiableGame,
         position: Int,
         initialArrangement: Iterable<ArrangementItem>?
-    ): IMutableChessboard {
+    ): IChessboard {
 
         val gameId = requireGameId(game)
         val availablePositionsRange = Range.closed(0, game.position)

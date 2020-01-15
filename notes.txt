@@ -15,12 +15,24 @@
 - синхронизация
     + fireBotMove: make async with delay
     + botService.cancelByRollback
+    + game cache
+    + GameResult: val game, val T
+    + gameService.applyPlayerMove/applyBotMove
 
-    - game cache -> избавиться от @InjectGame etc;
-    - GameResult: val game, val T
+    - SessionManager?
+    - client: сделать защиту от слишком частых запросов на сервер
+    - флажок isProcessing в private applyMove (чтобы следующий applyMove не вставал в очередь а падал с ошибкой)
+
+    - избавиться от @InjectGame etc;
     - findAndCheckGame -> private
     - TODO: applyMove: check moverSide
 
+    - fireBotMove -> IBotEvent.fireMove
+        - IEventsMulticaster
+
+    - position: на каждый запрос сервер должен присылать актуальную позицию. если произошел рассинхрон,
+        игра должна уйти на релоад (continue game)
+    - chessboard (DebugCheckChessboardState?)
 
 
 - move cost support:
@@ -41,7 +53,7 @@
 - client: ListenOpponentChangesTask -> stop/start if visible changed
 - client:  ListenOpponentChangesTask -> @SuppressLint("StaticFieldLeak")
 
-- подумать об отвлавливании рассинхронов chessboard-ов
+
 - client: legend refactoring    (LayoutInflater)
 - client: drag and drop in chessboard view
 - client: надо как-то победить долгий первый вызов ретрофита

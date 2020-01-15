@@ -17,6 +17,8 @@ interface IUnmodifiableGame {
 
     fun getUserSide(userId: String): Side?
 
+    fun getAndCheckBotSide(): Side
+
     fun isShortCastlingAvailable(side: Side): Boolean
 
     fun isLongCastlingAvailable(side: Side): Boolean

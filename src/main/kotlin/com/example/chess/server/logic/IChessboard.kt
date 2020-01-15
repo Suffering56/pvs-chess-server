@@ -1,46 +1,27 @@
 package com.example.chess.server.logic
 
-import com.example.chess.server.logic.misc.*
-import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.enums.Piece
-import com.example.chess.shared.enums.Side
-import java.util.stream.Stream
 
 /**
  * @author v.peschaniy
  *      Date: 24.07.2019
  */
-interface IChessboard {
+interface IChessboard : IUnmodifiableChessboard {
 
-    val position: Int
+    /**
+     * Выполняет ход, перемещая фигуру из move.from в move.to
+     * Так же выполняет дополнительные операции с доской в случае если ход является рокировкой или взятием на проходе
+     *
+     * return ход, имитирующий дополнительную операцию, описанную выше, или null - если ход был простым
+     */
+    fun applyMove(move: IMove): IMove?
 
-    fun getPieceNullable(compressedPoint: Int): Piece?
-
-    fun getPieceNullable(rowIndex: Int, columnIndex: Int): Piece? {
-        val index = compressPoint(rowIndex, columnIndex)
-        return getPieceNullable(index)
-    }
-
-    fun getPieceNullable(point: IPoint) = getPieceNullable(point.compress())
-
-    fun getPiece(compressedPoint: Int): Piece = requireNotNull(getPieceNullable(compressedPoint)) {
-        "piece on position=[${Point.of(compressedPoint).toPrettyString()}] cannot be null:\r\n${toPrettyString()}"
-    }
-
-    fun getPiece(rowIndex: Int, columnIndex: Int): Piece {
-        val index = compressPoint(rowIndex, columnIndex)
-        return getPiece(index)
-    }
-
-    fun getPiece(point: IPoint): Piece = getPiece(point.compress())
-
-    fun cellsStream(side: Side): Stream<Cell>
-
-    fun getKingPoint(side: Side): IPoint
-
-    fun toDTO(): ChessboardDTO
-
-    fun toPrettyString(): String
-
-    fun copyOf(): IMutableChessboard
+    /**
+     * Откатывает выполненный ход, перемещая фигуру из move.to в move.from
+     * Так же выполняет дополнительные операции с доской в случае если move являлся рокировкой или взятием на проходе (additionalMove != null)
+     *
+     * @param fallenPiece - фигура, которая была срублена в результате выполнения move, или null - если никто не был срублен
+     * @param additionalMove - ход, имитирующий дополнительную операцию для рокировки и взятия на проходе
+     */
+    fun rollbackMove(move: IMove, additionalMove: IMove?, fallenPiece: Piece?)
 }

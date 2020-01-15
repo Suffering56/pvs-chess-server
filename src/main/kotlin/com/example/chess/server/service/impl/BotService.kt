@@ -1,7 +1,9 @@
 package com.example.chess.server.service.impl
 
-import com.example.chess.server.entity.Game
-import com.example.chess.server.logic.IMutableChessboard
+import com.example.chess.server.logic.IChessboard
+import com.example.chess.server.logic.IMove
+import com.example.chess.server.logic.IUnmodifiableChessboard
+import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
@@ -24,33 +26,32 @@ class BotService @Autowired constructor(
     private val movesProvider: MovesProvider
 ) : IBotService {
 
-    private val taskMap: ConcurrentMap<Long, InternalTask> = ConcurrentHashMap()
+    private val taskMap: ConcurrentMap<Long, Long?> = ConcurrentHashMap()
     private val threadPool = Executors.newCachedThreadPool()
 
-    internal data class InternalTask(
-        val game: Game,
-        val botSide: Side,
-        val chessboard: IMutableChessboard
-    )
+    //будет вызываться под локом игры
+    override fun invoke(game: IUnmodifiableGame, originalChessboard: IUnmodifiableChessboard): IMove {
+        val botSide = game.getAndCheckBotSide()
+        val chessboard = originalChessboard.copyOf()
 
-    override fun fireBotMoveSync(game: Game, botSide: Side, chessboard: IMutableChessboard) {
-        taskMap.computeIfAbsent(game.id) {
-            processBotMove(game, botSide, chessboard)
+        return createFakeMove(game, chessboard, botSide)
+    }
+
+    override fun fireBotMoveSync(gameId: Long) {
+        taskMap.computeIfAbsent(gameId) {
+            gameService.applyBotMove(gameId, this)
             null
         }
     }
 
-    override fun fireBotMoveAsync(game: Game, botSide: Side, chessboard: IMutableChessboard, delay: Long) {
-        val gameId = game.id!!
-        taskMap.putIfAbsent(gameId, InternalTask(game, botSide, chessboard))
+    override fun fireBotMoveAsync(gameId: Long, delay: Long) {
+        taskMap.putIfAbsent(gameId, gameId)
 
         threadPool.submit {
             Thread.sleep(delay)
 
-            taskMap.compute(gameId) { _, task ->
-                if (task != null) {
-                    processBotMove(task.game, task.botSide, task.chessboard)
-                }
+            taskMap.computeIfPresent(gameId) { _, deferredGameId ->
+                gameService.applyBotMove(deferredGameId, this)
                 null
             }
         }
@@ -60,25 +61,15 @@ class BotService @Autowired constructor(
         return taskMap.remove(gameId) != null
     }
 
-    private fun processBotMove(game: Game, botSide: Side, chessboard: IMutableChessboard) {
-        if (Side.nextTurnSide(game.position) == botSide) {
-            applyFakeMove(game, chessboard)
-        }
-    }
-
-    private fun applyFakeMove(game: Game, chessboard: IMutableChessboard) {
+    private fun createFakeMove(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {
         val col = (game.position / 2)
-        if (col < BOARD_SIZE) {
-            gameService.applyMove(
-                game.id!!,  //TODO
-                chessboard,
-                Move(
-                    Point.of(6, col),
-                    Point.of(5, col),
-                    null
-                )
-            )
-        }
+        check(col < BOARD_SIZE) { "game.position too large for this fake implementation" }
+
+        return Move(
+            Point.of(6, col),
+            Point.of(5, col),
+            null
+        )
     }
 }
 

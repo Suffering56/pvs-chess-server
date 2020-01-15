@@ -7,6 +7,7 @@ import com.example.chess.shared.enums.Side
 import org.hibernate.annotations.ColumnDefault
 import org.hibernate.annotations.GenericGenerator
 import javax.persistence.*
+import kotlin.streams.toList
 
 /**
  * @author v.peschaniy
@@ -95,6 +96,18 @@ data class Game(
 
     override fun getPawnLongColumnIndex(side: Side): Int? {
         return getSideFeatures(side).pawnLongMoveColumnIndex
+    }
+
+    override fun getAndCheckBotSide(): Side {
+        check(mode == GameMode.AI) { "wrong game mode. expected: AI, actual: $mode" }
+
+        val freeSides = featuresMap.values.stream()
+            .filter { it.userId == null }
+            .map { it.side }
+            .toList()
+
+        check(freeSides.size == 1) { "cannot get bot side. expected free slots count: 1, actual: ${freeSides.size}" }
+        return freeSides[0]
     }
 
     /**

@@ -49,6 +49,7 @@ class GameController @Autowired constructor(
         }
 
         return gameService.getMovesByPoint(gameId, chessboard, Point.of(rowIndex, columnIndex))
+            .result
             .stream()
             .map(IPoint::toDTO)
             .collect(Collectors.toSet())
@@ -63,22 +64,22 @@ class GameController @Autowired constructor(
         @RequestBody move: MoveDTO
     ): ChangesDTO {
         if (game.mode == GameMode.AI) {
-            botService.cancelBotMove(game.id!!)
+            botService.cancelBotMove(gameId)
         }
 
-        val chessboard = chessboardProvider.createChessboardForGame(game)
-        val changes = gameService.applyMove(gameId, chessboard, Move.of(move))
+        val result = gameService.applyPlayerMove(gameId, userId, Move.of(move))
 
         if (game.mode == GameMode.AI) {
-            botService.fireBotMoveSync(game, game.getUserSide(userId)!!.reverse(), chessboard)
+            botService.fireBotMoveSync(gameId)
         }
-        return changes
+        return result.result
     }
 
     @Authorized(false)
     @GetMapping("/chessboard")
     fun getChessboardByPosition(
         @InjectGame game: Game,
+        @InjectGameId gameId: Long,
         @InjectUserId userId: String,
         @RequestParam(required = false) position: Int?
     ): ChessboardDTO {
@@ -89,7 +90,7 @@ class GameController @Autowired constructor(
             && game.getUserSide(userId) == Side.BLACK   //если null - значит это зритель -> а зритель не должен триггерить бота
         ) {
             //еще никто не ходил, а игрок(человек) играет за черных -> нужно пнуть бота, чтобы тот походил
-            botService.fireBotMoveSync(game, game.getUserSide(userId)!!.reverse(), chessboard)
+            botService.fireBotMoveSync(gameId)
         }
         return chessboard.toDTO()
     }
@@ -113,8 +114,7 @@ class GameController @Autowired constructor(
         val chessboard = chessboardProvider.createChessboardForGame(rollbackGame)
 
         if (game.mode == GameMode.AI) {
-            val botSide = game.getUserSide(userId)!!.reverse()
-            botService.fireBotMoveAsync(game, botSide, chessboard.copyOf(), 3000)
+            botService.fireBotMoveAsync(gameId, 3000)
         }
         return chessboard.toDTO()
     }
@@ -142,6 +142,6 @@ class GameController @Autowired constructor(
             "incorrect clientPosition: $clientPosition, because it is not equals with next turn(opponent move) side : ${userSide.reverse()}"
         }
 
-        return gameService.getNextMoveChanges(gameId, userSide, clientPosition)
+        return gameService.listenChanges(gameId, userSide, clientPosition).result
     }
 }

@@ -1,7 +1,7 @@
 package com.example.chess.server.service
 
 import com.example.chess.server.entity.ArrangementItem
-import com.example.chess.server.logic.IMutableChessboard
+import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
 
 /**
@@ -10,11 +10,11 @@ import com.example.chess.server.logic.IUnmodifiableGame
  */
 interface IChessboardProvider {
 
-    fun createChessboardForGame(game: IUnmodifiableGame, position: Int = game.position): IMutableChessboard
+    fun createChessboardForGame(game: IUnmodifiableGame, position: Int = game.position): IChessboard
 
     fun createChessboardForGameWithArrangement(
         game: IUnmodifiableGame,
         position: Int,
         initialArrangement: Iterable<ArrangementItem>? = null
-    ): IMutableChessboard
+    ): IChessboard
 }

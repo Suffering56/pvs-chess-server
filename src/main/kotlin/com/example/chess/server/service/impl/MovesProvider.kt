@@ -1,6 +1,6 @@
 package com.example.chess.server.service.impl
 
-import com.example.chess.server.logic.IChessboard
+import com.example.chess.server.logic.IUnmodifiableChessboard
 import com.example.chess.server.logic.IPoint
 import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.*
@@ -77,12 +77,12 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    override fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IChessboard, pointFrom: IPoint): Set<IPoint> {
+    override fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: IPoint): Set<IPoint> {
         val context = MoveContext(game, chessboard, pointFrom)
         return getAvailableMoves(context)
     }
 
-    override fun isUnderCheck(kingSide: Side, chessboard: IChessboard): Boolean {
+    override fun isUnderCheck(kingSide: Side, chessboard: IUnmodifiableChessboard): Boolean {
         val kingPoint = chessboard.getKingPoint(kingSide)
         return findKingAttackers(kingPoint, kingSide, chessboard) != null
     }
@@ -114,7 +114,7 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    private fun findKingAttackers(kingPoint: IPoint, kingSide: Side, chessboard: IChessboard): Twin<IPoint>? {
+    private fun findKingAttackers(kingPoint: IPoint, kingSide: Side, chessboard: IUnmodifiableChessboard): Twin<IPoint>? {
         var result: Twin<IPoint>? = findVectorPieceThreatsToKing(kingPoint, kingSide, chessboard)
 
         if (result != null && result.two != null) {
@@ -714,7 +714,7 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    private fun findPawnThreatsToKing(kingPoint: IPoint, kingSide: Side, chessboard: IChessboard): Point? {
+    private fun findPawnThreatsToKing(kingPoint: IPoint, kingSide: Side, chessboard: IUnmodifiableChessboard): Point? {
         val rowOffset = kingSide.pawnRowDirection
         val enemySide = kingSide.reverse()
 
@@ -741,7 +741,7 @@ class MovesProvider : IMovesProvider {
         return null
     }
 
-    private fun findKnightThreatsToKing(kingPoint: IPoint, kingSide: Side, chessboard: IChessboard): Point? {
+    private fun findKnightThreatsToKing(kingPoint: IPoint, kingSide: Side, chessboard: IUnmodifiableChessboard): Point? {
         val enemySide = kingSide.reverse()
 
         for (offset in knightOffsets) {
@@ -762,7 +762,7 @@ class MovesProvider : IMovesProvider {
         return null
     }
 
-    private fun findVectorPieceThreatsToKing(kingPoint: IPoint, kingSide: Side, chessboard: IChessboard): Twin<IPoint>? {
+    private fun findVectorPieceThreatsToKing(kingPoint: IPoint, kingSide: Side, chessboard: IUnmodifiableChessboard): Twin<IPoint>? {
         var result: Twin<IPoint>? = null
 
         val allPossibleAttackerVectors = pieceVectorsMap[QUEEN]!!
@@ -798,7 +798,7 @@ class MovesProvider : IMovesProvider {
         rowDirection: Int,
         colDirection: Int,
         sourcePoint: IPoint,
-        chessboard: IChessboard
+        chessboard: IUnmodifiableChessboard
     ): Point? {
         var row: Int = sourcePoint.row
         var col: Int = sourcePoint.col
@@ -836,7 +836,7 @@ class MovesProvider : IMovesProvider {
 
     private data class MoveContext(
         val game: IUnmodifiableGame,
-        val chessboard: IChessboard,
+        val chessboard: IUnmodifiableChessboard,
         val pointFrom: IPoint,
         val pieceFrom: Piece = chessboard.getPiece(pointFrom),
         val sideFrom: Side = pieceFrom.side,

@@ -1,18 +1,18 @@
 package com.example.chess.server.service
 
-import com.example.chess.server.entity.Game
-import com.example.chess.server.logic.IMutableChessboard
-import com.example.chess.shared.enums.Side
+import com.example.chess.server.logic.IMove
+import com.example.chess.server.logic.IUnmodifiableChessboard
+import com.example.chess.server.logic.IUnmodifiableGame
 
 /**
  * @author v.peschaniy
  *      Date: 22.07.2019
  */
-interface IBotService {
+interface IBotService : (IUnmodifiableGame, IUnmodifiableChessboard) -> IMove {
 
-    fun fireBotMoveSync(game: Game, botSide: Side, chessboard: IMutableChessboard)
+    fun fireBotMoveSync(gameId: Long)
 
-    fun fireBotMoveAsync(game: Game, botSide: Side, chessboard: IMutableChessboard, delay: Long = 0)
+    fun fireBotMoveAsync(gameId: Long, delay: Long)
 
     fun cancelBotMove(gameId: Long): Boolean
 }

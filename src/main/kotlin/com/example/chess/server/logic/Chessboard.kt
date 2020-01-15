@@ -26,7 +26,7 @@ open class Chessboard private constructor(
     override var position: Int,
     private val flatMatrix: Array<Piece?>,
     private val kingPoints: MutableMap<Side, Point>
-) : IMutableChessboard {
+) : IChessboard {
 
     override fun getPieceNullable(compressedPoint: Int): Piece? = flatMatrix[compressedPoint]
 
@@ -206,7 +206,7 @@ open class Chessboard private constructor(
         return ChessboardDTO(position, matrixDto, null, null)
     }
 
-    override fun copyOf(): IMutableChessboard = Chessboard(position, flatMatrix.copyOf(), EnumMap(kingPoints))
+    override fun copyOf(): IChessboard = Chessboard(position, flatMatrix.copyOf(), EnumMap(kingPoints))
 
     companion object {
 
