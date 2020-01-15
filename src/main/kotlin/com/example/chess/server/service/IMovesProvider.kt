@@ -1,8 +1,8 @@
 package com.example.chess.server.service
 
 import com.example.chess.server.logic.IChessboard
-import com.example.chess.server.logic.IImmutableGame
 import com.example.chess.server.logic.IPoint
+import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.shared.enums.Side
 
 /**
@@ -11,7 +11,7 @@ import com.example.chess.shared.enums.Side
  */
 interface IMovesProvider {
 
-    fun getAvailableMoves(pointFrom: IPoint, chessboard: IChessboard, game: IImmutableGame): Set<IPoint>
+    fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IChessboard, pointFrom: IPoint): Set<IPoint>
 
     fun isUnderCheck(kingSide: Side, chessboard: IChessboard): Boolean
 }

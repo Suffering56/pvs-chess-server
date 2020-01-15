@@ -17,6 +17,9 @@
     + botService.cancelByRollback
 
     - game cache -> избавиться от @InjectGame etc;
+    - GameResult: val game, val T
+    - findAndCheckGame -> private
+    - TODO: applyMove: check moverSide
 
 
 

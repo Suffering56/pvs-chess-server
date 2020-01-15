@@ -1,6 +1,5 @@
 package com.example.chess.server.service
 
-import com.example.chess.server.entity.Game
 import com.example.chess.server.logic.*
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.enums.GameMode
@@ -12,19 +11,17 @@ import com.example.chess.shared.enums.Side
  */
 interface IGameService {
 
-    fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean = false): Game
+    fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean = false): IUnmodifiableGame
 
-    fun registerPlayer(userId: String, gameId: Long, side: Side, forced: Boolean = false): IImmutableGame
+    fun registerPlayer(userId: String, gameId: Long, side: Side, forced: Boolean = false): IUnmodifiableGame
 
-//    fun saveGame(game: Game): Game
+    fun findAndCheckGame(gameId: Long): IUnmodifiableGame
 
-    fun findAndCheckGame(gameId: Long): Game
+    fun getMovesByPoint(gameId: Long, chessboard: IChessboard, point: IPoint): Set<IPoint>
 
-    fun getMovesByPoint(game: IGame, chessboard: IChessboard, point: IPoint): Set<IPoint>
+    fun applyMove(gameId: Long, chessboard: IMutableChessboard, move: IMove): ChangesDTO
 
-    fun applyMove(game: Game, chessboard: IMutableChessboard, move: IMove): ChangesDTO
+    fun rollback(gameId: Long, positionsOffset: Int): IUnmodifiableGame
 
-    fun rollback(game: Game, positionsOffset: Int): Game
-
-    fun getNextMoveChanges(game: Game, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO
+    fun getNextMoveChanges(gameId: Long, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO
 }

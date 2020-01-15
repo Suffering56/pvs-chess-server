@@ -1,7 +1,7 @@
 package com.example.chess.server.service.impl
 
-import com.example.chess.server.entity.Game
 import com.example.chess.server.entity.provider.EntityProvider
+import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.repository.ArrangementRepository
 import com.example.chess.server.service.IConstructorService
@@ -21,7 +21,7 @@ class ConstructorService @Autowired constructor(
     private val movesProvider: MovesProvider
 ) : IConstructorService {
 
-    override fun initArrangement(game: Game, side: Side, clientChessboard: ChessboardDTO): ConstructorGameDTO {
+    override fun initArrangement(game: IUnmodifiableGame, side: Side, clientChessboard: ChessboardDTO): ConstructorGameDTO {
         validate(clientChessboard)
 
         val arrangement = Arrays.stream(clientChessboard.matrix)

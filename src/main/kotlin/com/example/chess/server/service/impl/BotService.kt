@@ -70,7 +70,7 @@ class BotService @Autowired constructor(
         val col = (game.position / 2)
         if (col < BOARD_SIZE) {
             gameService.applyMove(
-                game,
+                game.id!!,  //TODO
                 chessboard,
                 Move(
                     Point.of(6, col),

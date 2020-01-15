@@ -50,15 +50,13 @@ class GameService @Autowired constructor(
     private fun init() {
         gameCache = CacheBuilder.from(gameCacheSpec).build(
             CacheLoader.from<Long, Game> { gameId ->
-                //TODO: очень важно, чтобы вес в кэше был настроен так, чтобы в приоритете
-                //  было время обращения(т.е. только что рефрешнутый элемент обязательно остался в кэше)
                 loadGameFromDatabase(gameId!!)
             }
         )
     }
 
     @Transactional
-    override fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean): Game {
+    override fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean): IUnmodifiableGame {
         val game = gameRepository.save(entityProvider.createNewGame(userId, mode, side, isConstructor))
 
         return gameCache.asMap().compute(game.id!!) { gameId, existedGame ->
@@ -68,117 +66,105 @@ class GameService @Autowired constructor(
     }
 
     @Transactional
-    override fun registerPlayer(userId: String, gameId: Long, side: Side, forced: Boolean): IImmutableGame {
-        return processGameSync(gameId) { game ->
+    override fun registerPlayer(userId: String, gameId: Long, side: Side, forced: Boolean): IUnmodifiableGame {
+        return updateGameSync(gameId) { game ->
 
             if (!App.DEBUG_ENABLED || !forced) {
                 check(game.isSideEmpty(side)) { "cannot set game mode, because it already taken by another player" }
             }
             game.registerUser(userId, side)
-            gameRepository.save(game)
         }
     }
 
-    override fun findAndCheckGame(gameId: Long): Game {
+    override fun findAndCheckGame(gameId: Long): IUnmodifiableGame {
         return gameCache.getUnchecked(gameId)
     }
 
-    private fun processGameSync(gameId: Long, processHandler: (Game) -> Unit): Game {
-        return gameCache.asMap().compute(gameId) { _, game ->
-            requireNotNull(game) { "Game with id=$gameId not found" }
-            processHandler.invoke(game)
-            game
-        }!!
-    }
-
-    private fun loadGameFromDatabase(gameId: Long): Game {
-        return gameRepository.findById(gameId)
-            .orElseThrow { IllegalArgumentException("Game with id=$gameId not found") }
-    }
-
-    override fun getMovesByPoint(game: IGame, chessboard: IChessboard, point: IPoint): Set<IPoint> {
-        return movesProvider.getAvailableMoves(point, chessboard, game)
+    override fun getMovesByPoint(gameId: Long, chessboard: IChessboard, point: IPoint): Set<IPoint> {
+        val game = findAndCheckGame(gameId)
+        return movesProvider.getAvailableMoves(game, chessboard, point)
     }
 
     @Transactional
-    override fun applyMove(game: Game, chessboard: IMutableChessboard, move: IMove): ChangesDTO {
-        val piece = chessboard.getPiece(move.from)
-        val availableMoves = getMovesByPoint(game, chessboard, move.from)
+    override fun applyMove(gameId: Long, chessboard: IMutableChessboard, move: IMove): ChangesDTO {
+        return updateGameSyncWithResult(gameId) { game ->
 
-        require(availableMoves.contains(move.to)) {
-            "cannot execute move=${move.toPrettyString(piece)}, because it not contains in available moves set: ${availableMoves.stream().map { it.toPrettyString() }.toList()}"
-        }
+            val piece = chessboard.getPiece(move.from)
+            val availableMoves = movesProvider.getAvailableMoves(game, chessboard, move.from)
 
-        require(move.isPawnTransformation(piece) == (move.pawnTransformationPiece != null)) {
-            "incorrect pawn transformation piece: ${move.pawnTransformationPiece}, expected: " +
-                    "${move.pawnTransformationPiece?.let { "null" } ?: "not null"}, for move: ${move.toPrettyString(
-                        piece
-                    )}"
-        }
-
-        val initiatorSide = piece.side
-        val enemySide = initiatorSide.reverse()
-//        val sideFeatures = game.getSideFeatures(piece.side)
-//        val enemySideFeatures = game.getSideFeatures(enemySide)
-
-        val additionalMove = chessboard.applyMove(move)
-        game.position = chessboard.position
-
-        // очищаем стейт взятия на проходе, т.к. оно допустимо только в течении 1го раунда
-        game.setPawnLongMoveColumnIndex(initiatorSide, null)
-
-        val underCheck = movesProvider.isUnderCheck(enemySide, chessboard)
-        game.setUnderCheck(initiatorSide, false) // мы не можем сделать такой ход, после которого окажемся под шахом
-        game.setUnderCheck(enemySide, underCheck)           // но наш ход, может причинить шах противнику
-
-        when (piece.type) {
-            PieceType.KING -> {
-                game.disableLongCastling(initiatorSide)
-                game.disableShortCastling(initiatorSide)
+            require(availableMoves.contains(move.to)) {
+                "cannot execute move=${move.toPrettyString(piece)}, because it not contains in available moves set: " +
+                        "${availableMoves.stream().map { it.toPrettyString() }.toList()}"
             }
-            PieceType.ROOK -> {
-                if (move.from.col == ROOK_LONG_COLUMN_INDEX) {
+
+            require(move.isPawnTransformation(piece) == (move.pawnTransformationPiece != null)) {
+                "incorrect pawn transformation piece: ${move.pawnTransformationPiece}, expected: " +
+                        "${move.pawnTransformationPiece?.let { "null" } ?: "not null"}, for move: ${move.toPrettyString(
+                            piece
+                        )}"
+            }
+
+            val initiatorSide = piece.side
+            val enemySide = initiatorSide.reverse()
+
+            val additionalMove = chessboard.applyMove(move)
+            game.position = chessboard.position
+
+            // очищаем стейт взятия на проходе, т.к. оно допустимо только в течении 1го раунда
+            game.setPawnLongMoveColumnIndex(initiatorSide, null)
+
+            val underCheck = movesProvider.isUnderCheck(enemySide, chessboard)
+            game.setUnderCheck(initiatorSide, false)    // мы не можем сделать такой ход, после которого окажемся под шахом
+            game.setUnderCheck(enemySide, underCheck)               // но наш ход, может причинить шах противнику
+
+            when (piece.type) {
+                PieceType.KING -> {
                     game.disableLongCastling(initiatorSide)
-                } else if (move.from.col == ROOK_SHORT_COLUMN_INDEX) {
                     game.disableShortCastling(initiatorSide)
                 }
-            }
-            PieceType.PAWN -> {
-                if (move.isLongPawnMove(piece)) {
-                    game.setPawnLongMoveColumnIndex(initiatorSide, move.from.col)
+                PieceType.ROOK -> {
+                    if (move.from.col == ROOK_LONG_COLUMN_INDEX) {
+                        game.disableLongCastling(initiatorSide)
+                    } else if (move.from.col == ROOK_SHORT_COLUMN_INDEX) {
+                        game.disableShortCastling(initiatorSide)
+                    }
+                }
+                PieceType.PAWN -> {
+                    if (move.isLongPawnMove(piece)) {
+                        game.setPawnLongMoveColumnIndex(initiatorSide, move.from.col)
+                    }
+                }
+                else -> {
+                    //do nothing
                 }
             }
-            else -> {
-                //do nothing
-            }
+
+            val historyItem = entityProvider.createHistoryItem(game.id!!, chessboard.position, move, piece)
+            historyRepository.save(historyItem)
+
+            ChangesDTO(
+                chessboard.position,
+                move.toDTO(),
+                additionalMove?.toDTO(),
+                if (!underCheck) null else chessboard.getKingPoint(enemySide).toDTO()
+            )
         }
-
-        val historyItem = entityProvider.createHistoryItem(game.id!!, chessboard.position, move, piece)
-
-        gameRepository.save(game)   //sideFeatures сохранится вместе с game
-        historyRepository.save(historyItem)
-
-        return ChangesDTO(
-            chessboard.position,
-            move.toDTO(),
-            additionalMove?.toDTO(),
-            if (!underCheck) null else chessboard.getKingPoint(enemySide).toDTO()
-        )
     }
 
     @Transactional
-    override fun rollback(game: Game, positionsOffset: Int): Game {
-        val newPosition = game.position - positionsOffset
-        require(newPosition >= 0) { "position offset is too large" }
+    override fun rollback(gameId: Long, positionsOffset: Int): IUnmodifiableGame {
+        return updateGameSync(gameId) { game ->
+            val newPosition = game.position - positionsOffset
+            require(newPosition >= 0) { "position offset is too large" }
 
-        game.position = newPosition
-        historyRepository.removeAllByGameIdAndPositionGreaterThan(game.id!!, newPosition)
-
-        return gameRepository.save(game)
+            game.position = newPosition
+            historyRepository.removeAllByGameIdAndPositionGreaterThan(game.id!!, newPosition)
+        }
     }
 
-    override fun getNextMoveChanges(game: Game, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO {
-        val nextMoveHistory = historyRepository.findByGameIdAndPosition(game.id!!, chessboardPosition + 1)!!
+    override fun getNextMoveChanges(gameId: Long, prevMoveSide: Side, chessboardPosition: Int): ChangesDTO {
+        val game = findAndCheckGame(gameId)
+        val nextMoveHistory = historyRepository.findByGameIdAndPosition(gameId, chessboardPosition + 1)!!
 
         val chessboard = chessboardProvider.createChessboardForGame(game, chessboardPosition)
         val move = nextMoveHistory.toMove()
@@ -192,6 +178,33 @@ class GameService @Autowired constructor(
             additionalMove?.toDTO(),
             if (isUnderCheck) chessboard.getKingPoint(prevMoveSide).toDTO() else null
         )
+    }
+
+    private fun updateGameSync(gameId: Long, processHandler: (Game) -> Unit): Game {
+        return gameCache.asMap().compute(gameId) { _, cachedGame ->
+            val game = cachedGame ?: loadGameFromDatabase(gameId)
+            processHandler.invoke(game)
+
+            gameRepository.save(game)
+        }!!
+    }
+
+    private fun <T> updateGameSyncWithResult(gameId: Long, processHandler: (Game) -> T): T {
+        var result: T? = null
+
+        gameCache.asMap().compute(gameId) { _, cachedGame ->
+            val game = cachedGame ?: loadGameFromDatabase(gameId)
+            result = processHandler.invoke(game)
+
+            gameRepository.save(game)
+        }
+
+        return result!!
+    }
+
+    private fun loadGameFromDatabase(gameId: Long): Game {
+        return gameRepository.findById(gameId)
+            .orElseThrow { IllegalArgumentException("Game with id=$gameId not found") }
     }
 }
 

@@ -1,8 +1,8 @@
 package com.example.chess.server.service.impl
 
 import com.example.chess.server.logic.IChessboard
-import com.example.chess.server.logic.IImmutableGame
 import com.example.chess.server.logic.IPoint
+import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.*
 import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
@@ -77,7 +77,7 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    override fun getAvailableMoves(pointFrom: IPoint, chessboard: IChessboard, game: IImmutableGame): Set<IPoint> {
+    override fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IChessboard, pointFrom: IPoint): Set<IPoint> {
         val context = MoveContext(game, chessboard, pointFrom)
         return getAvailableMoves(context)
     }
@@ -835,7 +835,7 @@ class MovesProvider : IMovesProvider {
     }
 
     private data class MoveContext(
-        val game: IImmutableGame,
+        val game: IUnmodifiableGame,
         val chessboard: IChessboard,
         val pointFrom: IPoint,
         val pieceFrom: Piece = chessboard.getPiece(pointFrom),

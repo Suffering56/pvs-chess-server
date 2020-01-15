@@ -1,9 +1,8 @@
 package com.example.chess.server.logic
 
-import com.example.chess.server.entity.GameFeatures
 import com.example.chess.shared.enums.Side
 
-interface IGame : IImmutableGame {
+interface IGame : IUnmodifiableGame {
 
 //    fun getSideFeatures(side: Side): GameFeatures
 

@@ -4,7 +4,7 @@ import com.example.chess.shared.dto.GameDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
 
-interface IImmutableGame {
+interface IUnmodifiableGame {
 
     val id: Long?
     val position: Int

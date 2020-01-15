@@ -1,9 +1,9 @@
 package com.example.chess.server.service.impl
 
 import com.example.chess.server.entity.ArrangementItem
-import com.example.chess.server.entity.Game
 import com.example.chess.server.logic.Chessboard
 import com.example.chess.server.logic.IMutableChessboard
+import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.repository.ArrangementRepository
 import com.example.chess.server.repository.HistoryRepository
 import com.example.chess.server.service.IChessboardProvider
@@ -23,7 +23,7 @@ class ChessboardProvider : IChessboardProvider {
     @Autowired
     private lateinit var arrangementRepository: ArrangementRepository
 
-    override fun createChessboardForGame(game: Game, position: Int): IMutableChessboard {
+    override fun createChessboardForGame(game: IUnmodifiableGame, position: Int): IMutableChessboard {
         val gameId = requireGameId(game)
         val arrangement = if (game.initialPosition == 0) null
         else arrangementRepository.findAllByGameId(gameId)
@@ -36,7 +36,7 @@ class ChessboardProvider : IChessboardProvider {
     }
 
     override fun createChessboardForGameWithArrangement(
-        game: Game,
+        game: IUnmodifiableGame,
         position: Int,
         initialArrangement: Iterable<ArrangementItem>?
     ): IMutableChessboard {
@@ -55,5 +55,5 @@ class ChessboardProvider : IChessboardProvider {
         return Chessboard.create(game.initialPosition, history.asSequence(), initialArrangement)
     }
 
-    private fun requireGameId(game: Game) = requireNotNull(game.id) { "game.id is not presented, but required" }
+    private fun requireGameId(game: IUnmodifiableGame) = requireNotNull(game.id) { "game.id is not presented, but required" }
 }

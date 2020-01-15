@@ -2,6 +2,7 @@ package com.example.chess.server.web
 
 import com.example.chess.server.core.Authorized
 import com.example.chess.server.core.InjectGame
+import com.example.chess.server.core.InjectGameId
 import com.example.chess.server.core.InjectUserId
 import com.example.chess.server.entity.Game
 import com.example.chess.server.service.IConstructorService

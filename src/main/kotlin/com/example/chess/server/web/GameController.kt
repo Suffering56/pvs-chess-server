@@ -2,6 +2,7 @@ package com.example.chess.server.web
 
 import com.example.chess.server.core.Authorized
 import com.example.chess.server.core.InjectGame
+import com.example.chess.server.core.InjectGameId
 import com.example.chess.server.core.InjectUserId
 import com.example.chess.server.entity.Game
 import com.example.chess.server.logic.IPoint
@@ -36,6 +37,7 @@ class GameController @Autowired constructor(
     @GetMapping("/moves")
     fun getAvailableMoves(
         @InjectGame game: Game,
+        @InjectGameId gameId: Long,
         @RequestParam rowIndex: Int,
         @RequestParam columnIndex: Int
     ): Set<PointDTO> {
@@ -46,7 +48,7 @@ class GameController @Autowired constructor(
                     "found: ${chessboard.getPiece(rowIndex, columnIndex).side}"
         }
 
-        return gameService.getMovesByPoint(game, chessboard, Point.of(rowIndex, columnIndex))
+        return gameService.getMovesByPoint(gameId, chessboard, Point.of(rowIndex, columnIndex))
             .stream()
             .map(IPoint::toDTO)
             .collect(Collectors.toSet())
@@ -56,6 +58,7 @@ class GameController @Autowired constructor(
     @PostMapping("/move")
     fun applyMove(
         @InjectGame game: Game,
+        @InjectGameId gameId: Long,
         @InjectUserId userId: String,
         @RequestBody move: MoveDTO
     ): ChangesDTO {
@@ -64,7 +67,7 @@ class GameController @Autowired constructor(
         }
 
         val chessboard = chessboardProvider.createChessboardForGame(game)
-        val changes = gameService.applyMove(game, chessboard, Move.of(move))
+        val changes = gameService.applyMove(gameId, chessboard, Move.of(move))
 
         if (game.mode == GameMode.AI) {
             botService.fireBotMoveSync(game, game.getUserSide(userId)!!.reverse(), chessboard)
@@ -95,6 +98,7 @@ class GameController @Autowired constructor(
     @PostMapping("/rollback")
     fun rollbackMoves(
         @InjectGame game: Game,
+        @InjectGameId gameId: Long,
         @InjectUserId userId: String,
         @RequestParam("positionsOffset") positionsOffset: Int
     ): ChessboardDTO {
@@ -105,7 +109,7 @@ class GameController @Autowired constructor(
             botService.cancelBotMove(game.id!!)
         }
 
-        val rollbackGame = gameService.rollback(game, positionsOffset)
+        val rollbackGame = gameService.rollback(gameId, positionsOffset)
         val chessboard = chessboardProvider.createChessboardForGame(rollbackGame)
 
         if (game.mode == GameMode.AI) {
@@ -123,6 +127,7 @@ class GameController @Autowired constructor(
     @GetMapping("/listen")
     fun listenOpponentChanges(
         @InjectGame game: Game,
+        @InjectGameId gameId: Long,
         @InjectUserId userId: String,
         @RequestParam("clientPosition") clientPosition: Int
     ): ChangesDTO {
@@ -137,6 +142,6 @@ class GameController @Autowired constructor(
             "incorrect clientPosition: $clientPosition, because it is not equals with next turn(opponent move) side : ${userSide.reverse()}"
         }
 
-        return gameService.getNextMoveChanges(game, userSide, clientPosition)
+        return gameService.getNextMoveChanges(gameId, userSide, clientPosition)
     }
 }
