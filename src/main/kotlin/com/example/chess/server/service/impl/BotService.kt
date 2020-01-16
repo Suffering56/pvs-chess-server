@@ -26,7 +26,8 @@ class BotService @Autowired constructor(
     private val movesProvider: MovesProvider
 ) : IBotService {
 
-    private val taskMap: ConcurrentMap<Long, Long?> = ConcurrentHashMap()
+    private val syncMap: ConcurrentMap<Long, Any?> = ConcurrentHashMap()
+    private val canceled: MutableSet<Long> = hashSetOf()
     private val threadPool = Executors.newCachedThreadPool()
 
     //будет вызываться под локом игры
@@ -37,28 +38,32 @@ class BotService @Autowired constructor(
         return createFakeMove(game, chessboard, botSide)
     }
 
+
     override fun fireBotMoveSync(gameId: Long) {
-        taskMap.computeIfAbsent(gameId) {
+
+//        syncMap.putIfAbsent(gameId, gameId)
+
+        syncMap.computeIfAbsent(gameId) {
+            if (canceled.remove(gameId)) {
+                return@computeIfAbsent null
+            }
+
             gameService.applyBotMove(gameId, this)
             null
         }
     }
 
     override fun fireBotMoveAsync(gameId: Long, delay: Long) {
-        taskMap.putIfAbsent(gameId, gameId)
-
         threadPool.submit {
             Thread.sleep(delay)
-
-            taskMap.computeIfPresent(gameId) { _, deferredGameId ->
-                gameService.applyBotMove(deferredGameId, this)
-                null
-            }
+            fireBotMoveSync(gameId)
         }
     }
 
     override fun cancelBotMove(gameId: Long): Boolean {
-        return taskMap.remove(gameId) != null
+        canceled.add(gameId)    //а если она и не выполнялась, то тогда отменится ход который еще даже не зафейрился
+        val stub = true
+        return true
     }
 
     private fun createFakeMove(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {

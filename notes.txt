@@ -18,14 +18,21 @@
     + game cache
     + GameResult: val game, val T
     + gameService.applyPlayerMove/applyBotMove
+    + applyMove: check moverSide
+    - нельзя завязываться на gameCache.asMap(), оно работает не как ConcurrentHashMap(судя по всему блочится вся мапа при put/compute операциях)
 
-    - SessionManager?
+    - избавиться от @InjectGame etc;
+
+    - gameService.listenChanges: добавить проверки
+
+    - проблема одновременного применения applyMove:
+        - слать expectedPosition от клиента для playerMove
+        - разрулить на уровне botService для botMove
+
     - client: сделать защиту от слишком частых запросов на сервер
     - флажок isProcessing в private applyMove (чтобы следующий applyMove не вставал в очередь а падал с ошибкой)
 
-    - избавиться от @InjectGame etc;
-    - findAndCheckGame -> private
-    - TODO: applyMove: check moverSide
+    - SessionManager?
 
     - fireBotMove -> IBotEvent.fireMove
         - IEventsMulticaster

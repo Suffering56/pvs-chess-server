@@ -25,6 +25,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.concurrent.ConcurrentSkipListMap
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import javax.annotation.PostConstruct
 import kotlin.streams.toList
 
@@ -91,8 +94,9 @@ class GameService @Autowired constructor(
     @Transactional
     override fun applyPlayerMove(gameId: Long, userId: String, move: IMove): GameResult<ChangesDTO> {
         return updateGameLockedWithResult(gameId) { game ->
-            val chessboard = chessboardProvider.createChessboardForGame(game)
+
             val playerSide = game.getUserSide(userId)
+            val chessboard = chessboardProvider.createChessboardForGame(game)
 
             check(playerSide == Side.nextTurnSide(game.position)) {
                 "not player turn! expected side: $playerSide, side by position: ${Side.nextTurnSide(game.position)}"
@@ -199,7 +203,7 @@ class GameService @Autowired constructor(
         }
     }
 
-    //TODO: проверять историю
+    //TODO: проверять историю (заменить chessboardPosition на expectedPosition + historyRepository.findFirstByGameIdOrderByPositionDesc)
     override fun listenChanges(gameId: Long, prevMoveSide: Side, chessboardPosition: Int): GameResult<ChangesDTO> {
         val game = findAndCheckGame(gameId)
         val nextMoveHistory = historyRepository.findByGameIdAndPosition(gameId, chessboardPosition + 1)!!
@@ -255,100 +259,98 @@ data class GameWrapper(val gameId: Long)
 
 fun load(gameId: Long) = GameWrapper(gameId)
 
-//fun main() {
-//
-//    val poolSize = 10
-//    val executorService = Executors.newFixedThreadPool(poolSize)
-//    val gameCacheSpec = "expireAfterAccess=2s,maximumSize=4,recordStats"
-//
-//    val gameCache = CacheBuilder.from(gameCacheSpec).build(
-//        CacheLoader.from<Long, GameWrapper> { gameId ->
-//            load(gameId!!)
-//        }
-//    )
-//
-////    val map = ConcurrentHashMap<Long, GameWrapper>()
+fun main() {
+
+    val poolSize = 10
+    val executorService = Executors.newFixedThreadPool(poolSize)
+    val gameCacheSpec = "expireAfterAccess=2s,maximumSize=4,recordStats"
+
+    val gameCache = CacheBuilder.from(gameCacheSpec).build(
+        CacheLoader.from<Long, GameWrapper> { gameId ->
+            load(gameId!!)
+        }
+    )
+
+    val map = ConcurrentSkipListMap<Long, GameWrapper>()
+//    val map = ConcurrentHashMap<Long, GameWrapper>()
 //    val map = gameCache.asMap()
+
+    executorService.submit {
+        map.compute(2) { _, _ ->
+            //            map.put(1, load(2))
+//            println("after put in compute")
+            Thread.sleep(3000)
+            println("compute 1")
+            load(1)
+        }
+    }
+
+    executorService.submit {
+        Thread.sleep(1100)
+
+//        map.put(1, load(2))
+//        println("if absent 2")
+
+        map.compute(2) { _, _ ->
+            println("compute 2")
+            load(2)
+        }
+    }
 //
-//
-////    for (i in 0..poolSize) {
-////        executorService.submit {
-////            map.compute(10) { k, v ->
-////                println("k = ${k}")
-////                Thread.sleep(1000)
-////                println("v = ${v}")
-////                null
-////            }
-////        }
-////    }
-////
-//
-//    map.compute(1) { k, v ->
-//        println("first compute: started")
-//
-//        val game = map.compute(1) { kk, vv ->
-//            println("second compute: started")
-//
-//            val game2 = vv ?: load(kk)
-//
-//            println("second compute: finished")
-//
-//            game2
+//    executorService.submit{
+//        Thread.sleep(1000)
+//        println("map.containsKey(1) = ${map.containsKey(1)}")
+//        Thread.sleep(3000)
+//        println("map.containsKey(11) = ${map.containsKey(1)}")
+//    }
+
+
+//    gameCache.refresh(1)
+//    gameCache.refresh(2)
+//    gameCache.refresh(3)
+//    gameCache.refresh(4)
+
+//    executorService.submit {
+//        map.compute(1) { k, v ->
+//            println("k1 = ${k}")
+//            Thread.sleep(1000)
+//            println("v1 = ${v}")
+//            GameWrapper(1)
 //        }
-//
-//        println("first compute: finished")
-//
-//        game
 //    }
 //
-////    gameCache.refresh(1)
-////    gameCache.refresh(2)
-////    gameCache.refresh(3)
-////    gameCache.refresh(4)
+//    executorService.submit {
+//        map.compute(2) { k, v ->
+//            println("k2 = ${k}")
+//            println("v2 = ${v}")
+//            GameWrapper(2)
+//        }
+//    }
 //
-////    executorService.submit {
-////        map.compute(1) { k, v ->
-////            println("k1 = ${k}")
-////            Thread.sleep(1000)
-////            println("v1 = ${v}")
-////            GameWrapper(1)
-////        }
-////    }
-////
-////    executorService.submit {
-////        map.compute(2) { k, v ->
-////            println("k2 = ${k}")
-////            println("v2 = ${v}")
-////            GameWrapper(2)
-////        }
-////    }
-////
-////    map.compute(3) { k, v ->
-////        println("k3 = ${k}")
-////        println("v3 = ${v}")
-////        GameWrapper(3)
-////    }
-////
-////    map.compute(4) { k, v ->
-////        println("k4 = ${k}")
-////        println("v4 = ${v}")
-////        GameWrapper(4)
-////    }
+//    map.compute(3) { k, v ->
+//        println("k3 = ${k}")
+//        println("v3 = ${v}")
+//        GameWrapper(3)
+//    }
 //
-//    Thread.sleep(3300)
-//
-//
+//    map.compute(4) { k, v ->
+//        println("k4 = ${k}")
+//        println("v4 = ${v}")
+//        GameWrapper(4)
+//    }
+
+
 //    println("gameCache.get(1) = ${gameCache.get(1)}")
 //    println("gameCache.get(1) = ${map.get(1)}")
-////    println("gameCache.get(2) = ${gameCache.get(2)}")
-////    println("gameCache.get(3) = ${gameCache.get(3)}")
-////    println("gameCache.get(4) = ${gameCache.get(4)}")
-//
+//    println("gameCache.get(2) = ${gameCache.get(2)}")
+//    println("gameCache.get(3) = ${gameCache.get(3)}")
+//    println("gameCache.get(4) = ${gameCache.get(4)}")
+
 //    println("gameCache.size() = ${gameCache.size()}")
 //
-//    executorService.shutdown()
-//    while (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
-//    }
-//    println("end")
-//
-//}
+    executorService.shutdown()
+    while (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+    }
+    println("end")
+
+}
