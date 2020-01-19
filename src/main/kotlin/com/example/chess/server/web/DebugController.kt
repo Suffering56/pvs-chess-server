@@ -33,7 +33,7 @@ class DebugController {
         @PathVariable("side") side: Side,
         @PathVariable("userId") userId: String
     ): GameDTO {
-        return gameService.registerPlayer(userId, gameId, side, true)
+        return gameService.registerPlayer(gameId, userId, side, true)
             .toDTO(userId)
     }
 }

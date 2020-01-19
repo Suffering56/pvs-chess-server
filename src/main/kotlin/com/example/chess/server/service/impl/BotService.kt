@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /**
  * @author v.peschaniy
@@ -26,9 +27,27 @@ class BotService @Autowired constructor(
     private val movesProvider: MovesProvider
 ) : IBotService {
 
-    private val syncMap: ConcurrentMap<Long, Any?> = ConcurrentHashMap()
-    private val canceled: MutableSet<Long> = hashSetOf()
-    private val threadPool = Executors.newCachedThreadPool()
+    private val deferredBotMovesMap: ConcurrentMap<Long, Int> = ConcurrentHashMap()
+    private val threadPool = Executors.newScheduledThreadPool(10)
+
+    override fun fireBotMoveSync(gameId: Long, expectedGamePosition: Int) {
+        deferredBotMovesMap.compute(gameId) { _, _ ->
+            gameService.applyBotMove(gameId, expectedGamePosition, this)
+            null
+        }
+    }
+
+    override fun fireBotMoveAsync(gameId: Long, expectedGamePosition: Int, delay: Long) {
+        // если для этого gameId уже был затриггерен (но еще не выполнен) ход, заменим данные более актуальными
+        deferredBotMovesMap[gameId] = expectedGamePosition
+
+        threadPool.schedule({
+            deferredBotMovesMap.computeIfPresent(gameId) { deferredGameId, expectedGamePosition ->
+                gameService.applyBotMove(deferredGameId, expectedGamePosition, this)
+                null
+            }
+        }, delay, TimeUnit.MILLISECONDS)
+    }
 
     //будет вызываться под локом игры
     override fun invoke(game: IUnmodifiableGame, originalChessboard: IUnmodifiableChessboard): IMove {
@@ -36,34 +55,6 @@ class BotService @Autowired constructor(
         val chessboard = originalChessboard.copyOf()
 
         return createFakeMove(game, chessboard, botSide)
-    }
-
-
-    override fun fireBotMoveSync(gameId: Long) {
-
-//        syncMap.putIfAbsent(gameId, gameId)
-
-        syncMap.computeIfAbsent(gameId) {
-            if (canceled.remove(gameId)) {
-                return@computeIfAbsent null
-            }
-
-            gameService.applyBotMove(gameId, this)
-            null
-        }
-    }
-
-    override fun fireBotMoveAsync(gameId: Long, delay: Long) {
-        threadPool.submit {
-            Thread.sleep(delay)
-            fireBotMoveSync(gameId)
-        }
-    }
-
-    override fun cancelBotMove(gameId: Long): Boolean {
-        canceled.add(gameId)    //а если она и не выполнялась, то тогда отменится ход который еще даже не зафейрился
-        val stub = true
-        return true
     }
 
     private fun createFakeMove(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {

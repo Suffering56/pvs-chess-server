@@ -6,6 +6,8 @@ import com.example.chess.server.logic.IUnmodifiableChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.GameResult
 import com.example.chess.shared.dto.ChangesDTO
+import com.example.chess.shared.dto.ChessboardDTO
+import com.example.chess.shared.dto.ConstructorGameDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
 
@@ -15,19 +17,26 @@ import com.example.chess.shared.enums.Side
  */
 interface IGameService {
 
-    fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean = false): IUnmodifiableGame
+    // init
+    fun createNewGame(userId: String, mode: GameMode, side: Side): IUnmodifiableGame
 
-    fun registerPlayer(userId: String, gameId: Long, side: Side, forced: Boolean = false): IUnmodifiableGame
+    fun createConstructedGame(userId: String, mode: GameMode, side: Side, clientChessboard: ChessboardDTO): GameResult<ConstructorGameDTO>
 
-    fun findAndCheckGame(gameId: Long): IUnmodifiableGame
+    fun registerPlayer(gameId: Long, userId: String, side: Side, forced: Boolean = false): IUnmodifiableGame
 
-    fun getMovesByPoint(gameId: Long, chessboard: IUnmodifiableChessboard, point: IPoint): GameResult<Set<IPoint>>
+    fun checkRegistration(gameId: Long, userId: String)
 
-    fun applyPlayerMove(gameId: Long, userId: String, move: IMove): GameResult<ChangesDTO>
+    fun findAndCheckGame(gameId: Long, userId: String, chessboardPosition: Int? = null): GameResult<IUnmodifiableChessboard>
 
-    fun applyBotMove(gameId: Long, moveProvider: (IUnmodifiableGame, IUnmodifiableChessboard) -> IMove): GameResult<ChangesDTO>
+    // read
+    fun getMovesByPoint(gameId: Long, point: IPoint, clientPosition: Int): GameResult<Set<IPoint>>
 
-    fun rollback(gameId: Long, positionsOffset: Int): IUnmodifiableGame
+    fun listenChanges(gameId: Long, userId: String, clientPosition: Int): GameResult<ChangesDTO>
 
-    fun listenChanges(gameId: Long, prevMoveSide: Side, chessboardPosition: Int): GameResult<ChangesDTO>
+    // write
+    fun applyPlayerMove(gameId: Long, userId: String, move: IMove, clientPosition: Int): GameResult<ChangesDTO>
+
+    fun applyBotMove(gameId: Long, clientPosition: Int, moveProvider: (IUnmodifiableGame, IUnmodifiableChessboard) -> IMove): GameResult<ChangesDTO>
+
+    fun rollback(gameId: Long, positionsOffset: Int, clientPosition: Int): GameResult<IUnmodifiableChessboard>
 }

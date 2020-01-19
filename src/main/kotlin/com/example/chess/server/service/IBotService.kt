@@ -10,9 +10,7 @@ import com.example.chess.server.logic.IUnmodifiableGame
  */
 interface IBotService : (IUnmodifiableGame, IUnmodifiableChessboard) -> IMove {
 
-    fun fireBotMoveSync(gameId: Long)
+    fun fireBotMoveSync(gameId: Long, expectedGamePosition: Int)
 
-    fun fireBotMoveAsync(gameId: Long, delay: Long)
-
-    fun cancelBotMove(gameId: Long): Boolean
+    fun fireBotMoveAsync(gameId: Long, expectedGamePosition: Int, delay: Long = 1000L)
 }

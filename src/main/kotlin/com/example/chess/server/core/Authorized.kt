@@ -6,11 +6,4 @@ package com.example.chess.server.core
  */
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class Authorized(
-
-    /**
-     * Если true - ты не пройдешь неавторизованным,
-     *  если false - пройдешь, и даже заинжектится game
-     */
-    val youShallNotPass: Boolean = true
-)   
+annotation class Authorized

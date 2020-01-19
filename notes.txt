@@ -11,47 +11,37 @@
 + create new game -> ../game/new?mode=selectedMove&side=selectedSide
 + CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
 + client: opponent move listener
-
-- синхронизация
++ синхронизация ч.1
     + fireBotMove: make async with delay
     + botService.cancelByRollback
     + game cache
     + GameResult: val game, val T
     + gameService.applyPlayerMove/applyBotMove
     + applyMove: check moverSide
-    - нельзя завязываться на gameCache.asMap(), оно работает не как ConcurrentHashMap(судя по всему блочится вся мапа при put/compute операциях)
+    + нельзя завязываться на gameCache.asMap(), оно работает не как ConcurrentHashMap(судя по всему блочится вся мапа при put/compute операциях)
+    + gameService.listenChanges: добавить проверки
+    + избавиться от @InjectGame etc
+    + SessionManager:
+        + create
+        + cleanSyncMap
+    + флажок isProcessing в private applyMove (чтобы следующий applyMove не вставал в очередь а падал с ошибкой)
+            + решено с помощью tryLock
+    + gameService -> fireBotMove
+    + проблема одновременного применения applyMove:
+            + слать expectedPosition от клиента для playerMove
+            + разрулить на уровне botService для botMove
 
-    - избавиться от @InjectGame etc;
-
-    - gameService.listenChanges: добавить проверки
-
-    - проблема одновременного применения applyMove:
-        - слать expectedPosition от клиента для playerMove
-        - разрулить на уровне botService для botMove
-
-    - client: сделать защиту от слишком частых запросов на сервер
-    - флажок isProcessing в private applyMove (чтобы следующий applyMove не вставал в очередь а падал с ошибкой)
-
-    - SessionManager?
-
-    - fireBotMove -> IBotEvent.fireMove
-        - IEventsMulticaster
-
-    - position: на каждый запрос сервер должен присылать актуальную позицию. если произошел рассинхрон,
-        игра должна уйти на релоад (continue game)
-    - chessboard (DebugCheckChessboardState?)
-
+- поменять API под новые запросы
+- IEventsMulticaster
+- тесты для Chessboard, MovesProvider
+- onServerRunning: fire bot move
+- для PVP режима проверять: side = pieceFrom.side
+- client: для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
 
 - move cost support:
     - moves tree
-    -
-
-- onServerRunning: fire bot move
-- available moves tree viewer support
-- тесты для Chessboard, MovesProvider
-
-- для PVP режима проверять: side = pieceFrom.side
-- client: для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
+    - available moves tree viewer support
+    - ...
 
 - client: rotation fix
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
@@ -60,13 +50,19 @@
 - client: ListenOpponentChangesTask -> stop/start if visible changed
 - client:  ListenOpponentChangesTask -> @SuppressLint("StaticFieldLeak")
 
+- синхронизация ч.2
+    - слать clientPosition и сверять его с gamePosition на сервере
+        + server
+        - client:
+            - DebugCheckChessboardState?
+            - на каждый запрос сервер должен присылать актуальную позицию
+            - клиент должен уходить на релоад (continue game), если:
+                - на клиенте не сошлись позиции
+                - сервер прислал ошибку рассинхрона
+
+    - считать хэш для chessboard и сравнивать с каждым запросом
+    - client: сделать защиту от слишком частых запросов на сервер
 
 - client: legend refactoring    (LayoutInflater)
 - client: drag and drop in chessboard view
 - client: надо как-то победить долгий первый вызов ретрофита
-
-
-game.save:
-    - gameService.rollback
-    - debugController.registerPlayerForced(setSide)
-    - initController.setSide

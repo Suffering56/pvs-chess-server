@@ -1,11 +1,6 @@
 package com.example.chess.server.web
 
 import com.example.chess.server.core.Authorized
-import com.example.chess.server.core.InjectGame
-import com.example.chess.server.core.InjectGameId
-import com.example.chess.server.core.InjectUserId
-import com.example.chess.server.entity.Game
-import com.example.chess.server.service.IConstructorService
 import com.example.chess.server.service.IGameService
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.ConstructorGameDTO
@@ -22,8 +17,7 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/init")
 class InitController @Autowired constructor(
-    private val gameService: IGameService,
-    private val constructorService: IConstructorService
+    private val gameService: IGameService
 ) {
 
     @GetMapping("/new")
@@ -32,38 +26,39 @@ class InitController @Autowired constructor(
         @RequestParam mode: GameMode,
         @RequestParam side: Side
     ): GameDTO {
-        val game = gameService.createNewGame(userId, mode, side)
-        return game.toDTO(userId)
+        return gameService.createNewGame(userId, mode, side)
+            .toDTO(userId)
     }
 
     @PostMapping("/constructor/new")
     fun createConstructedGame(
-        @InjectUserId userId: String,
+        @RequestParam userId: String,
         @RequestParam mode: GameMode,
         @RequestParam side: Side,
         @RequestBody chessboard: ChessboardDTO
     ): ConstructorGameDTO {
-        val game = gameService.createNewGame(userId, mode, side, true)
-        return constructorService.initArrangement(game, side, chessboard)
+        return gameService.createConstructedGame(userId, mode, side, chessboard)
+            .result
+    }
+
+    @PostMapping("/side")
+    fun setSide(
+        @RequestParam gameId: Long,
+        @RequestParam userId: String,
+        @RequestParam side: Side
+    ): GameDTO {
+        return gameService.registerPlayer(gameId, userId, side)
+            .toDTO(userId)
     }
 
     @Authorized
     @GetMapping("/continue")
-    fun getGame(
-        @InjectGame game: Game,
-        @InjectUserId userId: String
+    fun continueGame(
+        @RequestParam gameId: Long,
+        @RequestParam userId: String
     ): GameDTO {
-        return game.toDTO(userId)
-    }
-
-    @Authorized(false)   //TODO
-    @PostMapping("/side")
-    fun setSide(
-        @InjectGame game: Game,
-        @InjectUserId userId: String,
-        @RequestParam("side") side: Side
-    ): GameDTO {
-        return gameService.registerPlayer(userId, game.id!!, side)
+        return gameService.findAndCheckGame(gameId, userId)
+            .game
             .toDTO(userId)
     }
 }
