@@ -194,36 +194,44 @@ class GameService : IGameService {
 
     override fun listenChanges(gameId: Long, userId: String, clientPosition: Int): GameResult<ChangesDTO> {
         val game: IUnmodifiableGame = getUnchecked(gameId)
-        checkPosition(game.position, clientPosition)
+
+        if (game.position == clientPosition) {
+            // новых изменений еще не появилось
+            return GameResult(
+                game,
+                ChangesDTO.EMPTY
+            )
+        }
+
+        checkPosition(game.position, clientPosition + 1)
 
         val clientSide = game.getUserSide(userId)!!
+        val opponentSide = clientSide.reverse()
 
-        check(Side.nextTurnSide(clientPosition) == clientSide.reverse()) {
-            "incorrect clientPosition: $clientPosition, because it is not equals with next turn(opponent move) side : ${clientSide.reverse()}"
+        require(opponentSide == Side.nextTurnSide(clientPosition)) {
+            "incorrect clientPosition: $clientPosition, because it is not equals with next turn(opponent move) side : $opponentSide"
         }
 
         val nextMoveHistory = requireNotNull(historyRepository.findFirstByGameIdOrderByPositionDesc(gameId)) {
             "history not exist for game=$gameId"
         }
 
-        val changes = if (nextMoveHistory.position == clientPosition + 1) {
-            val chessboard = chessboardProvider.createChessboardForGame(game, clientPosition)
-            val move = nextMoveHistory.toMove()
-
-            val additionalMove = chessboard.applyMove(move)
-            val isUnderCheck = movesProvider.isUnderCheck(clientSide, chessboard)
-
-            ChangesDTO(
-                chessboard.position,
-                move.toDTO(),
-                additionalMove?.toDTO(),
-                if (isUnderCheck) chessboard.getKingPoint(clientSide).toDTO() else null
-            )
-
-        } else {
-            require(nextMoveHistory.position == clientPosition) { "game synchronization error: clientPosition=$clientPosition, historyPosition=$nextMoveHistory.position" }
-            ChangesDTO.EMPTY
+        require(nextMoveHistory.position == clientPosition + 1) {
+            "incorrect last game history position, expected: ${clientPosition + 1}, actual: ${nextMoveHistory.position}"
         }
+
+        val chessboard = chessboardProvider.createChessboardForGame(game, clientPosition)
+        val move = nextMoveHistory.toMove()
+
+        val additionalMove = chessboard.applyMove(move)
+        val isUnderCheck = movesProvider.isUnderCheck(clientSide, chessboard)
+
+        val changes =  ChangesDTO(
+            chessboard.position,
+            move.toDTO(),
+            additionalMove?.toDTO(),
+            if (isUnderCheck) chessboard.getKingPoint(clientSide).toDTO() else null
+        )
 
         return GameResult(game, changes)
     }
