@@ -122,9 +122,7 @@ class GameService : IGameService {
 
             val changes = applyMove(game, chessboard, move)
 
-            if (game.mode == GameMode.AI) {
-                botService.fireBotMoveAsync(gameId, changes.position)
-            }
+            fireBotMoveIfNeeded(game)
 
             changes
         }
@@ -160,6 +158,8 @@ class GameService : IGameService {
             val newPosition = game.position - positionsOffset
             require(newPosition >= game.initialPosition) { "position offset is too large" }
 
+            cancelBotMoveIfNeeded(game)
+
             game.position = newPosition
 
             historyRepository.removeAllByGameIdAndPositionGreaterThan(gameId, newPosition)
@@ -167,11 +167,21 @@ class GameService : IGameService {
 
             val chessboard = chessboardProvider.createChessboardForGame(game)
 
-            if (game.mode == GameMode.AI) {
-                botService.fireBotMoveAsync(gameId, game.position)
-            }
+            fireBotMoveIfNeeded(game)
 
             chessboard
+        }
+    }
+
+    private fun cancelBotMoveIfNeeded(game: IUnmodifiableGame) {
+        if (game.mode == GameMode.AI) {
+            botService.cancelBotMove(game.id!!)
+        }
+    }
+
+    private fun fireBotMoveIfNeeded(game: IUnmodifiableGame) {
+        if (game.mode == GameMode.AI && game.getAndCheckBotSide() == Side.nextTurnSide(game.position)) {
+            botService.fireBotMoveAsync(game.id!!, game.position)
         }
     }
 
@@ -226,7 +236,7 @@ class GameService : IGameService {
         val additionalMove = chessboard.applyMove(move)
         val isUnderCheck = movesProvider.isUnderCheck(clientSide, chessboard)
 
-        val changes =  ChangesDTO(
+        val changes = ChangesDTO(
             chessboard.position,
             move.toDTO(),
             additionalMove?.toDTO(),

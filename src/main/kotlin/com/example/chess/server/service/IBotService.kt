@@ -13,4 +13,6 @@ interface IBotService : (IUnmodifiableGame, IUnmodifiableChessboard) -> IMove {
     fun fireBotMoveSync(gameId: Long, expectedGamePosition: Int)
 
     fun fireBotMoveAsync(gameId: Long, expectedGamePosition: Int, delay: Long = 1000L)
+
+    fun cancelBotMove(gameId: Long)
 }

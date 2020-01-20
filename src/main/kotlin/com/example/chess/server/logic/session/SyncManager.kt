@@ -41,6 +41,9 @@ class SyncManager {
         try {
             lock.lock()
             return action.invoke()
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            throw e
         } finally {
             lock.unlock()
         }
@@ -52,6 +55,9 @@ class SyncManager {
         if (lock.tryLock()) {
             try {
                 return action.invoke()
+            } catch (e: Throwable) {
+                e.printStackTrace()
+                throw e
             } finally {
                 lock.unlock()
             }

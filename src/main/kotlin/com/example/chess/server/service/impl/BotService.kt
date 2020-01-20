@@ -56,6 +56,10 @@ class BotService : IBotService {
         return createFakeMove(game, chessboard, botSide)
     }
 
+    override fun cancelBotMove(gameId: Long) {
+        deferredBotMovesMap.remove(gameId)
+    }
+
     private fun createFakeMove(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {
         val col = (game.position / 2)
         check(col < BOARD_SIZE) { "game.position too large for this fake implementation" }
