@@ -7,7 +7,6 @@ import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotService
-import com.example.chess.server.service.IGameService
 import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
@@ -22,10 +21,10 @@ import java.util.concurrent.TimeUnit
  *      Date: 22.07.2019
  */
 @Service
-class BotService @Autowired constructor(
-    private val gameService: IGameService,
-    private val movesProvider: MovesProvider
-) : IBotService {
+class BotService : IBotService {
+
+    @Autowired private lateinit var gameService: GameService
+    @Autowired private lateinit var movesProvider: MovesProvider
 
     private val deferredBotMovesMap: ConcurrentMap<Long, Int> = ConcurrentHashMap()
     private val threadPool = Executors.newScheduledThreadPool(10)

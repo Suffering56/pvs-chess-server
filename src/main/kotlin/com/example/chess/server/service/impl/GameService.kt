@@ -28,10 +28,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.locks.ReentrantLock
 import javax.annotation.PostConstruct
 import kotlin.streams.toList
 
@@ -40,16 +36,16 @@ import kotlin.streams.toList
  *      Date: 22.07.2019
  */
 @Service
-class GameService @Autowired constructor(
-    private val gameRepository: GameRepository,
-    private val historyRepository: HistoryRepository,
-    private val entityProvider: EntityProvider,
-    private val movesProvider: IMovesProvider,
-    private val chessboardProvider: ChessboardProvider,
-    private val syncManager: SyncManager,
-    private val arrangementRepository: ArrangementRepository,
-    private val botService: IBotService
-) : IGameService {
+class GameService : IGameService {
+
+    @Autowired private lateinit var gameRepository: GameRepository
+    @Autowired private lateinit var historyRepository: HistoryRepository
+    @Autowired private lateinit var entityProvider: EntityProvider
+    @Autowired private lateinit var movesProvider: IMovesProvider
+    @Autowired private lateinit var chessboardProvider: ChessboardProvider
+    @Autowired private lateinit var syncManager: SyncManager
+    @Autowired private lateinit var arrangementRepository: ArrangementRepository
+    @Autowired private lateinit var botService: IBotService
 
     @Value("\${cache_spec.game:expireAfterAccess=1h,maximumSize=100,recordStats}")
     private lateinit var gameCacheSpec: String
@@ -115,11 +111,13 @@ class GameService @Autowired constructor(
             val playerSide = game.getUserSide(userId)
             val chessboard = chessboardProvider.createChessboardForGame(game)
 
-            check(playerSide == Side.nextTurnSide(game.position)) {
-                "not player turn! expected side: $playerSide, side by position: ${Side.nextTurnSide(game.position)}"
-            }
-            check(playerSide == chessboard.getPiece(move.from).side) {
-                "not player pieceFrom! expected side: $playerSide, pieceFrom.side: ${chessboard.getPiece(move.from).side}"
+            if (game.mode != GameMode.SINGLE) {
+                check(playerSide == Side.nextTurnSide(game.position)) {
+                    "not player turn! expected side: $playerSide, side by position: ${Side.nextTurnSide(game.position)}"
+                }
+                check(playerSide == chessboard.getPiece(move.from).side) {
+                    "not player pieceFrom! expected side: $playerSide, pieceFrom.side: ${chessboard.getPiece(move.from).side}"
+                }
             }
 
             val changes = applyMove(game, chessboard, move)
@@ -329,11 +327,8 @@ class GameService @Autowired constructor(
 
     private fun createNewGame(userId: String, mode: GameMode, side: Side, isConstructor: Boolean): IUnmodifiableGame {
         synchronized(userId.intern()) {
-            val newGame = entityProvider.createNewGame(userId, mode, side, isConstructor)   //TMP
-            val game = gameRepository.save(newGame)                                         //TMP
-            check(game === newGame) { "temp check" }                                   //TMP
 
-//        val game = gameRepository.save(entityProvider.createNewGame(userId, mode, side, isConstructor))
+            val game = saveGame(entityProvider.createNewGame(userId, mode, side, isConstructor))
             val gameId = game.id!!
 
             return syncManager.executeLocked(gameId) {
@@ -345,11 +340,8 @@ class GameService @Autowired constructor(
 
     private fun saveGame(game: Game): Game {
         val savedGame = gameRepository.save(game)
-        if (game != savedGame) {
-            System.err.println("savedGame($savedGame) is not identity-equals with game($game)")
-            gameCache.put(game.id!!, savedGame)
-        }
-        return savedGame
+        check(game == savedGame) { "savedGame($savedGame) is not equals with game($game)" }
+        return game
     }
 
     private fun <T> processGameLocked(gameId: Long, clientPosition: Int, processHandler: (Game) -> T): GameResult<T> {
@@ -388,163 +380,28 @@ class GameService @Autowired constructor(
     private fun getUnchecked(gameId: Long): Game = gameCache.getUnchecked(gameId)
 }
 
-data class GameWrapper(val gameId: Long)
 
-fun load(gameId: Long) = GameWrapper(gameId)
-
-fun main() {
-
-    val poolSize = 10
-    val executorService = Executors.newFixedThreadPool(poolSize)
-    val gameCacheSpec = "expireAfterAccess=2s,maximumSize=4,recordStats"
-
-    val gameCache = CacheBuilder.from(gameCacheSpec).build(
-        CacheLoader.from<Long, GameWrapper> { gameId ->
-            load(gameId!!)
-        }
-    )
-
-    val lock = ReentrantLock()
-
-    lock.lock()
-    println("lock 1")
-    lock.lock()
-    println("lock 2")
-    lock.lock()
-    println("lock 3")
-    lock.lock()
-    println("lock 4")
-
-    lock.unlock()
-    println("unlock 1")
-
-//    executorService.submit {
-//        lock.lock()
-//        println("lock 1")
-//        Thread.sleep(3000)
-//        lock.unlock()
-//        println("unlock 1")
-//    }
+//fun main() {
+//    val poolSize = 10
+//    val executorService = Executors.newFixedThreadPool(poolSize)
+//    val gameCacheSpec = "expireAfterAccess=2s,maximumSize=4,recordStats"
 //
-//    executorService.submit {
-//        Thread.sleep(1000)
-//        lock.lockInterruptibly()
-//        println("lockInterruptibly 2")
-//        lock.unlock()
-//        println("unlock 2")
-//    }
-
-//    executorService.submit {
-//        Thread.sleep(1000)
-//        if (lock.tryLock()) {
-//            println("lock 2")
-//            lock.unlock()
-//            println("unlock 2")
-//        } else {
-//            println("cant lock 2")
+//    val gameCache = CacheBuilder.from(gameCacheSpec).build(
+//        CacheLoader.from<Long, GameWrapper> { gameId ->
+//            load(gameId!!)
 //        }
-//    }
-//    println("execute locked")
-//    println("lock.tryLock() = ${lock.tryLock()}")
+//    )
+//    val lock = ReentrantLock()
+//    val map = ConcurrentHashMap<Long, GameWrapper>()
 //
-//    lock.unlock()
+//
+//    executorService.submit {
+//    }
 //    executorService.shutdown()
 //    while (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
 //    }
 //    println("end")
-//    return
-
-//    val map = ConcurrentSkipListMap<Long, GameWrapper>()
-    val map = ConcurrentHashMap<Long, GameWrapper>()
-
-    map[1] = load(1)
-    map[2] = load(2)
-    map[3] = load(3)
-    map[4] = load(4)
-//    val map = gameCache.asMap()
-
-    executorService.submit {
-        println("submit 1")
-
-        map.compute(2) { _, _ ->
-            //            map.put(1, load(2))
-//            println("after put in compute")
-            Thread.sleep(3000)
-            println("compute 1")
-            load(2)
-        }
-    }
+//}
 //
-    executorService.submit {
-        println("submit 2")
-        Thread.sleep(1100)
-
-        map.forEach { (k, v) ->
-            println("remove: $k")
-            map.remove(k)
-        }
-
-
-//        map.compute(2) { _, _ ->
-//            println("compute 2")
-//            load(2)
-//        }
-    }
-//
-//    executorService.submit{
-//        Thread.sleep(1000)
-//        println("map.containsKey(1) = ${map.containsKey(1)}")
-//        Thread.sleep(3000)
-//        println("map.containsKey(11) = ${map.containsKey(1)}")
-//    }
-
-
-//    gameCache.refresh(1)
-//    gameCache.refresh(2)
-//    gameCache.refresh(3)
-//    gameCache.refresh(4)
-
-//    executorService.submit {
-//        map.compute(1) { k, v ->
-//            println("k1 = ${k}")
-//            Thread.sleep(1000)
-//            println("v1 = ${v}")
-//            GameWrapper(1)
-//        }
-//    }
-//
-//    executorService.submit {
-//        map.compute(2) { k, v ->
-//            println("k2 = ${k}")
-//            println("v2 = ${v}")
-//            GameWrapper(2)
-//        }
-//    }
-//
-//    map.compute(3) { k, v ->
-//        println("k3 = ${k}")
-//        println("v3 = ${v}")
-//        GameWrapper(3)
-//    }
-//
-//    map.compute(4) { k, v ->
-//        println("k4 = ${k}")
-//        println("v4 = ${v}")
-//        GameWrapper(4)
-//    }
-
-
-//    println("gameCache.get(1) = ${gameCache.get(1)}")
-//    println("gameCache.get(1) = ${map.get(1)}")
-//    println("gameCache.get(2) = ${gameCache.get(2)}")
-//    println("gameCache.get(3) = ${gameCache.get(3)}")
-//    println("gameCache.get(4) = ${gameCache.get(4)}")
-
-//    println("gameCache.size() = ${gameCache.size()}")
-//
-    executorService.shutdown()
-    while (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
-    }
-    println("end")
-
-}
+//data class GameWrapper(val gameId: Long)
+//fun load(gameId: Long) = GameWrapper(gameId)

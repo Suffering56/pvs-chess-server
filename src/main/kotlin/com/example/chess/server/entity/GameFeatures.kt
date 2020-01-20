@@ -61,6 +61,8 @@ data class GameFeatures(
         shortCastlingAvailable = false
     }
 
+
+
     override fun toString(): String {
         return "GameFeatures(id=$id, " +
                 "gameId=${game.id}, " +         //берем только id во избежание StackOverflow
@@ -71,5 +73,37 @@ data class GameFeatures(
                 "shortCastlingAvailable=$shortCastlingAvailable, " +
                 "pawnLongMoveColumnIndex=$pawnLongMoveColumnIndex, " +
                 "isUnderCheck=$isUnderCheck)"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as GameFeatures
+
+        if (id != other.id) return false
+        if (game.id != other.game.id) return false
+        if (side != other.side) return false
+        if (userId != other.userId) return false
+        if (lastVisitDate != other.lastVisitDate) return false
+        if (longCastlingAvailable != other.longCastlingAvailable) return false
+        if (shortCastlingAvailable != other.shortCastlingAvailable) return false
+        if (pawnLongMoveColumnIndex != other.pawnLongMoveColumnIndex) return false
+        if (isUnderCheck != other.isUnderCheck) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id?.hashCode() ?: 0
+        result = 31 * result + game.id.hashCode()
+        result = 31 * result + side.hashCode()
+        result = 31 * result + (userId?.hashCode() ?: 0)
+        result = 31 * result + (lastVisitDate?.hashCode() ?: 0)
+        result = 31 * result + longCastlingAvailable.hashCode()
+        result = 31 * result + shortCastlingAvailable.hashCode()
+        result = 31 * result + (pawnLongMoveColumnIndex ?: 0)
+        result = 31 * result + isUnderCheck.hashCode()
+        return result
     }
 }

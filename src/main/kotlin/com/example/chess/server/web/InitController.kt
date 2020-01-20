@@ -16,9 +16,9 @@ import org.springframework.web.bind.annotation.*
  */
 @RestController
 @RequestMapping("/api/init")
-class InitController @Autowired constructor(
-    private val gameService: IGameService
-) {
+class InitController {
+
+    @Autowired private lateinit var gameService: IGameService
 
     @GetMapping("/new")
     fun createGame(
@@ -41,8 +41,8 @@ class InitController @Autowired constructor(
             .result
     }
 
-    @PostMapping("/side")
-    fun setSide(
+    @PostMapping("/register")
+    fun registerUser(
         @RequestParam gameId: Long,
         @RequestParam userId: String,
         @RequestParam side: Side

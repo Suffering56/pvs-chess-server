@@ -4,6 +4,7 @@ import com.example.chess.server.logic.IGame
 import com.example.chess.shared.dto.GameDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
+import com.google.common.collect.Maps
 import org.hibernate.annotations.ColumnDefault
 import org.hibernate.annotations.GenericGenerator
 import javax.persistence.*
@@ -132,5 +133,29 @@ data class Game(
             userSide,
             if (hasFreeSlot) opponentSide else null
         )
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Game
+
+        if (id != other.id) return false
+        if (position != other.position) return false
+        if (mode != other.mode) return false
+        if (initialPosition != other.initialPosition) return false
+        if (!Maps.difference(featuresMap, other.featuresMap).areEqual()) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = id?.hashCode() ?: 0
+        result = 31 * result + position
+        result = 31 * result + mode.hashCode()
+        result = 31 * result + initialPosition
+        result = 31 * result + featuresMap.hashCode()
+        return result
     }
 }

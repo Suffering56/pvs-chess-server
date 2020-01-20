@@ -18,10 +18,8 @@ import org.springframework.stereotype.Component
 @Component
 class ChessboardProvider : IChessboardProvider {
 
-    @Autowired
-    private lateinit var historyRepository: HistoryRepository
-    @Autowired
-    private lateinit var arrangementRepository: ArrangementRepository
+    @Autowired private lateinit var historyRepository: HistoryRepository
+    @Autowired private lateinit var arrangementRepository: ArrangementRepository
 
     override fun createChessboardForGame(game: IUnmodifiableGame, position: Int): IChessboard {
         val gameId = requireGameId(game)

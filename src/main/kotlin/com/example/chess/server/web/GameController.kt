@@ -19,9 +19,9 @@ import java.util.stream.Collectors
  */
 @RestController
 @RequestMapping("/api/game")
-class GameController @Autowired constructor(
-    private val gameService: IGameService
-) {
+class GameController {
+
+    @Autowired private lateinit var gameService: IGameService
 
     @Authorized
     @GetMapping("/moves")

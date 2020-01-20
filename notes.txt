@@ -11,6 +11,7 @@
 + create new game -> ../game/new?mode=selectedMove&side=selectedSide
 + CONSTRUCTOR mode refactoring: (ну там табличку отдельную завести со своим форматом и все такое)
 + client: opponent move listener
+
 + синхронизация ч.1
     + fireBotMove: make async with delay
     + botService.cancelByRollback
@@ -31,13 +32,15 @@
             + слать expectedPosition от клиента для playerMove
             + разрулить на уровне botService для botMove
 
-- поменять API под новые запросы
-- IEventsMulticaster
-- тесты для Chessboard, MovesProvider
-- onServerRunning: fire bot move
-- для PVP режима проверять: side = pieceFrom.side
-- client: для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
++ client: поменять API под новые запросы
 
+
+- IEventsMulticaster
+- для PVP режима проверять: side = pieceFrom.side
+- onServerRunning: fire bot move
+- тесты для Chessboard, MovesProvider
+
+- client: для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
 - move cost support:
     - moves tree
     - available moves tree viewer support

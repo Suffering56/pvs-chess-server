@@ -18,8 +18,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/debug")
 class DebugController {
 
-    @Autowired
-    private lateinit var gameService: GameService
+    @Autowired private lateinit var gameService: GameService
 
     @GetMapping("/version")
     fun get() = "version=${App.getVersion()}"
