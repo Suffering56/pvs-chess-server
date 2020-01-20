@@ -33,19 +33,17 @@
             + разрулить на уровне botService для botMove
 
 + client: поменять API под новые запросы
++ для PVP режима проверять: side = pieceFrom.side
 
-
-- IEventsMulticaster
-- для PVP режима проверять: side = pieceFrom.side
-- onServerRunning: fire bot move
-- тесты для Chessboard, MovesProvider
-
-- client: для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
 - move cost support:
     - moves tree
     - available moves tree viewer support
     - ...
 
+- тесты для Chessboard, MovesProvider
+- client: для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
+- IEventsMulticaster
+- onServerRunning: fire bot move
 - client: rotation fix
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
 - про rollback-е теряется инфа о lastMove. fix it

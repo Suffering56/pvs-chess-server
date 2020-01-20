@@ -15,6 +15,7 @@ class Cell private constructor(
     val col: Int,
     val piece: Piece
 ) {
+    val point: IPoint get() = Point.of(row, col)
 
     companion object {
         private val provider: ArrayCoub<Cell> = Array(BOARD_SIZE) { rowIndex ->

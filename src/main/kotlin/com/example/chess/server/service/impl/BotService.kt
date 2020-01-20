@@ -1,14 +1,11 @@
 package com.example.chess.server.service.impl
 
-import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IMove
 import com.example.chess.server.logic.IUnmodifiableChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
-import com.example.chess.server.logic.misc.Move
-import com.example.chess.server.logic.misc.Point
+import com.example.chess.server.service.IBotMoveSelector
 import com.example.chess.server.service.IBotService
-import com.example.chess.shared.Constants.BOARD_SIZE
-import com.example.chess.shared.enums.Side
+import com.example.chess.server.service.IGameService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.util.concurrent.ConcurrentHashMap
@@ -23,8 +20,8 @@ import java.util.concurrent.TimeUnit
 @Service
 class BotService : IBotService {
 
-    @Autowired private lateinit var gameService: GameService
-    @Autowired private lateinit var movesProvider: MovesProvider
+    @Autowired private lateinit var gameService: IGameService
+    @Autowired private lateinit var botMoveSelector: IBotMoveSelector
 
     private val deferredBotMovesMap: ConcurrentMap<Long, Int> = ConcurrentHashMap()
     private val threadPool = Executors.newScheduledThreadPool(10)
@@ -53,22 +50,11 @@ class BotService : IBotService {
         val botSide = game.getAndCheckBotSide()
         val chessboard = originalChessboard.copyOf()
 
-        return createFakeMove(game, chessboard, botSide)
+        return botMoveSelector.selectRandom(game, chessboard, botSide)
     }
 
     override fun cancelBotMove(gameId: Long) {
         deferredBotMovesMap.remove(gameId)
-    }
-
-    private fun createFakeMove(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {
-        val col = (game.position / 2)
-        check(col < BOARD_SIZE) { "game.position too large for this fake implementation" }
-
-        return Move(
-            Point.of(6, col),
-            Point.of(5, col),
-            null
-        )
     }
 }
 

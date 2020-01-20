@@ -1,6 +1,7 @@
 package com.example.chess.server.logic.misc
 
 import com.example.chess.server.logic.IMove
+import com.example.chess.server.logic.IPoint
 import com.example.chess.shared.dto.MoveDTO
 import com.example.chess.shared.enums.Piece
 
@@ -9,8 +10,8 @@ import com.example.chess.shared.enums.Piece
  *      Date: 11.11.2019
  */
 class Move(
-    override val from: Point,
-    override val to: Point,
+    override val from: IPoint,
+    override val to: IPoint,
     override val pawnTransformationPiece: Piece?
 ) : IMove {
 
