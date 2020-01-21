@@ -13,6 +13,7 @@ import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
+import java.util.*
 import kotlin.random.Random
 import kotlin.streams.toList
 
@@ -20,50 +21,6 @@ import kotlin.streams.toList
 class BotMoveSelector : IBotMoveSelector {
 
     @Autowired private lateinit var movesProvider: IMovesProvider
-
-    // deep = 0; is root! еще никто не ходил.
-
-    internal class InternalContext(
-        val chessboard: IChessboard,
-        val initialPosition: Int = chessboard.position
-    ) {
-
-        inner class Node(
-            val parent: Node?,
-            val previousMove: IMove?
-        ) {
-            val deep: Int get() = (parent?.deep ?: 0) + 1
-
-            var additionalMove: IMove? = null
-            var fallenPiece: Piece? = null
-            lateinit var children: Array<Node>
-
-            fun fillChildren() {
-
-            }
-
-            fun actualizeChessboard() {
-                //TODO: if position
-
-                parent?.let {
-                    actualizeChessboard()
-                }
-                previousMove?.let {
-                    fallenPiece = chessboard.getPiece(it.to)
-                    additionalMove = chessboard.applyMove(it)
-                }
-            }
-
-            fun rollbackChessboard() {
-                previousMove?.let {
-                    chessboard.rollbackMove(it, additionalMove, fallenPiece)
-                }
-                parent?.let {
-                    rollbackChessboard()
-                }
-            }
-        }
-    }
 
     fun selectBest(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): IMove {
         return Move.cut(Point.of(1, 1))
@@ -109,4 +66,78 @@ class BotMoveSelector : IBotMoveSelector {
             )
         }
     }
+
+
+    internal class InternalContext(val chessboard: IChessboard) {
+
+        val initialPosition: Int = chessboard.position
+        val stackForRollback: Deque<RollbackData> = ArrayDeque()
+
+
+
+        inner class Node(
+            val id: Int,        // должен быть уникальным для всех нод
+            val parent: Node?,
+            val previousMove: IMove?
+        ) {
+
+            // deep = 0; is root! еще никто не ходил.
+            val deep: Int get() = (parent?.deep ?: 0) + 1
+            val isRoot: Boolean get() = parent == null
+//
+//            var additionalMove: IMove? = null
+//            var fallenPiece: Piece? = null
+            lateinit var children: Array<Node>
+
+            fun fillChildren() {
+
+            }
+
+            private fun actualizeChessboard() {
+                val rollbackData = stackForRollback.peekFirst()
+
+                if (rollbackData == null) {
+                    if (isRoot) {
+                        return
+                    } else {
+                        actializeByInitial()
+                    }
+                }
+
+//                if (isRoot && rollbackData) {
+//                    return
+//                }
+//                stackForRollback.peekFirst()
+            }
+
+            fun actializeByInitial() {
+                parent?.let {
+                    actializeByInitial()
+                }
+                previousMove?.let {
+                    chessboard.applyMove(it)
+                }
+            }
+//
+//            fun rollbackChessboard() {
+//                previousMove?.let {
+//                    chessboard.rollbackMove(it, additionalMove, fallenPiece)
+//                }
+//                parent?.let {
+//                    rollbackChessboard()
+//                }
+//            }
+        }
+
+        inner class RollbackData(
+            val move: IMove,
+            val additionalMove: IMove?,
+            val fallenPiece: Piece?,
+            // уникальный id ноды, для которой выполняется условие:
+            // rollbackData.move == node.previousMove и nextRollbackData.nodeId == node.parent.id и так далее пока стек не кончится
+            // нужен для того чтобы не откатывать доску к первоначальному состоянию, если оно достигается ранее
+            val nodeId: Int
+        )
+    }
+
 }
