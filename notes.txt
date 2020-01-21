@@ -40,6 +40,7 @@
     - available moves tree viewer support
     - ...
 
+- game: longCastlingAvailable можно объединить с shortCastlingAvailable и хранить все в битовых флагах
 - тесты для Chessboard, MovesProvider
 - client: для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
 - IEventsMulticaster

@@ -41,7 +41,7 @@ data class GameFeatures(
 
     @ColumnDefault("true")
     @Column(nullable = false)
-    override var longCastlingAvailable: Boolean,
+    override var longCastlingAvailable: Boolean,        //TODO можно объединить с shortCastlingAvailable и хранить все в битовых флагах
 
     @ColumnDefault("true")
     @Column(nullable = false)
