@@ -71,20 +71,20 @@ class BotMoveSelector : IBotMoveSelector {
     internal class InternalContext(val chessboard: IChessboard) {
 
         val initialPosition: Int = chessboard.position
-        val stackForRollback: Deque<RollbackData> = ArrayDeque()
-
+        //        val rollbackHistory: MutableList<Rollback> = ArrayList()
+        val stackForRollback: Deque<Rollback> = ArrayDeque()
 
 
         inner class Node(
-            val id: Int,        // должен быть уникальным для всех нод
             val parent: Node?,
             val previousMove: IMove?
         ) {
 
             // deep = 0; is root! еще никто не ходил.
             val deep: Int get() = (parent?.deep ?: 0) + 1
+            val currentPosition: Int get() = initialPosition + deep
             val isRoot: Boolean get() = parent == null
-//
+            //
 //            var additionalMove: IMove? = null
 //            var fallenPiece: Piece? = null
             lateinit var children: Array<Node>
@@ -93,51 +93,109 @@ class BotMoveSelector : IBotMoveSelector {
 
             }
 
-            private fun actualizeChessboard() {
-                val rollbackData = stackForRollback.peekFirst()
-
-                if (rollbackData == null) {
-                    if (isRoot) {
-                        return
-                    } else {
-                        actializeByInitial()
+            inline fun processNeighbors(handler: (Node) -> Unit) {
+                if (parent == null) {
+                    //root cannot has neighbors
+                    return
+                }
+                for (child in parent.children) {
+                    if (child != this) {
+                        handler.invoke(child)
                     }
                 }
-
-//                if (isRoot && rollbackData) {
-//                    return
-//                }
-//                stackForRollback.peekFirst()
             }
 
-            fun actializeByInitial() {
+
+            private fun actualizeChessboard() {
+                if (isRoot) {
+                    rollbackToRoot()
+                    return
+                }
+
+                if (stackForRollback.isEmpty()) {
+                    actualizeByInitial()
+                }
+
+                val nextRollback = stackForRollback.first
+                if (nextRollback.node === this) {
+                    require(chessboard.position == currentPosition) {
+                        "wrong rollback or chessboard state, chessboard.position=${chessboard.position}, " +
+                                "node.currentPosition=$currentPosition"
+                    }
+                    return
+                }
+
+
+                when {
+                    chessboard.position == currentPosition -> {
+                        processNeighbors { neighbor ->
+                            if (nextRollback.node == neighbor) {
+
+                            }
+                        }
+                    }
+                    chessboard.position > currentPosition -> {
+                        rollbackToRoot()
+                    }
+                    chessboard.position < currentPosition -> {
+                    }
+
+                }
+//                while (true) {
+//                    val rollbackData = stackForRollback.peekFirst()
+//                    if (rollbackData == null) {
+//                        if (isRoot) {
+//                            return
+//                        } else {
+//                            actializeByInitial()
+//                        }
+//                    }
+//                }
+            }
+
+
+            private fun slowActualize() {
+                rollbackToRoot()
+                actualizeByInitial()
+            }
+
+            private fun rollbackToRoot() {
+                while (!stackForRollback.isEmpty()) {
+                    stackForRollback.removeFirst()
+                        .execute()
+                }
+            }
+
+            private fun actualizeByInitial() {
                 parent?.let {
-                    actializeByInitial()
+                    actualizeByInitial()
                 }
                 previousMove?.let {
-                    chessboard.applyMove(it)
+                    applyMove(it)
                 }
             }
-//
-//            fun rollbackChessboard() {
-//                previousMove?.let {
-//                    chessboard.rollbackMove(it, additionalMove, fallenPiece)
-//                }
-//                parent?.let {
-//                    rollbackChessboard()
-//                }
-//            }
+
+            private fun applyMove(it: IMove) {
+                val fallenPiece = chessboard.getPiece(it.from)
+                val additionalMove = chessboard.applyMove(it)
+
+                stackForRollback.addFirst(
+                    Rollback(this, additionalMove, fallenPiece)
+                )
+            }
         }
 
-        inner class RollbackData(
-            val move: IMove,
-            val additionalMove: IMove?,
-            val fallenPiece: Piece?,
-            // уникальный id ноды, для которой выполняется условие:
-            // rollbackData.move == node.previousMove и nextRollbackData.nodeId == node.parent.id и так далее пока стек не кончится
-            // нужен для того чтобы не откатывать доску к первоначальному состоянию, если оно достигается ранее
-            val nodeId: Int
-        )
+        inner class Rollback(
+            val node: Node,
+            private val additionalMove: IMove?,
+            private val fallenPiece: Piece?
+        ) {
+            private val move: IMove get() = node.previousMove!!
+
+            fun execute() {
+                chessboard.rollbackMove(move, additionalMove, fallenPiece)
+            }
+        }
     }
 
 }
