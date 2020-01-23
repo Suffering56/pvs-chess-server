@@ -68,12 +68,11 @@ class BotMoveSelector : IBotMoveSelector {
     }
 
 
-    internal class InternalContext(val chessboard: IChessboard) {
+    // unsupported parallel handling!
+    private class MutableChessboardContext(val chessboard: IChessboard) {
 
         val initialPosition: Int = chessboard.position
-        //        val rollbackHistory: MutableList<Rollback> = ArrayList()
         val stackForRollback: Deque<Rollback> = ArrayDeque()
-
 
         inner class Node(
             val parent: Node?,
@@ -107,34 +106,44 @@ class BotMoveSelector : IBotMoveSelector {
 
 
             private fun actualizeChessboard() {
+                if (stackForRollback.isEmpty()) {
+                    actualizeByRoot()
+                    return
+                }
+
                 if (isRoot) {
                     rollbackToRoot()
                     return
                 }
-
-                if (stackForRollback.isEmpty()) {
-                    actualizeByInitial()
-                }
+                parent!!
+                previousMove!!
 
                 val nextRollback = stackForRollback.first
                 if (nextRollback.node === this) {
-                    require(chessboard.position == currentPosition) {
-                        "wrong rollback or chessboard state, chessboard.position=${chessboard.position}, " +
-                                "node.currentPosition=$currentPosition"
-                    }
+                    checkPosition()
                     return
                 }
-
 
                 when {
                     chessboard.position == currentPosition -> {
                         processNeighbors { neighbor ->
-                            if (nextRollback.node == neighbor) {
-
+                            if (neighbor === nextRollback.node) {
+                                rollbackLast()!!                      // откатываемся к parent
+                                require((parent.isRoot && stackForRollback.isEmpty()) || parent === stackForRollback.first.node) { TODO("TBD") }
+                                applyMove(previousMove)
+                                checkPosition()
+                                return
                             }
                         }
+
+                        fromParentToCurrent()
                     }
                     chessboard.position > currentPosition -> {
+                        do {
+                            rollbackLast()
+                        } while (stackForRollback.peekFirst()?.node != this)
+
+
                         rollbackToRoot()
                     }
                     chessboard.position < currentPosition -> {
@@ -153,10 +162,35 @@ class BotMoveSelector : IBotMoveSelector {
 //                }
             }
 
+            private fun checkPosition() {
+                require(chessboard.position == currentPosition) {
+                    "wrong rollback or chessboard state, chessboard.position=${chessboard.position}, " +
+                            "node.currentPosition=$currentPosition"
+                }
+            }
 
-            private fun slowActualize() {
-                rollbackToRoot()
-                actualizeByInitial()
+            private fun fromParentToCurrent() {
+                val nextRollback = stackForRollback.peekFirst()
+
+                if (nextRollback == null) {
+                    actualizeByRoot()
+                    return
+                }
+
+                require(chessboard.position < currentPosition) { TODO("TBD") }
+                require(this !== nextRollback.node) { TODO("TBD") }
+
+                var node = this
+                while (node.parent != null && node.parent != nextRollback.node) {
+                    node = node.parent!!
+                }
+
+                node.parent?.let {
+                    applyMove(node.previousMove!!)
+                }
+                if (node != this) {
+                    fromParentToCurrent()
+                }
             }
 
             private fun rollbackToRoot() {
@@ -166,9 +200,15 @@ class BotMoveSelector : IBotMoveSelector {
                 }
             }
 
-            private fun actualizeByInitial() {
+            private fun rollbackLast(): Rollback? {
+                val removed = stackForRollback.pollFirst()
+                removed?.execute()
+                return removed
+            }
+
+            private fun actualizeByRoot() {
                 parent?.let {
-                    actualizeByInitial()
+                    actualizeByRoot()
                 }
                 previousMove?.let {
                     applyMove(it)

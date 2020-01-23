@@ -48,6 +48,8 @@
     - предположим что каждая такая строка это Array<Piece?> из 8 элементов. в heap это займет 16+8*4(вес enum, который можно заменить на byte)
     - итого: 48 байт на каждую строку, либо 24, если использовать byte вместо enum
 
+- flame graph
+
 - move cost support:
     - moves tree
     - available moves tree viewer support
