@@ -62,7 +62,6 @@ data class GameFeatures(
     }
 
 
-
     override fun toString(): String {
         return "GameFeatures(id=$id, " +
                 "gameId=${game.id}, " +         //берем только id во избежание StackOverflow
@@ -105,5 +104,19 @@ data class GameFeatures(
         result = 31 * result + (pawnLongMoveColumnIndex ?: 0)
         result = 31 * result + isUnderCheck.hashCode()
         return result
+    }
+
+    fun withoutCastlingEtc(owner: Game): GameFeatures {
+        return GameFeatures(
+            id,
+            owner,
+            side,
+            userId,
+            lastVisitDate,
+            longCastlingAvailable = false,
+            shortCastlingAvailable = false,
+            pawnLongMoveColumnIndex = null,
+            isUnderCheck = false
+        )
     }
 }

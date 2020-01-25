@@ -1,0 +1,139 @@
+maxDeep = 2:
+
+    estimated(millis): 9
+    estimated(sec): 0
+    nodesCounter = 621
+
+    estimated(millis): 4
+    estimated(sec): 0
+    nodesCounter = 1401
+
+    estimated(millis): 4
+    estimated(sec): 0
+    nodesCounter = 2328
+
+    estimated(millis): 2
+    estimated(sec): 0
+    nodesCounter = 3550
+
+    estimated(millis): 2
+    estimated(sec): 0
+    nodesCounter = 4814
+
+    estimated(millis): 1
+    estimated(sec): 0
+    nodesCounter = 5970
+
+    estimated(millis): 1
+    estimated(sec): 0
+    nodesCounter = 7308
+
+    estimated(millis): 2
+    estimated(sec): 0
+    nodesCounter = 8464
+
+    estimated(millis): 1
+    estimated(sec): 0
+    nodesCounter = 9851
+
+maxDeep = 3:
+    - heap: used/size   mb
+    - heap: 175/391
+
+    estimated(millis): 63
+    estimated(sec): 0
+    nodesCounter = 13781
+
+    estimated(millis): 40
+    estimated(sec): 0
+    nodesCounter = 32353
+
+    estimated(millis): 50
+    estimated(sec): 0
+    nodesCounter = 64588
+
+    estimated(millis): 23
+    estimated(sec): 0
+    nodesCounter = 95543
+
+    estimated(millis): 25
+    estimated(sec): 0
+    nodesCounter = 125917
+
+    estimated(millis): 28
+    estimated(sec): 0
+    nodesCounter = 170381
+
+    estimated(millis): 29
+    estimated(sec): 0
+    nodesCounter = 245631
+
+    estimated(millis): 23
+    estimated(sec): 0
+    nodesCounter = 308615
+
+maxDeep = 4:
+    - heap: used/size   mb
+    - heap: 293/808
+
+    estimated(millis): 400
+    estimated(sec): 0
+    nodesCounter = 419124
+
+    estimated(millis): 286
+    estimated(sec): 0
+    nodesCounter = 1003460
+
+    estimated(millis): 306
+    estimated(sec): 0
+    nodesCounter = 1824010
+
+    estimated(millis): 342
+    estimated(sec): 0
+    nodesCounter = 2665523
+
+    estimated(millis): 262
+    estimated(sec): 0
+    nodesCounter = 3478399
+
+    estimated(millis): 385
+    estimated(sec): 0
+    nodesCounter = 4587968
+
+    estimated(millis): 702
+    estimated(sec): 0
+    nodesCounter = 6674666
+
+    estimated(millis): 640
+    estimated(sec): 0
+    nodesCounter = 8468260
+
+    estimated(millis): 470
+    estimated(sec): 0
+    nodesCounter = 9701828
+
+deep = 5:
+
+    - heap: used/size   mb
+    - heap: 3200/3900
+    ~ 3gb avg per move
+
+    estimated(millis): 5123
+    estimated(sec): 5
+    nodesCounter = 10189110
+
+    estimated(millis): 7176
+    estimated(sec): 7
+    nodesCounter = 24567974
+
+    estimated(millis): 20000
+    estimated(sec): 20
+    nodesCounter = 66042502
+
+    estimated(millis): 19415
+    estimated(sec): 19
+    nodesCounter = 108133733
+
+    estimated(millis): 21449
+    estimated(sec): 21
+    nodesCounter = 155788234

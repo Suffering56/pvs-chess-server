@@ -34,10 +34,10 @@ open class Chessboard private constructor(
 
     override fun cellsStream(side: Side): Stream<Cell> {
         return IntStream.range(0, POINTS_POOL_SIZE)
-            .mapToObj {
-                val piece = getPieceNullable(it)
+            .mapToObj { compressedPoint ->
+                val piece = getPieceNullable(compressedPoint)
                 if (piece != null) {
-                    Cell.of(it, piece)
+                    Cell.of(compressedPoint, piece)
                 } else {
                     null
                 }

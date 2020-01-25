@@ -23,12 +23,25 @@ class BotMoveSelector : IBotMoveSelector {
 
     companion object {
         val PAWN_TRANSFORMATION_PIECE_STUB: Piece? = null
+        var nodesCounter: Int = 0
+    }
+
+    private inline fun measure(action: () -> Unit) {
+        val start = System.currentTimeMillis()
+        action.invoke()
+        val estimated = System.currentTimeMillis() - start
+
+        println()
+        println("estimated(millis): $estimated")
+        println("estimated(sec): ${estimated / 1000}")
+        println("nodesCounter = $nodesCounter")
     }
 
     override fun selectBest(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): IMove {
         val context = MutableChessboardContext(game, chessboard)
-        context.fillNodes()
-
+        measure {
+            context.fillNodes(5)
+        }
         return Move.cut(Point.of(1, 1))
     }
 
@@ -38,6 +51,9 @@ class BotMoveSelector : IBotMoveSelector {
     }
 
     override fun selectRandom(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): IMove {
+
+        selectBest(game.withoutCastlingEtc(), chessboard, botSide)
+
         val pointsFrom = chessboard.cellsStream(botSide).toList()
 
         var randomPointFrom: IPoint
@@ -65,18 +81,28 @@ class BotMoveSelector : IBotMoveSelector {
         private val stackForRollback: Deque<Rollback> = ArrayDeque()
         private val rootNode: Node = Node(null, null)
 
-        fun fillNodes() {
-            val maxDeepInclusive = 2
-            rootNode.fillChildren(maxDeepInclusive)
+        fun fillNodes(maxDeep: Int) {
+            rootNode.fillChildren(maxDeep)
+            chessboard.actualize(rootNode)
         }
 
         inner class Node(
             val parent: Node?,
             val previousMove: IMove?
         ) {
+            init {
+                nodesCounter++
+            }
             lateinit var children: List<Node>
 
-            val deep: Int get() = (parent?.deep ?: 0) + 1            // deep = 0; is root! еще никто не ходил.
+            val deep: Int   // deep = 0; is root! еще никто не ходил.
+                get() {
+                    if (isRoot) {
+
+                        return 0
+                    }
+                    return 1 + parent!!.deep
+                }
             val currentPosition: Int get() = initialPosition + deep
             val isRoot: Boolean get() = parent == null
             val nextTurnSide: Side get() = Side.nextTurnSide(currentPosition)
@@ -122,14 +148,18 @@ class BotMoveSelector : IBotMoveSelector {
                     rollbackToRoot()
                     return
                 } else if (stackForRollback.isEmpty()) {
+                    require(chessboard.position == initialPosition) { TODO("TBD") }
                     actualizeFromRoot(node)
-                } else if (!tryActualizeByNeighbor(node)) {
-                    rollbackToRoot()
-                    actualizeFromRoot(node)
+                    return
                 }
 
+//                else if (!tryActualizeByNeighbor(node)) {
+                rollbackToRoot()
+                actualizeFromRoot(node)
+//                }
+
                 checkPosition(node)
-                require(node.parent === stackForRollback.first.node) { TODO("TBD") }
+                require(node === stackForRollback.first.node) { TODO("TBD") }
             }
 
             private fun tryActualizeByNeighbor(node: Node): Boolean {
@@ -180,7 +210,7 @@ class BotMoveSelector : IBotMoveSelector {
 
             private fun actualizeFromRoot(node: Node) {
                 node.parent?.let {
-                    actualizeFromRoot(node)
+                    actualizeFromRoot(it)
                 }
                 node.previousMove?.let {
                     applyMove(node)
@@ -189,7 +219,7 @@ class BotMoveSelector : IBotMoveSelector {
 
             private fun applyMove(node: Node) {
                 val move = node.previousMove!!
-                val fallenPiece = base.getPiece(move.from)
+                val fallenPiece = base.getPieceNullable(move.to)
                 val additionalMove = base.applyMove(move)
 
                 stackForRollback.addFirst(

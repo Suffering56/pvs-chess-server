@@ -398,26 +398,26 @@ class GameService : IGameService {
     private fun getUnchecked(gameId: Long): Game = gameCache.getUnchecked(gameId)
 }
 
-fun main() {
-    val stack: Deque<Int> = ArrayDeque()
-
-    stack.addFirst(1)
-    stack.addFirst(2)
-    stack.addFirst(3)
-    stack.addFirst(4)
-    stack.addFirst(5)
-
-    for(i in 1..6) {
-//        println("stack.peekFirst() = ${stack.peekFirst()}")//return null
-//        println(" stack.first = ${stack.first}")        // throw exception
-//        println("stack.first = ${stack.pollFirst()}")   // return null + remove
-        println("stack.first = ${stack.removeFirst()}")       // throw exception + remove
-    }
-
-    for (item in stack) {
-        println(item)
-    }
-}
+//fun main() {
+//    val stack: Deque<Int> = ArrayDeque()
+//
+//    stack.addFirst(1)
+//    stack.addFirst(2)
+//    stack.addFirst(3)
+//    stack.addFirst(4)
+//    stack.addFirst(5)
+//
+//    for(i in 1..6) {
+////        println("stack.peekFirst() = ${stack.peekFirst()}")//return null
+////        println(" stack.first = ${stack.first}")        // throw exception
+////        println("stack.first = ${stack.pollFirst()}")   // return null + remove
+//        println("stack.first = ${stack.removeFirst()}")       // throw exception + remove
+//    }
+//
+//    for (item in stack) {
+//        println(item)
+//    }
+//}
 
 //fun main() {
 //    val poolSize = 10

@@ -4,6 +4,8 @@ import com.example.chess.server.logic.IGame
 import com.example.chess.shared.dto.GameDTO
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Side
+import com.example.chess.shared.enums.Side.BLACK
+import com.example.chess.shared.enums.Side.WHITE
 import com.google.common.collect.Maps
 import org.hibernate.annotations.ColumnDefault
 import org.hibernate.annotations.GenericGenerator
@@ -134,6 +136,23 @@ data class Game(
             if (hasFreeSlot) opponentSide else null
         )
     }
+
+    override fun withoutCastlingEtc(): IGame {
+        val gameFeatures = mutableMapOf<Side, GameFeatures>()
+
+         val game = Game(
+            id,
+            position,
+            mode,
+            initialPosition,
+            gameFeatures
+        )
+
+        gameFeatures[WHITE] = getSideFeatures(WHITE).withoutCastlingEtc(game)
+        gameFeatures[BLACK] = getSideFeatures(BLACK).withoutCastlingEtc(game)
+        return game
+    }
+
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

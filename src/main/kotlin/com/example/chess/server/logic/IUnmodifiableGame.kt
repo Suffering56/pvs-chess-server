@@ -26,4 +26,7 @@ interface IUnmodifiableGame {
     fun getPawnLongColumnIndex(side: Side): Int?
 
     fun toDTO(userId: String): GameDTO
+
+    //TODO: временно
+    fun withoutCastlingEtc(): IGame
 }
