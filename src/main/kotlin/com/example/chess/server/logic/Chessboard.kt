@@ -47,7 +47,7 @@ open class Chessboard private constructor(
             .filter { it.piece.side == side }
     }
 
-    override fun applyMove(move: IMove): IMove? {
+    override fun applyMove(move: Move): Move? {
         val pieceFrom = getPiece(move.from)
 
         if (pieceFrom.isKing()) {
@@ -71,7 +71,7 @@ open class Chessboard private constructor(
         return additionalMove
     }
 
-    private fun applyPawnTransformation(move: IMove, pieceFrom: Piece) {
+    private fun applyPawnTransformation(move: Move, pieceFrom: Piece) {
         val transformationPiece =
             requireNotNull(move.pawnTransformationPiece) {
                 "transformation piece cannot be null: " +
@@ -84,7 +84,7 @@ open class Chessboard private constructor(
         applySimpleMove(move, transformationPiece)
     }
 
-    private fun applyEnPassant(move: IMove, pawn: Piece): IMove? {
+    private fun applyEnPassant(move: Move, pawn: Piece): Move? {
         val attackedPiece = requireNotNull(getPieceNullable(move.from.row, move.to.col)) {
             "attacked piece[en passant] cannot be null: " +
                     "move=${move.toPrettyString(pawn)}\r\n${toPrettyString()}"
@@ -104,7 +104,7 @@ open class Chessboard private constructor(
         )
     }
 
-    private fun applyCastling(move: IMove, king: Piece): IMove? {
+    private fun applyCastling(move: Move, king: Piece): Move? {
         require(move.from.row == move.to.row) { "castling row must be unchangeable: move=${move.toPrettyString(king)}" }
 
         val rowIndex = move.from.row
@@ -132,19 +132,19 @@ open class Chessboard private constructor(
         setPiece(rowIndex, rookColumnFrom, null)
         setPiece(rowIndex, rookColumnTo, rook)
 
-        return Move(
+        return Move.of(
             Point.of(rowIndex, rookColumnFrom),
             Point.of(rowIndex, rookColumnTo),
             null
         )
     }
 
-    private fun applySimpleMove(move: IMove, pieceFrom: Piece) {
+    private fun applySimpleMove(move: Move, pieceFrom: Piece) {
         flatMatrix[move.from.compress()] = null
         flatMatrix[move.to.compress()] = pieceFrom
     }
 
-    override fun rollbackMove(move: IMove, additionalMove: IMove?, fallenPiece: Piece?) {
+    override fun rollbackMove(move: Move, additionalMove: Move?, fallenPiece: Piece?) {
         val movedPiece = getPiece(move.to)
 
         if (movedPiece.isKing()) {
@@ -180,12 +180,12 @@ open class Chessboard private constructor(
         position--
     }
 
-    private fun rollbackSimpleMove(move: IMove, movedPiece: Piece, fallenPiece: Piece?) {
+    private fun rollbackSimpleMove(move: Move, movedPiece: Piece, fallenPiece: Piece?) {
         flatMatrix[move.from.compress()] = movedPiece
         flatMatrix[move.to.compress()] = fallenPiece
     }
 
-    private fun rollbackEnPassant(move: IMove, moverSide: Side) {
+    private fun rollbackEnPassant(move: Move, moverSide: Side) {
         flatMatrix[move.from.compress()] = Piece.of(moverSide.reverse(), PieceType.PAWN)
     }
 
@@ -222,7 +222,7 @@ open class Chessboard private constructor(
         ): Chessboard {
 
             val arrangementMap = initialArrangement?.let {
-                val map: Map<out IPoint, Piece> = StreamSupport.stream(it.spliterator(), false)
+                val map: Map<out Point, Piece> = StreamSupport.stream(it.spliterator(), false)
                     .collect(Collectors.toMap(
                         { arrangementItem -> Point.of(arrangementItem.row, arrangementItem.col) },
                         { arrangementItem -> arrangementItem.piece }
@@ -252,7 +252,7 @@ open class Chessboard private constructor(
             return Chessboard(position, matrix, kingPoints)
         }
 
-        private fun initialChessboardGenerator(initialArrangement: Map<out IPoint, Piece>?) = gen@{ row: Int, col: Int ->
+        private fun initialChessboardGenerator(initialArrangement: Map<out Point, Piece>?) = gen@{ row: Int, col: Int ->
             initialArrangement?.let {
                 return@gen it[Point.of(row, col)]
             }

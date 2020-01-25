@@ -1,6 +1,8 @@
 package com.example.chess.server.logic
 
-import com.example.chess.server.logic.misc.*
+import com.example.chess.server.logic.misc.Cell
+import com.example.chess.server.logic.misc.Point
+import com.example.chess.server.logic.misc.compressPoint
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.Side
@@ -21,7 +23,7 @@ interface IUnmodifiableChessboard {
         return getPieceNullable(index)
     }
 
-    fun getPieceNullable(point: IPoint) = getPieceNullable(point.compress())
+    fun getPieceNullable(point: Point) = getPieceNullable(point.compress())
 
     fun getPiece(compressedPoint: Int): Piece = requireNotNull(getPieceNullable(compressedPoint)) {
         "piece on position=[${Point.of(compressedPoint).toPrettyString()}] cannot be null:\r\n${toPrettyString()}"
@@ -32,11 +34,11 @@ interface IUnmodifiableChessboard {
         return getPiece(index)
     }
 
-    fun getPiece(point: IPoint): Piece = getPiece(point.compress())
+    fun getPiece(point: Point): Piece = getPiece(point.compress())
 
     fun cellsStream(side: Side): Stream<Cell>
 
-    fun getKingPoint(side: Side): IPoint
+    fun getKingPoint(side: Side): Point
 
     fun toDTO(): ChessboardDTO
 

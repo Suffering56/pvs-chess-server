@@ -1,7 +1,6 @@
 package com.example.chess.server.service.impl
 
 import com.example.chess.server.logic.IUnmodifiableChessboard
-import com.example.chess.server.logic.IPoint
 import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.*
 import com.example.chess.server.service.IMovesProvider
@@ -77,7 +76,7 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    override fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: IPoint): Set<IPoint> {
+    override fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): Set<Point> {
         val context = MoveContext(game, chessboard, pointFrom)
         return getAvailableMoves(context)
     }
@@ -87,7 +86,7 @@ class MovesProvider : IMovesProvider {
         return findKingAttackers(kingPoint, kingSide, chessboard) != null
     }
 
-    private fun getAvailableMoves(ctx: MoveContext): Set<IPoint> {
+    private fun getAvailableMoves(ctx: MoveContext): Set<Point> {
         if (ctx.pieceFrom.isKing()) {
             //ходы короля слишком непохожи на другие, т.к. нас уже неинтересуют текущие шахи, а так же препятствия
             return getKingMoves(ctx)
@@ -114,8 +113,8 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    private fun findKingAttackers(kingPoint: IPoint, kingSide: Side, chessboard: IUnmodifiableChessboard): Twin<IPoint>? {
-        var result: Twin<IPoint>? = findVectorPieceThreatsToKing(kingPoint, kingSide, chessboard)
+    private fun findKingAttackers(kingPoint: Point, kingSide: Side, chessboard: IUnmodifiableChessboard): Twin<Point>? {
+        var result: Twin<Point>? = findVectorPieceThreatsToKing(kingPoint, kingSide, chessboard)
 
         if (result != null && result.two != null) {
             return result
@@ -148,8 +147,8 @@ class MovesProvider : IMovesProvider {
 
     private fun getPossibleKingAttackerForCurrentObstacle(
         ctx: MoveContext,
-        kingAttacker: IPoint?
-    ): IPoint? {
+        kingAttacker: Point?
+    ): Point? {
         if (ctx.pointFrom.hasCommonVectorWith(ctx.kingPoint)) {
             var rowDirection = 0
             var colDirection = 0
@@ -204,9 +203,9 @@ class MovesProvider : IMovesProvider {
         rowDirection: Int,
         colDirection: Int,
         ctx: MoveContext,
-        kingAttacker: IPoint?,
+        kingAttacker: Point?,
         expectedThreatType: PieceType
-    ): IPoint? {
+    ): Point? {
         var row: Int = ctx.kingPoint.row
         var col: Int = ctx.kingPoint.col
         var obstacleFound = false
@@ -298,10 +297,10 @@ class MovesProvider : IMovesProvider {
 
     private fun getPawnMoves(
         ctx: MoveContext,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?
-    ): Set<IPoint> {
-        val result: MutableSet<IPoint> = HashSet()
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?
+    ): Set<Point> {
+        val result: MutableSet<Point> = HashSet()
 
         val rowOffset = ctx.sideFrom.pawnRowDirection
 
@@ -336,33 +335,33 @@ class MovesProvider : IMovesProvider {
 
     private fun getKnightMoves(
         ctx: MoveContext,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?
-    ): Set<IPoint> {
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?
+    ): Set<Point> {
         return getMovesByOffsets(knightOffsets, kingAttacker, kingPossibleAttackerForObstacle, ctx)
     }
 
     private fun getBishopMoves(
         ctx: MoveContext,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?
-    ): Set<IPoint> {
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?
+    ): Set<Point> {
         return getMovesByDirections(pieceVectorsMap[BISHOP]!!, kingAttacker, kingPossibleAttackerForObstacle, ctx)
     }
 
     private fun getRookMoves(
         ctx: MoveContext,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?
-    ): Set<IPoint> {
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?
+    ): Set<Point> {
         return getMovesByDirections(pieceVectorsMap[ROOK]!!, kingAttacker, kingPossibleAttackerForObstacle, ctx)
     }
 
     private fun getQueenMoves(
         ctx: MoveContext,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?
-    ): Set<IPoint> {
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?
+    ): Set<Point> {
         return getMovesByDirections(pieceVectorsMap[QUEEN]!!, kingAttacker, kingPossibleAttackerForObstacle, ctx)
     }
 
@@ -405,7 +404,7 @@ class MovesProvider : IMovesProvider {
     private fun isAvailableKingMove(
         rowTo: Int,
         colTo: Int,
-        enemyKingPoint: IPoint,
+        enemyKingPoint: Point,
         ctx: MoveContext
     ): Boolean {
         if (isOutOfBoard(rowTo, colTo)) {
@@ -435,9 +434,9 @@ class MovesProvider : IMovesProvider {
     private fun tryAddPawnMove(
         rowTo: Int,
         colTo: Int,
-        result: MutableSet<IPoint>,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?,
+        result: MutableSet<Point>,
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?,
         ctx: MoveContext
     ): Boolean {
         if (isOutOfBoard(rowTo, colTo)) {
@@ -465,9 +464,9 @@ class MovesProvider : IMovesProvider {
     private fun tryAddPawnEnPassantMove(
         rowTo: Int,
         colTo: Int,
-        result: MutableSet<IPoint>,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?,
+        result: MutableSet<Point>,
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?,
         ctx: MoveContext
     ) {
         if (ctx.sideFrom.pawnEnPassantStartRow != ctx.pointFrom.row) {
@@ -516,11 +515,11 @@ class MovesProvider : IMovesProvider {
 
     private fun getMovesByOffsets(
         offsets: Set<IntIntPair>,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?,
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?,
         ctx: MoveContext
-    ): Set<IPoint> {
-        val result: MutableSet<IPoint> = HashSet()
+    ): Set<Point> {
+        val result: MutableSet<Point> = HashSet()
 
         for (offset in offsets) {
             val rowTo = ctx.pointFrom.row + offset.one
@@ -550,12 +549,12 @@ class MovesProvider : IMovesProvider {
 
     private fun getMovesByDirections(
         directions: Set<IntIntPair>,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?,
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?,
         ctx: MoveContext
-    ): Set<IPoint> {
+    ): Set<Point> {
 
-        val result: MutableSet<IPoint> = HashSet()
+        val result: MutableSet<Point> = HashSet()
 
         for (direction in directions) {
             var rowTo: Int = ctx.pointFrom.row
@@ -596,8 +595,8 @@ class MovesProvider : IMovesProvider {
     private fun isDestroyingThreatMove(
         rowTo: Int,
         colTo: Int,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?
     ): Boolean {
         if (kingAttacker != null && kingPossibleAttackerForObstacle != null) {
             return false
@@ -617,8 +616,8 @@ class MovesProvider : IMovesProvider {
     private fun isAvailableMove(
         rowTo: Int,
         colTo: Int,
-        kingAttacker: IPoint?,
-        kingPossibleAttackerForObstacle: IPoint?,
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?,
         ctx: MoveContext
     ): Boolean {
         if (kingAttacker != null && kingPossibleAttackerForObstacle != null) {
@@ -647,8 +646,8 @@ class MovesProvider : IMovesProvider {
     private fun canMoveObstacle(
         rowTo: Int,
         colTo: Int,
-        kingPossibleAttackerForObstacle: IPoint,
-        kingPoint: IPoint
+        kingPossibleAttackerForObstacle: Point,
+        kingPoint: Point
     ): Boolean {
         if (kingPossibleAttackerForObstacle.isEqual(rowTo, colTo)) {
             // рубим фигуру, из-за которой перемещаемая фигура являлась obstacle
@@ -663,7 +662,7 @@ class MovesProvider : IMovesProvider {
      *
      * Защитить короля можно срубив атакующую фигуру, либо закрыться (если возможно)
      */
-    private fun canDefendKing(rowTo: Int, colTo: Int, kingAttacker: IPoint, ctx: MoveContext): Boolean {
+    private fun canDefendKing(rowTo: Int, colTo: Int, kingAttacker: Point, ctx: MoveContext): Boolean {
         if (kingAttacker.isEqual(rowTo, colTo)) {
             // рубим фигуру, объявившую шах.
             return true
@@ -685,7 +684,7 @@ class MovesProvider : IMovesProvider {
         return canBeObstacle(rowTo, colTo, kingAttacker, ctx.kingPoint)
     }
 
-    private fun canBeObstacle(rowTo: Int, colTo: Int, kingThreat: IPoint, kingPoint: IPoint): Boolean {
+    private fun canBeObstacle(rowTo: Int, colTo: Int, kingThreat: Point, kingPoint: Point): Boolean {
         if (!kingThreat.hasCommonVectorWith(rowTo, colTo)) {
             // данный ход находится где-то сбоку от вектора шаха и никак не защищает короля
             return false
@@ -714,7 +713,7 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    private fun findPawnThreatsToKing(kingPoint: IPoint, kingSide: Side, chessboard: IUnmodifiableChessboard): Point? {
+    private fun findPawnThreatsToKing(kingPoint: Point, kingSide: Side, chessboard: IUnmodifiableChessboard): Point? {
         val rowOffset = kingSide.pawnRowDirection
         val enemySide = kingSide.reverse()
 
@@ -741,7 +740,7 @@ class MovesProvider : IMovesProvider {
         return null
     }
 
-    private fun findKnightThreatsToKing(kingPoint: IPoint, kingSide: Side, chessboard: IUnmodifiableChessboard): Point? {
+    private fun findKnightThreatsToKing(kingPoint: Point, kingSide: Side, chessboard: IUnmodifiableChessboard): Point? {
         val enemySide = kingSide.reverse()
 
         for (offset in knightOffsets) {
@@ -762,8 +761,8 @@ class MovesProvider : IMovesProvider {
         return null
     }
 
-    private fun findVectorPieceThreatsToKing(kingPoint: IPoint, kingSide: Side, chessboard: IUnmodifiableChessboard): Twin<IPoint>? {
-        var result: Twin<IPoint>? = null
+    private fun findVectorPieceThreatsToKing(kingPoint: Point, kingSide: Side, chessboard: IUnmodifiableChessboard): Twin<Point>? {
+        var result: Twin<Point>? = null
 
         val allPossibleAttackerVectors = pieceVectorsMap[QUEEN]!!
 
@@ -797,7 +796,7 @@ class MovesProvider : IMovesProvider {
     private fun nextPieceByVector(
         rowDirection: Int,
         colDirection: Int,
-        sourcePoint: IPoint,
+        sourcePoint: Point,
         chessboard: IUnmodifiableChessboard
     ): Point? {
         var row: Int = sourcePoint.row
@@ -837,15 +836,15 @@ class MovesProvider : IMovesProvider {
     private data class MoveContext(
         val game: IUnmodifiableGame,
         val chessboard: IUnmodifiableChessboard,
-        val pointFrom: IPoint,
+        val pointFrom: Point,
         val pieceFrom: Piece = chessboard.getPiece(pointFrom),
         val sideFrom: Side = pieceFrom.side,
         val enemySide: Side = sideFrom.reverse(),
-        val kingPoint: IPoint = chessboard.getKingPoint(sideFrom)
+        val kingPoint: Point = chessboard.getKingPoint(sideFrom)
     ) {
         internal fun isEnemy(piece: Piece) = piece.side == enemySide
         internal fun getPieceNullable(row: Int, col: Int) = chessboard.getPieceNullable(row, col)
-        internal fun getPiece(point: IPoint) = chessboard.getPiece(point)
+        internal fun getPiece(point: Point) = chessboard.getPiece(point)
         internal fun pointFromToString() = "${pointFrom.toPrettyString()}($pointFrom): $pieceFrom"
         internal fun kingPointToString() = "${kingPoint.toPrettyString()}($kingPoint): ${chessboard.getPiece(kingPoint)}"
     }

@@ -1,6 +1,5 @@
 package com.example.chess.server.logic.misc
 
-import com.example.chess.server.logic.IPoint
 import com.example.chess.shared.ArrayCoub
 import com.example.chess.shared.Constants.BOARD_SIZE
 import com.example.chess.shared.enums.Piece
@@ -15,7 +14,7 @@ class Cell private constructor(
     val col: Int,
     val piece: Piece
 ) {
-    val point: IPoint get() = Point.of(row, col)
+    val point: Point get() = Point.of(row, col)
 
     companion object {
         private val provider: ArrayCoub<Cell> = Array(BOARD_SIZE) { rowIndex ->
@@ -32,7 +31,7 @@ class Cell private constructor(
             return provider[row][col][piece.ordinal]
         }
 
-        fun of(point: IPoint, piece: Piece): Cell = of(point.row, point.col, piece)
+        fun of(point: Point, piece: Piece): Cell = of(point.row, point.col, piece)
 
         fun of(compressedPoint: Int, piece: Piece): Cell = of(Point.of(compressedPoint), piece)
     }

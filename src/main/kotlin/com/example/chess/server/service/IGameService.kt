@@ -1,10 +1,10 @@
 package com.example.chess.server.service
 
-import com.example.chess.server.logic.IMove
-import com.example.chess.server.logic.IPoint
 import com.example.chess.server.logic.IUnmodifiableChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.GameResult
+import com.example.chess.server.logic.misc.Move
+import com.example.chess.server.logic.misc.Point
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.ConstructorGameDTO
@@ -29,14 +29,14 @@ interface IGameService {
     fun findAndCheckGame(gameId: Long, userId: String, chessboardPosition: Int? = null): GameResult<IUnmodifiableChessboard>
 
     // read
-    fun getMovesByPoint(gameId: Long, point: IPoint, clientPosition: Int): GameResult<Set<IPoint>>
+    fun getMovesByPoint(gameId: Long, point: Point, clientPosition: Int): GameResult<Set<Point>>
 
     fun listenChanges(gameId: Long, userId: String, clientPosition: Int): GameResult<ChangesDTO>
 
     // write
-    fun applyPlayerMove(gameId: Long, userId: String, move: IMove, clientPosition: Int): GameResult<ChangesDTO>
+    fun applyPlayerMove(gameId: Long, userId: String, move: Move, clientPosition: Int): GameResult<ChangesDTO>
 
-    fun applyBotMove(gameId: Long, clientPosition: Int, moveProvider: (IUnmodifiableGame, IUnmodifiableChessboard) -> IMove): GameResult<ChangesDTO>
+    fun applyBotMove(gameId: Long, clientPosition: Int, moveProvider: (IUnmodifiableGame, IUnmodifiableChessboard) -> Move): GameResult<ChangesDTO>
 
     fun rollback(gameId: Long, positionsOffset: Int, clientPosition: Int): GameResult<IUnmodifiableChessboard>
 }

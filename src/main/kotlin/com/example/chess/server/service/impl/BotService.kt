@@ -1,8 +1,8 @@
 package com.example.chess.server.service.impl
 
-import com.example.chess.server.logic.IMove
 import com.example.chess.server.logic.IUnmodifiableChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
+import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.service.IBotMoveSelector
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IGameService
@@ -46,7 +46,7 @@ class BotService : IBotService {
     }
 
     //будет вызываться под локом игры
-    override fun invoke(game: IUnmodifiableGame, originalChessboard: IUnmodifiableChessboard): IMove {
+    override fun invoke(game: IUnmodifiableGame, originalChessboard: IUnmodifiableChessboard): Move {
         val botSide = game.getAndCheckBotSide()
         val chessboard = originalChessboard.copyOf()
 

@@ -2,7 +2,6 @@ package com.example.chess.server.entity
 
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
-import com.example.chess.server.logic.IMove
 import com.example.chess.shared.enums.Piece
 import org.hibernate.annotations.GenericGenerator
 import javax.persistence.*
@@ -50,8 +49,8 @@ data class HistoryItem(
     val description: String?
 ) {
 
-    fun toMove(): IMove {
-        return Move(
+    fun toMove(): Move {
+        return Move.of(
             Point.of(rowIndexFrom, columnIndexFrom),
             Point.of(rowIndexTo, columnIndexTo),
             pieceFromPawn

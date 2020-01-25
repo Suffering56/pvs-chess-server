@@ -1,7 +1,6 @@
 package com.example.chess.server.web
 
 import com.example.chess.server.core.Authorized
-import com.example.chess.server.logic.IPoint
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IGameService
@@ -35,7 +34,7 @@ class GameController {
         return gameService.getMovesByPoint(gameId, Point.of(rowIndex, columnIndex), clientPosition)
             .result
             .stream()
-            .map(IPoint::toDTO)
+            .map(Point::toDTO)
             .collect(Collectors.toSet())
     }
 

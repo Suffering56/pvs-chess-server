@@ -117,6 +117,7 @@ deep = 5:
     - heap: used/size   mb
     - heap: 3200/3900
     ~ 3gb avg per move
+    - с Xmx1536m на 3м ходу все уперлось в heap
 
     estimated(millis): 5123
     estimated(sec): 5
@@ -137,3 +138,31 @@ deep = 5:
     estimated(millis): 21449
     estimated(sec): 21
     nodesCounter = 155788234
+
+    ------------------------
+    ! with Moves Pool
+
+    - heap: used/size   mb
+    - heap: 1200/1610
+    ~ 800mb avg per move
+    - с Xmx1536m на 6м ходу все уперлось в heap
+
+    estimated(millis): 9637
+    estimated(sec): 9
+    nodesCounter = 10189110
+
+    estimated(millis): 14873
+    estimated(sec): 14
+    nodesCounter = 26297468
+
+    estimated(millis): 20701
+    estimated(sec): 20
+    nodesCounter = 47521222
+
+    estimated(millis): 25273
+    estimated(sec): 25
+    nodesCounter = 74788508
+
+    estimated(millis): 23912
+    estimated(sec): 23
+    nodesCounter = 100248558

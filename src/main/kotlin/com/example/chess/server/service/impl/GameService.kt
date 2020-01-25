@@ -3,8 +3,12 @@ package com.example.chess.server.service.impl
 import com.example.chess.server.App
 import com.example.chess.server.entity.Game
 import com.example.chess.server.entity.provider.EntityProvider
-import com.example.chess.server.logic.*
-import com.example.chess.server.logic.misc.*
+import com.example.chess.server.logic.IChessboard
+import com.example.chess.server.logic.IUnmodifiableChessboard
+import com.example.chess.server.logic.IUnmodifiableGame
+import com.example.chess.server.logic.misc.GameResult
+import com.example.chess.server.logic.misc.Move
+import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.logic.session.SyncManager
 import com.example.chess.server.repository.ArrangementRepository
 import com.example.chess.server.repository.GameRepository
@@ -104,7 +108,7 @@ class GameService : IGameService {
     }
 
     @Transactional
-    override fun applyPlayerMove(gameId: Long, userId: String, move: IMove, clientPosition: Int): GameResult<ChangesDTO> {
+    override fun applyPlayerMove(gameId: Long, userId: String, move: Move, clientPosition: Int): GameResult<ChangesDTO> {
         //TODO: запретить ходить в пвп режиме, пока незарегистрированы оба игрока
         return processGameLocked(gameId, clientPosition) { game ->
 
@@ -129,7 +133,7 @@ class GameService : IGameService {
     }
 
     @Transactional
-    override fun applyBotMove(gameId: Long, clientPosition: Int, moveProvider: (IUnmodifiableGame, IUnmodifiableChessboard) -> IMove): GameResult<ChangesDTO> {
+    override fun applyBotMove(gameId: Long, clientPosition: Int, moveProvider: (IUnmodifiableGame, IUnmodifiableChessboard) -> Move): GameResult<ChangesDTO> {
         return tryProcessGameLocked(gameId, clientPosition) { game ->
 
             val botSide = game.getAndCheckBotSide()
@@ -185,7 +189,7 @@ class GameService : IGameService {
         }
     }
 
-    override fun getMovesByPoint(gameId: Long, point: IPoint, clientPosition: Int): GameResult<Set<IPoint>> {
+    override fun getMovesByPoint(gameId: Long, point: Point, clientPosition: Int): GameResult<Set<Point>> {
         val game: IUnmodifiableGame = getUnchecked(gameId)
         checkPosition(game.position, clientPosition)
 
@@ -280,7 +284,7 @@ class GameService : IGameService {
         }
     }
 
-    private fun applyMove(game: Game, chessboard: IChessboard, move: IMove): ChangesDTO {
+    private fun applyMove(game: Game, chessboard: IChessboard, move: Move): ChangesDTO {
         val pieceFrom = chessboard.getPiece(move.from)
         val availableMoves = movesProvider.getAvailableMoves(game, chessboard, move.from)
 

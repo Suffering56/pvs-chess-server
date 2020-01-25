@@ -4,9 +4,8 @@ import com.example.chess.server.entity.ArrangementItem
 import com.example.chess.server.entity.Game
 import com.example.chess.server.entity.GameFeatures
 import com.example.chess.server.entity.HistoryItem
-import com.example.chess.server.logic.IMove
+import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
-import com.example.chess.server.logic.misc.toPrettyString
 import com.example.chess.shared.enums.GameMode
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.Side
@@ -68,7 +67,7 @@ class EntityProvider {
             isUnderCheck = false
         )
 
-    fun createHistoryItem(gameId: Long, position: Int, move: IMove, pieceFrom: Piece): HistoryItem {
+    fun createHistoryItem(gameId: Long, position: Int, move: Move, pieceFrom: Piece): HistoryItem {
         return HistoryItem(
             id = null,
             gameId = gameId,

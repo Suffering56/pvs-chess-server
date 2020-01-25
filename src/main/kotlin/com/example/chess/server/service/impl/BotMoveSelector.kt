@@ -1,8 +1,6 @@
 package com.example.chess.server.service.impl
 
 import com.example.chess.server.logic.IChessboard
-import com.example.chess.server.logic.IMove
-import com.example.chess.server.logic.IPoint
 import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
@@ -37,7 +35,7 @@ class BotMoveSelector : IBotMoveSelector {
         println("nodesCounter = $nodesCounter")
     }
 
-    override fun selectBest(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): IMove {
+    override fun selectBest(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {
         val context = MutableChessboardContext(game, chessboard)
         measure {
             context.fillNodes(5)
@@ -50,20 +48,20 @@ class BotMoveSelector : IBotMoveSelector {
         return list[index]
     }
 
-    override fun selectRandom(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): IMove {
+    override fun selectRandom(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {
 
         selectBest(game.withoutCastlingEtc(), chessboard, botSide)
 
         val pointsFrom = chessboard.cellsStream(botSide).toList()
 
-        var randomPointFrom: IPoint
-        var availableMoves: List<IPoint>
+        var randomPointFrom: Point
+        var availableMoves: List<Point>
         do {
             randomPointFrom = random(pointsFrom).point
             availableMoves = movesProvider.getAvailableMoves(game, chessboard, randomPointFrom).toList()
         } while (availableMoves.isEmpty())
 
-        return Move(
+        return Move.of(
             randomPointFrom,
             random(availableMoves),
             PAWN_TRANSFORMATION_PIECE_STUB
@@ -88,7 +86,7 @@ class BotMoveSelector : IBotMoveSelector {
 
         inner class Node(
             val parent: Node?,
-            val previousMove: IMove?
+            val previousMove: Move?
         ) {
             init {
                 nodesCounter++
@@ -118,7 +116,7 @@ class BotMoveSelector : IBotMoveSelector {
                 children = chessboard.cellsStream(nextTurnSide)
                     .flatMap { cell ->
                         movesProvider.getAvailableMoves(game, chessboard, cell.point).stream()
-                            .map { pointTo -> Move(cell.point, pointTo, PAWN_TRANSFORMATION_PIECE_STUB) }
+                            .map { pointTo -> Move.of(cell.point, pointTo, PAWN_TRANSFORMATION_PIECE_STUB) }
                     }
                     .map { move -> Node(this, move) }
                     .toList()
@@ -230,10 +228,10 @@ class BotMoveSelector : IBotMoveSelector {
 
         inner class Rollback(
             val node: Node,
-            private val additionalMove: IMove?,
+            private val additionalMove: Move?,
             private val fallenPiece: Piece?
         ) {
-            private val move: IMove get() = node.previousMove!!
+            private val move: Move get() = node.previousMove!!
 
             fun execute() {
                 chessboard.rollbackMove(move, additionalMove, fallenPiece)
