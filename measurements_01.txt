@@ -141,11 +141,11 @@ deep = 5:
 
     ------------------------
     ! with Moves Pool
+    ! Xmx1536m
 
+    - out of memory: на 6м ходу
     - heap: used/size   mb
     - heap: 1200/1610
-    ~ 800mb avg per move
-    - с Xmx1536m на 6м ходу все уперлось в heap
 
     estimated(millis): 9637
     estimated(sec): 9
@@ -166,3 +166,129 @@ deep = 5:
     estimated(millis): 23912
     estimated(sec): 23
     nodesCounter = 100248558
+
+    ------------------------
+    ! with Moves Pool
+    ! with 5 threads
+    ! Xmx1536m
+
+    - out of memory: на 5м ходу
+
+    estimated(millis): 3187
+    estimated(sec): 3
+    nodesCounter = 10189109
+
+    estimated(millis): 4281
+    estimated(sec): 4
+    nodesCounter = 22990992
+
+    estimated(millis): 13644
+    estimated(sec): 13
+    nodesCounter = 61896848 (memory: from 39mb -> 1385mb ~= 1300mb
+
+    estimated(millis): 10708
+    estimated(sec): 10
+    nodesCounter = 93187157 (memory: from 39mb -> 1385mb ~= 1300mb)
+
+    -----------------------
+    ! with Moves Pool
+    ! with 5 threads
+    ! Xmx1536m
+    ! without collect branches
+
+    - out of memory: never
+
+    estimated(millis): 3034
+    estimated(sec): 3
+    nodesCounter = 10189109
+
+    estimated(millis): 8624
+    estimated(sec): 8
+    nodesCounter = 40151217
+
+    estimated(millis): 10472
+    estimated(sec): 10
+    nodesCounter = 73587983
+
+    estimated(millis): 11117
+    estimated(sec): 11
+    nodesCounter = 111289241
+
+    estimated(millis): 11043
+    estimated(sec): 11
+    nodesCounter = 147796166
+
+    estimated(millis): 16527
+    estimated(sec): 16
+    nodesCounter = 205573129
+
+    ------------------------
+    ! with Moves Pool
+    ! without collect branches
+    ! with 2 threads
+    ! Xmx768m
+
+    - out of memory: never
+
+    estimated(millis): 5134
+    estimated(sec): 5
+    nodesCounter = 10189109
+
+    estimated(millis): 8405
+    estimated(sec): 8
+    nodesCounter = 26273514
+
+    estimated(millis): 10353
+    estimated(sec): 10
+    nodesCounter = 45253139
+
+    estimated(millis): 12609
+    estimated(sec): 12
+    nodesCounter = 70130383
+
+    estimated(millis): 13038
+    estimated(sec): 13
+    nodesCounter = 96371482
+
+    estimated(millis): 9314
+    estimated(sec): 9
+    nodesCounter = 113625048
+
+    ------------------------
+    ! with Moves Pool
+    ! without collect branches
+    ! with 1 threads
+    ! Xmx256m
+
+    estimated(millis): 9651
+    estimated(sec): 9
+    nodesCounter = 10189109
+
+    estimated(millis): 15675
+    estimated(sec): 15
+    nodesCounter = 26297466
+
+    estimated(millis): 34458
+    estimated(sec): 34
+    nodesCounter = 62080473
+
+    estimated(millis): 30636
+    estimated(sec): 30
+    nodesCounter = 94194372
+
+    estimated(millis): 33759
+    estimated(sec): 33
+    nodesCounter = 129127900
+
+    ------------------------
+    ! with Moves Pool
+    ! without collect branches
+    ! Xmx256m
+    ! with 10 threads
+
+    estimated(millis): 3447
+    estimated(sec): 3
+    nodesCounter = 10189109
+
+    Exception in thread "http-nio-8080-Acceptor-0" java.lang.OutOfMemoryError: Java heap space
+    java.lang.OutOfMemoryError: Java heap space

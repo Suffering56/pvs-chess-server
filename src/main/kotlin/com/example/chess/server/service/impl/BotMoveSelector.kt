@@ -11,6 +11,9 @@ import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import java.util.*
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlin.streams.toList
 
@@ -18,10 +21,10 @@ import kotlin.streams.toList
 class BotMoveSelector : IBotMoveSelector {
 
     @Autowired private lateinit var movesProvider: IMovesProvider
+    private var nodesCounter = AtomicInteger(0)
 
     companion object {
         val PAWN_TRANSFORMATION_PIECE_STUB: Piece? = null
-        var nodesCounter: Int = 0
     }
 
     private inline fun measure(action: () -> Unit) {
@@ -32,14 +35,37 @@ class BotMoveSelector : IBotMoveSelector {
         println()
         println("estimated(millis): $estimated")
         println("estimated(sec): ${estimated / 1000}")
-        println("nodesCounter = $nodesCounter")
+        println("nodesCounter = ${nodesCounter.get()}")
     }
 
     override fun selectBest(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {
-        val context = MutableChessboardContext(game, chessboard)
+        val maxDeep = 5
+        val threadPool = Executors.newFixedThreadPool(1)
+        nodesCounter = AtomicInteger(0)
+
         measure {
-            context.fillNodes(5)
+            val branches = chessboard.cellsStream(botSide)
+                .flatMap { cell ->
+                    movesProvider.getAvailableMoves(game, chessboard, cell.point).stream()
+                        .map { pointTo -> Move.of(cell.point, pointTo, PAWN_TRANSFORMATION_PIECE_STUB) }
+                }
+                .map { move ->
+                    val branchChessboard = chessboard.copyOf()
+                    branchChessboard.applyMove(move)
+                    MutableChessboardContext(game, branchChessboard)
+                }
+                .toList()
+
+            branches.forEach {
+                it.fillNodes(maxDeep - 1)
+                it.clean()
+            }
+
+            threadPool.shutdown()
+            while (!threadPool.awaitTermination(1, TimeUnit.SECONDS)) {
+            }
         }
+
         return Move.cut(Point.of(1, 1))
     }
 
@@ -84,14 +110,19 @@ class BotMoveSelector : IBotMoveSelector {
             chessboard.actualize(rootNode)
         }
 
+        fun clean() {
+            rootNode.children = null
+        }
+
         inner class Node(
             val parent: Node?,
             val previousMove: Move?
         ) {
             init {
-                nodesCounter++
+                nodesCounter.incrementAndGet()
             }
-            lateinit var children: List<Node>
+
+            var children: List<Node>? = null
 
             val deep: Int   // deep = 0; is root! еще никто не ходил.
                 get() {
@@ -104,7 +135,6 @@ class BotMoveSelector : IBotMoveSelector {
             val currentPosition: Int get() = initialPosition + deep
             val isRoot: Boolean get() = parent == null
             val nextTurnSide: Side get() = Side.nextTurnSide(currentPosition)
-            val hasChildren: Boolean get() = ::children.isInitialized
 
             fun fillChildren(deep: Int) {
                 if (deep == 0) {
@@ -113,7 +143,7 @@ class BotMoveSelector : IBotMoveSelector {
 
                 chessboard.actualize(this)
 
-                children = chessboard.cellsStream(nextTurnSide)
+                val children = chessboard.cellsStream(nextTurnSide)
                     .flatMap { cell ->
                         movesProvider.getAvailableMoves(game, chessboard, cell.point).stream()
                             .map { pointTo -> Move.of(cell.point, pointTo, PAWN_TRANSFORMATION_PIECE_STUB) }
@@ -121,6 +151,7 @@ class BotMoveSelector : IBotMoveSelector {
                     .map { move -> Node(this, move) }
                     .toList()
 
+                this.children = children
                 children.forEach { it.fillChildren(deep - 1) }
             }
 
@@ -129,7 +160,7 @@ class BotMoveSelector : IBotMoveSelector {
                     //root cannot has neighbors
                     return
                 }
-                for (child in parent.children) {
+                for (child in parent.children!!) {
                     if (child != this) {
                         handler.invoke(child)
                     }
