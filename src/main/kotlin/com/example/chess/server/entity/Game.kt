@@ -77,28 +77,32 @@ data class Game(
         getSideFeatures(side).pawnLongMoveColumnIndex = null
     }
 
-    override fun setUnderCheck(side: Side, isUnderCheck: Boolean) {
-        getSideFeatures(side).isUnderCheck = isUnderCheck
+    override fun getPawnLongColumnIndex(side: Side): Int? {
+        return getSideFeatures(side).pawnLongMoveColumnIndex
     }
 
     override fun disableShortCastling(side: Side) {
-        getSideFeatures(side).shortCastlingAvailable = false
+        getSideFeatures(side).disableShortCastling()
     }
 
     override fun disableLongCastling(side: Side) {
-        getSideFeatures(side).longCastlingAvailable = false
+        getSideFeatures(side).disableLongCastling()
+    }
+
+    override fun enableShortCastling(side: Side) {
+        getSideFeatures(side).enableShortCastling()
+    }
+
+    override fun enableLongCastling(side: Side) {
+        getSideFeatures(side).enableLongCastling()
     }
 
     override fun isShortCastlingAvailable(side: Side): Boolean {
-        return getSideFeatures(side).shortCastlingAvailable
+        return getSideFeatures(side).isShortCastlingAvailable()
     }
 
     override fun isLongCastlingAvailable(side: Side): Boolean {
-        return getSideFeatures(side).longCastlingAvailable
-    }
-
-    override fun getPawnLongColumnIndex(side: Side): Int? {
-        return getSideFeatures(side).pawnLongMoveColumnIndex
+        return getSideFeatures(side).isLongCastlingAvailable()
     }
 
     override fun getAndCheckBotSide(): Side {
@@ -152,7 +156,6 @@ data class Game(
         gameFeatures[BLACK] = getSideFeatures(BLACK).withoutCastlingEtc(game)
         return game
     }
-
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

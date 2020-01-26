@@ -7,6 +7,5 @@ import com.example.chess.shared.enums.Side
 
 interface IBotMoveSelector {
 
-    fun selectRandom(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move
-    fun selectBest(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move
+    fun select(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move
 }

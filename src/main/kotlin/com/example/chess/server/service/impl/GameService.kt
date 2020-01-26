@@ -310,8 +310,6 @@ class GameService : IGameService {
         game.setPawnLongMoveColumnIndex(initiatorSide, null)
 
         val underCheck = movesProvider.isUnderCheck(enemySide, chessboard)
-        game.setUnderCheck(initiatorSide, false)    // мы не можем сделать такой ход, после которого окажемся под шахом
-        game.setUnderCheck(enemySide, underCheck)               // но наш ход, может причинить шах противнику
 
         when (pieceFrom.type) {
             PieceType.KING -> {

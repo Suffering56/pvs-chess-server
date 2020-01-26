@@ -61,10 +61,8 @@ class EntityProvider {
             side = side,
             userId = null,
             lastVisitDate = null,
-            longCastlingAvailable = true,
-            shortCastlingAvailable = true,
-            pawnLongMoveColumnIndex = null,
-            isUnderCheck = false
+            castlingState = GameFeatures.ALL_CASTLING_ENABLED,
+            pawnLongMoveColumnIndex = null
         )
 
     fun createHistoryItem(gameId: Long, position: Int, move: Move, pieceFrom: Piece): HistoryItem {

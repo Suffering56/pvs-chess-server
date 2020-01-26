@@ -1,6 +1,8 @@
 package com.example.chess.server.service.impl
 
 import com.example.chess.server.logic.IChessboard
+import com.example.chess.server.logic.IGame
+import com.example.chess.server.logic.IUnmodifiableChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
@@ -27,18 +29,7 @@ class BotMoveSelector : IBotMoveSelector {
         val PAWN_TRANSFORMATION_PIECE_STUB: Piece? = null
     }
 
-    private inline fun measure(action: () -> Unit) {
-        val start = System.currentTimeMillis()
-        action.invoke()
-        val estimated = System.currentTimeMillis() - start
-
-        println()
-        println("estimated(millis): $estimated")
-        println("estimated(sec): ${estimated / 1000}")
-        println("nodesCounter = ${nodesCounter.get()}")
-    }
-
-    override fun selectBest(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {
+    fun selectBest(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, botSide: Side): Move {
         val maxDeep = 5
         val threadPool = Executors.newFixedThreadPool(1)
         nodesCounter = AtomicInteger(0)
@@ -51,8 +42,12 @@ class BotMoveSelector : IBotMoveSelector {
                 }
                 .map { move ->
                     val branchChessboard = chessboard.copyOf()
+                    val branchGame = game.withoutCastlingEtc()
+
                     branchChessboard.applyMove(move)
-                    MutableChessboardContext(game, branchChessboard)
+                    //TODO
+
+                    MutableChessboardContext(branchGame, branchChessboard)
                 }
                 .toList()
 
@@ -69,40 +64,22 @@ class BotMoveSelector : IBotMoveSelector {
         return Move.cut(Point.of(1, 1))
     }
 
-    private fun <T> random(list: List<T>): T {
-        val index = Random.nextInt(0, list.size)
-        return list[index]
+    private inline fun measure(action: () -> Unit) {
+        val start = System.currentTimeMillis()
+        action.invoke()
+        val estimated = System.currentTimeMillis() - start
+
+        println()
+        println("estimated(millis): $estimated")
+        println("estimated(sec): ${estimated / 1000}")
+        println("nodesCounter = ${nodesCounter.get()}")
     }
 
-    override fun selectRandom(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {
-
-        selectBest(game.withoutCastlingEtc(), chessboard, botSide)
-
-        val pointsFrom = chessboard.cellsStream(botSide).toList()
-
-        var randomPointFrom: Point
-        var availableMoves: List<Point>
-        do {
-            randomPointFrom = random(pointsFrom).point
-            availableMoves = movesProvider.getAvailableMoves(game, chessboard, randomPointFrom).toList()
-        } while (availableMoves.isEmpty())
-
-        return Move.of(
-            randomPointFrom,
-            random(availableMoves),
-            PAWN_TRANSFORMATION_PIECE_STUB
-        )
-    }
-
-
-    // unsupported parallel handling!
     private inner class MutableChessboardContext(
-        private val game: IUnmodifiableGame,
-        originalChessboard: IChessboard
+        game: IGame,
+        chessboard: IChessboard
     ) {
-        private val chessboard = ChessboardHolder(originalChessboard)
-        private val initialPosition: Int = chessboard.position
-        private val stackForRollback: Deque<Rollback> = ArrayDeque()
+        private val chessboard = ChessboardHolder(game, chessboard)
         private val rootNode: Node = Node(null, null)
 
         fun fillNodes(maxDeep: Int) {
@@ -124,17 +101,15 @@ class BotMoveSelector : IBotMoveSelector {
 
             var children: List<Node>? = null
 
-            val deep: Int   // deep = 0; is root! еще никто не ходил.
-                get() {
-                    if (isRoot) {
-
-                        return 0
-                    }
-                    return 1 + parent!!.deep
-                }
-            val currentPosition: Int get() = initialPosition + deep
             val isRoot: Boolean get() = parent == null
+            val currentPosition: Int get() = chessboard.initialPosition + deep
             val nextTurnSide: Side get() = Side.nextTurnSide(currentPosition)
+            val deep: Int   // deep = 0; is root! еще никто не ходил.
+                get() = if (isRoot) {
+                    0
+                } else {
+                    1 + parent!!.deep
+                }
 
             fun fillChildren(deep: Int) {
                 if (deep == 0) {
@@ -145,7 +120,7 @@ class BotMoveSelector : IBotMoveSelector {
 
                 val children = chessboard.cellsStream(nextTurnSide)
                     .flatMap { cell ->
-                        movesProvider.getAvailableMoves(game, chessboard, cell.point).stream()
+                        chessboard.getAvailableMoves(cell.point).stream()
                             .map { pointTo -> Move.of(cell.point, pointTo, PAWN_TRANSFORMATION_PIECE_STUB) }
                     }
                     .map { move -> Node(this, move) }
@@ -166,30 +141,39 @@ class BotMoveSelector : IBotMoveSelector {
                     }
                 }
             }
-
         }
 
+        inner class ChessboardHolder(
+            val game: IGame,
+            val base: IChessboard,
+            val initialPosition: Int = base.position
+        ) : IChessboard by base {
 
-        inner class ChessboardHolder(val base: IChessboard) : IChessboard by base {
+            private val stackForRollback: Deque<Rollback> = ArrayDeque()
+
+            fun getAvailableMoves(pointFrom: Point): Set<Point> {
+                return movesProvider.getAvailableMoves(game, chessboard, pointFrom)
+            }
 
             fun actualize(node: Node) {
                 if (node.isRoot) {
                     rollbackToRoot()
                     return
                 } else if (stackForRollback.isEmpty()) {
-                    require(chessboard.position == initialPosition) { TODO("TBD") }
+                    require(chessboard.position == initialPosition) {
+                        "incorrect chessboard position=${chessboard.position}, must be equal initialPosition=$initialPosition"
+                    }
                     actualizeFromRoot(node)
                     return
+                } else if (!tryActualizeByNeighbor(node)) {
+                    rollbackToRoot()
+                    actualizeFromRoot(node)
                 }
 
-//                else if (!tryActualizeByNeighbor(node)) {
-                rollbackToRoot()
-                actualizeFromRoot(node)
-//                }
-
-                checkPosition(node)
-                require(node === stackForRollback.first.node) { TODO("TBD") }
+                checkChessboardPositionEquals(node)
+                checkNextStackNodeEquals(node)
             }
+
 
             private fun tryActualizeByNeighbor(node: Node): Boolean {
                 if (base.position != node.currentPosition) {
@@ -206,9 +190,15 @@ class BotMoveSelector : IBotMoveSelector {
                 node.processNeighbors { neighbor ->
                     if (neighbor === nextRollback.node) {
                         rollbackLast()!!                      // откатываемся к parent
-                        require((node.parent.isRoot && stackForRollback.isEmpty()) || node.parent === stackForRollback.first.node) { TODO("TBD") }
+
+                        if (stackForRollback.isEmpty()) {
+                            require(node.parent.isRoot) { "stack is empty, but parent: ${node.parent} is not a root" }
+                        } else {
+                            checkNextStackNodeEquals(node.parent)
+                        }
+
                         applyMove(node)
-                        checkPosition(node)
+                        checkChessboardPositionEquals(node)
                         return true
                     }
                 }
@@ -216,13 +206,18 @@ class BotMoveSelector : IBotMoveSelector {
                 return false
             }
 
-            private fun checkPosition(node: Node) {
+            private fun checkNextStackNodeEquals(node: Node) {
+                require(node === stackForRollback.first.node) {
+                    "next rollback node: ${stackForRollback.first.node} must be equal actualized node: $node"
+                }
+            }
+
+            private fun checkChessboardPositionEquals(node: Node) {
                 require(base.position == node.currentPosition) {
                     "wrong rollback or chessboard state, chessboard.position=${base.position}, " +
                             "node.currentPosition=${node.currentPosition}"
                 }
             }
-
 
             private fun rollbackToRoot() {
                 while (!stackForRollback.isEmpty()) {
@@ -255,109 +250,72 @@ class BotMoveSelector : IBotMoveSelector {
                     Rollback(node, additionalMove, fallenPiece)
                 )
             }
-        }
 
-        inner class Rollback(
-            val node: Node,
-            private val additionalMove: Move?,
-            private val fallenPiece: Piece?
-        ) {
-            private val move: Move get() = node.previousMove!!
+            open inner class Rollback(
+                val node: Node,
+                protected val additionalMove: Move?,
+                protected val fallenPiece: Piece?
+            ) {
+                protected val move: Move get() = node.previousMove!!
 
-            fun execute() {
-                chessboard.rollbackMove(move, additionalMove, fallenPiece)
+                open fun execute() {
+                    base.rollbackMove(move, additionalMove, fallenPiece)
+                }
+            }
+
+            inner class EnableCastlingRollback(
+                node: Node,
+                additionalMove: Move?,
+                fallenPiece: Piece?
+            ) : Rollback(node, additionalMove, fallenPiece) {
+
+                override fun execute() {
+                    val moveInitiatorSide = base.getPiece(move.to).side
+//                    game.enableLongCastling()
+//                    game.enableShortCastling()
+//                    game.setPawnLongMoveColumnIndex(movedPiece.side, pawnLongMoveColumnIndex)
+                    super.execute()
+                }
+            }
+
+            inner class EnableLongPawnMoveRollback(
+                node: Node,
+                additionalMove: Move?,
+                fallenPiece: Piece?,
+                val pawnLongMoveColumnIndex: Int
+            ) : Rollback(node, additionalMove, fallenPiece) {
+
+                override fun execute() {
+                    val moveInitiatorSide = base.getPiece(move.to).side
+                    game.setPawnLongMoveColumnIndex(moveInitiatorSide, pawnLongMoveColumnIndex)
+                    super.execute()
+                }
             }
         }
     }
 
+    private fun <T> random(list: List<T>): T {
+        val index = Random.nextInt(0, list.size)
+        return list[index]
+    }
+
+    override fun select(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {
+        selectBest(game.withoutCastlingEtc(), chessboard, botSide)
+
+        //TODO: TMP block
+        val pointsFrom = chessboard.cellsStream(botSide).toList()
+
+        var randomPointFrom: Point
+        var availableMoves: List<Point>
+        do {
+            randomPointFrom = random(pointsFrom).point
+            availableMoves = movesProvider.getAvailableMoves(game, chessboard, randomPointFrom).toList()
+        } while (availableMoves.isEmpty())
+
+        return Move.of(
+            randomPointFrom,
+            random(availableMoves),
+            PAWN_TRANSFORMATION_PIECE_STUB
+        )
+    }
 }
-
-
-//private fun checkPosition() {
-//    require(chessboard.position == currentPosition) {
-//        "wrong rollback or chessboard state, chessboard.position=${chessboard.position}, " +
-//                "node.currentPosition=$currentPosition"
-//    }
-//}
-
-//private fun fromParentToCurrent() {
-//    val nextRollback = stackForRollback.peekFirst()
-//
-//    if (nextRollback == null) {
-//        actualizeByRoot()
-//        return
-//    }
-//
-//    require(chessboard.position < currentPosition) { TODO("TBD") }
-//    require(this !== nextRollback.node) { TODO("TBD") }
-//
-//    var node = this
-//    while (node.parent != null && node.parent != nextRollback.node) {
-//        node = node.parent!!
-//    }
-//
-//    node.parent?.let {
-//        applyMove(node.previousMove!!)
-//    }
-//    if (node != this) {
-//        fromParentToCurrent()
-//    }
-//}
-
-
-//private fun actualizeChessboard() {
-//    if (stackForRollback.isEmpty()) {
-//        actualizeByRoot()
-//        return
-//    }
-//
-//    if (isRoot) {
-//        rollbackToRoot()
-//        return
-//    }
-//    parent!!
-//    previousMove!!
-//
-//    val nextRollback = stackForRollback.first
-//    if (nextRollback.node === this) {
-//        checkPosition()
-//        return
-//    }
-//
-//    when {
-//        chessboard.position == currentPosition -> {
-//            processNeighbors { neighbor ->
-//                if (neighbor === nextRollback.node) {
-//                    rollbackLast()!!                      // откатываемся к parent
-//                    require((parent.isRoot && stackForRollback.isEmpty()) || parent === stackForRollback.first.node) { TODO("TBD") }
-//                    applyMove(previousMove)
-//                    checkPosition()
-//                    return
-//                }
-//            }
-//
-//            fromParentToCurrent()
-//        }
-//        chessboard.position > currentPosition -> {
-//            do {
-//                rollbackLast()
-//            } while (stackForRollback.peekFirst()?.node != this)
-//
-//
-//            rollbackToRoot()
-//        }
-//        chessboard.position < currentPosition -> {
-//        }
-//
-//    }
-////                while (true) {
-////                    val rollbackData = stackForRollback.peekFirst()
-////                    if (rollbackData == null) {
-////                        if (isRoot) {
-////                            return
-////                        } else {
-////                            actializeByInitial()
-////                        }
-////                    }
-////                }
-//}

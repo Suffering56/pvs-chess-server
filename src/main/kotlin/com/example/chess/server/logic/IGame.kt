@@ -6,9 +6,11 @@ interface IGame : IUnmodifiableGame {
 
     fun setPawnLongMoveColumnIndex(side: Side, index: Int?)
 
-    fun setUnderCheck(side: Side, isUnderCheck: Boolean)
-
     fun disableShortCastling(side: Side)
 
     fun disableLongCastling(side: Side)
+
+    fun enableShortCastling(side: Side)
+
+    fun enableLongCastling(side: Side)
 }

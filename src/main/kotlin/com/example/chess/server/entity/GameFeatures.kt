@@ -1,6 +1,5 @@
 package com.example.chess.server.entity
 
-import com.example.chess.server.logic.IGameFeatures
 import com.example.chess.shared.enums.Side
 import com.fasterxml.jackson.annotation.JsonIgnore
 import org.hibernate.annotations.ColumnDefault
@@ -39,39 +38,59 @@ data class GameFeatures(
     @Column(nullable = true)
     var lastVisitDate: LocalDateTime?,
 
-    @ColumnDefault("true")
+    @ColumnDefault("$ALL_CASTLING_ENABLED")
     @Column(nullable = false)
-    override var longCastlingAvailable: Boolean,        //TODO можно объединить с shortCastlingAvailable и хранить все в битовых флагах
-
-    @ColumnDefault("true")
-    @Column(nullable = false)
-    override var shortCastlingAvailable: Boolean,
+    var castlingState: Int,
 
     @Column(nullable = true)
-    override var pawnLongMoveColumnIndex: Int?,   //если пешка сделала длинный ход (на 2 клетки вперед) здесь храним индекс
+    var pawnLongMoveColumnIndex: Int?   //если пешка сделала длинный ход (на 2 клетки вперед) здесь храним индекс
 
-    @ColumnDefault("false")
-    @Column(nullable = false)
-    var isUnderCheck: Boolean
-
-) : IGameFeatures {
-
-    fun disableCastling() {
-        longCastlingAvailable = false
-        shortCastlingAvailable = false
+) {
+    companion object {
+        const val ALL_CASTLING_ENABLED = 0b11
+        const val SHORT_CASTLING_ENABLED = 0b01
+        const val LONG_CASTLING_ENABLED = 0b10
+        const val ALL_CASTLING_DISABLED = 0b00
     }
 
+    fun isShortCastlingAvailable(): Boolean {
+        return castlingState.and(SHORT_CASTLING_ENABLED) == SHORT_CASTLING_ENABLED
+    }
 
-    override fun toString(): String {
-        return "GameFeatures(id=$id, " +
-                "gameId=${game.id}, " +         //берем только id во избежание StackOverflow
-                "side=$side, " +
-                "userId=$userId, " +
-                "lastVisitDate=$lastVisitDate, " +
-                "longCastlingAvailable=$longCastlingAvailable, " +
-                "shortCastlingAvailable=$shortCastlingAvailable, " +
-                "pawnLongMoveColumnIndex=$pawnLongMoveColumnIndex, " +
-                "isUnderCheck=$isUnderCheck)"
+    fun isLongCastlingAvailable(): Boolean {
+        return castlingState.and(LONG_CASTLING_ENABLED) == LONG_CASTLING_ENABLED
+    }
+
+    fun enableShortCastling() {
+        castlingState = castlingState.or(SHORT_CASTLING_ENABLED)
+    }
+
+    fun enableLongCastling() {
+        castlingState = castlingState.or(LONG_CASTLING_ENABLED)
+    }
+
+    fun disableShortCastling() {
+        castlingState = castlingState.and(LONG_CASTLING_ENABLED)
+    }
+
+    fun disableLongCastling() {
+        castlingState = castlingState.and(SHORT_CASTLING_ENABLED)
+    }
+
+    fun disableCastling() {
+        castlingState = ALL_CASTLING_DISABLED
+    }
+
+    fun withoutCastlingEtc(owner: Game): GameFeatures {
+        return GameFeatures(
+            id,
+            owner,
+            side,
+            userId,
+            lastVisitDate,
+            castlingState = ALL_CASTLING_DISABLED,
+            pawnLongMoveColumnIndex = null
+        )
     }
 
     override fun equals(other: Any?): Boolean {
@@ -85,10 +104,8 @@ data class GameFeatures(
         if (side != other.side) return false
         if (userId != other.userId) return false
         if (lastVisitDate != other.lastVisitDate) return false
-        if (longCastlingAvailable != other.longCastlingAvailable) return false
-        if (shortCastlingAvailable != other.shortCastlingAvailable) return false
+        if (castlingState != other.castlingState) return false
         if (pawnLongMoveColumnIndex != other.pawnLongMoveColumnIndex) return false
-        if (isUnderCheck != other.isUnderCheck) return false
 
         return true
     }
@@ -99,24 +116,18 @@ data class GameFeatures(
         result = 31 * result + side.hashCode()
         result = 31 * result + (userId?.hashCode() ?: 0)
         result = 31 * result + (lastVisitDate?.hashCode() ?: 0)
-        result = 31 * result + longCastlingAvailable.hashCode()
-        result = 31 * result + shortCastlingAvailable.hashCode()
+        result = 31 * result + castlingState.hashCode()
         result = 31 * result + (pawnLongMoveColumnIndex ?: 0)
-        result = 31 * result + isUnderCheck.hashCode()
         return result
     }
 
-    fun withoutCastlingEtc(owner: Game): GameFeatures {
-        return GameFeatures(
-            id,
-            owner,
-            side,
-            userId,
-            lastVisitDate,
-            longCastlingAvailable = false,
-            shortCastlingAvailable = false,
-            pawnLongMoveColumnIndex = null,
-            isUnderCheck = false
-        )
+    override fun toString(): String {
+        return "GameFeatures(id=$id, " +
+                "gameId=${game.id}, " +         //берем только id во избежание StackOverflow
+                "side=$side, " +
+                "userId=$userId, " +
+                "lastVisitDate=$lastVisitDate, " +
+                "castlingState=${Integer.toBinaryString(castlingState)}, " +
+                "pawnLongMoveColumnIndex=$pawnLongMoveColumnIndex)"
     }
 }

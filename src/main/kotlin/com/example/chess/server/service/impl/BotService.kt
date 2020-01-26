@@ -50,7 +50,7 @@ class BotService : IBotService {
         val botSide = game.getAndCheckBotSide()
         val chessboard = originalChessboard.copyOf()
 
-        return botMoveSelector.selectRandom(game, chessboard, botSide)
+        return botMoveSelector.select(game, chessboard, botSide)
     }
 
     override fun cancelBotMove(gameId: Long) {
