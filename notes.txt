@@ -34,19 +34,21 @@
 
 + client: поменять API под новые запросы
 + для PVP режима проверять: side = pieceFrom.side
-- move cache
-- mutable chessboard bot move selector:
-    - actualize chessboard
++ move cache
++ chessboard holder:
++ actualize chessboard
++ rollback support
++ parallel root children (deep = 1) handling
++ measurements_01
++ Rollback extensions for castling and en-passant
++ fix pawn transformation rollback
++ game: longCastlingAvailable можно объединить с shortCastlingAvailable и хранить все в битовых флагах
 
-
-- chessboard row cache: использовать в версии с immutable доской
-    - количество возможных комбинаций строк равно количеству размещений с повторениями 13(типов фигур + null) по 8(размер доски)
-    - оно равно 815_730_721:
-        - на самом деле это число меньше, т.к. количество повторений ограничено не 8-ю (кроме пешек)
-        - так же много комбинаций будут недостижимы благодаря другим ограничениям игры
-        - а поскольку расчет требует клонов одной и той же доски, то все это дело будет великолепно кэшироваться (like ProtoMessageKey=obj+hash)
-    - предположим что каждая такая строка это Array<Piece?> из 8 элементов. в heap это займет 16+8*4(вес enum, который можно заменить на byte)
-    - итого: 48 байт на каждую строку, либо 24, если использовать byte вместо enum
+- fill deep exchange
+- node.calculateCost
+    - parameter: material
+    - parameter: moves count difference
+    - parameter: checkmate
 
 - flame graph
 
@@ -55,11 +57,10 @@
     - available moves tree viewer support
     - ...
 
-- game: longCastlingAvailable можно объединить с shortCastlingAvailable и хранить все в битовых флагах
 - тесты для Chessboard, MovesProvider
 - client: для SINGLE режима разрешить ходить всегда без изменения chessboardView.state.side
 - IEventsMulticaster
-- onServerRunning: fire bot move
+- onServerRunning: fire bot move    // или по авторизации игрока в игре
 - client: rotation fix
 - MoveDTO: IMove, PointDTO: IPoint, ChessUtils -> shared, MovesProvider -> shared
 - про rollback-е теряется инфа о lastMove. fix it
@@ -83,3 +84,13 @@
 - client: legend refactoring    (LayoutInflater)
 - client: drag and drop in chessboard view
 - client: надо как-то победить долгий первый вызов ретрофита
+
+
+- chessboard row cache: использовать в версии с immutable доской
+    - количество возможных комбинаций строк равно количеству размещений с повторениями 13(типов фигур + null) по 8(размер доски)
+    - оно равно 815_730_721:
+        - на самом деле это число меньше, т.к. количество повторений ограничено не 8-ю (кроме пешек)
+        - так же много комбинаций будут недостижимы благодаря другим ограничениям игры
+        - а поскольку расчет требует клонов одной и той же доски, то все это дело будет великолепно кэшироваться (like ProtoMessageKey=obj+hash)
+    - предположим что каждая такая строка это Array<Piece?> из 8 элементов. в heap это займет 16+8*4(вес enum, который можно заменить на byte)
+    - итого: 48 байт на каждую строку, либо 24, если использовать byte вместо enum
