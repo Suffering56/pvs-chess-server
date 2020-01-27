@@ -81,6 +81,10 @@ data class Game(
         return getSideFeatures(side).pawnLongMoveColumnIndex
     }
 
+    override fun getCastlingState(side: Side): Int {
+        return getSideFeatures(side).castlingState
+    }
+
     override fun disableShortCastling(side: Side) {
         getSideFeatures(side).disableShortCastling()
     }
@@ -89,12 +93,8 @@ data class Game(
         getSideFeatures(side).disableLongCastling()
     }
 
-    override fun enableShortCastling(side: Side) {
-        getSideFeatures(side).enableShortCastling()
-    }
-
-    override fun enableLongCastling(side: Side) {
-        getSideFeatures(side).enableLongCastling()
+    override fun setCastlingState(side: Side, castlingState: Int) {
+        getSideFeatures(side).castlingState = castlingState
     }
 
     override fun isShortCastlingAvailable(side: Side): Boolean {
@@ -141,10 +141,10 @@ data class Game(
         )
     }
 
-    override fun withoutCastlingEtc(): IGame {
+    override fun copyOf(): IGame {
         val gameFeatures = mutableMapOf<Side, GameFeatures>()
 
-         val game = Game(
+        val game = Game(
             id,
             position,
             mode,
@@ -152,10 +152,26 @@ data class Game(
             gameFeatures
         )
 
-        gameFeatures[WHITE] = getSideFeatures(WHITE).withoutCastlingEtc(game)
-        gameFeatures[BLACK] = getSideFeatures(BLACK).withoutCastlingEtc(game)
+        gameFeatures[WHITE] = getSideFeatures(WHITE).copyOf(game)
+        gameFeatures[BLACK] = getSideFeatures(BLACK).copyOf(game)
         return game
     }
+
+//    override fun withoutCastlingEtc(): IGame {
+//        val gameFeatures = mutableMapOf<Side, GameFeatures>()
+//
+//         val game = Game(
+//            id,
+//            position,
+//            mode,
+//            initialPosition,
+//            gameFeatures
+//        )
+//
+//        gameFeatures[WHITE] = getSideFeatures(WHITE).withoutCastlingEtc(game)
+//        gameFeatures[BLACK] = getSideFeatures(BLACK).withoutCastlingEtc(game)
+//        return game
+//    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

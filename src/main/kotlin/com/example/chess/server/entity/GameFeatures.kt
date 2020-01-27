@@ -61,10 +61,12 @@ data class GameFeatures(
         return castlingState.and(LONG_CASTLING_ENABLED) == LONG_CASTLING_ENABLED
     }
 
+    @Suppress("unused")
     fun enableShortCastling() {
         castlingState = castlingState.or(SHORT_CASTLING_ENABLED)
     }
 
+    @Suppress("unused")
     fun enableLongCastling() {
         castlingState = castlingState.or(LONG_CASTLING_ENABLED)
     }
@@ -77,19 +79,27 @@ data class GameFeatures(
         castlingState = castlingState.and(SHORT_CASTLING_ENABLED)
     }
 
-    fun disableCastling() {
-        castlingState = ALL_CASTLING_DISABLED
-    }
+//    fun withoutCastlingEtc(owner: Game): GameFeatures {
+//        return GameFeatures(
+//            id,
+//            owner,
+//            side,
+//            userId,
+//            lastVisitDate,
+//            castlingState = ALL_CASTLING_DISABLED,
+//            pawnLongMoveColumnIndex = null
+//        )
+//    }
 
-    fun withoutCastlingEtc(owner: Game): GameFeatures {
+    fun copyOf(owner: Game): GameFeatures {
         return GameFeatures(
             id,
             owner,
             side,
             userId,
             lastVisitDate,
-            castlingState = ALL_CASTLING_DISABLED,
-            pawnLongMoveColumnIndex = null
+            castlingState,
+            pawnLongMoveColumnIndex
         )
     }
 

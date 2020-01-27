@@ -42,7 +42,7 @@ class BotMoveSelector : IBotMoveSelector {
                 }
                 .map { move ->
                     val branchChessboard = chessboard.copyOf()
-                    val branchGame = game.withoutCastlingEtc()
+                    val branchGame = game.copyOf()
 
                     branchChessboard.applyMove(move)
                     //TODO
@@ -143,7 +143,7 @@ class BotMoveSelector : IBotMoveSelector {
             }
         }
 
-        inner class ChessboardHolder(
+        private inner class ChessboardHolder(
             val game: IGame,
             val base: IChessboard,
             val initialPosition: Int = base.position
@@ -243,15 +243,37 @@ class BotMoveSelector : IBotMoveSelector {
 
             private fun applyMove(node: Node) {
                 val move = node.previousMove!!
+                val initiatorSide = base.getPiece(move.from).side
                 val fallenPiece = base.getPieceNullable(move.to)
+
+                val prevCastlingState = game.getCastlingState(initiatorSide)
+                val prevLongMoveColumnIndex = game.getPawnLongColumnIndex(initiatorSide)
+
                 val additionalMove = base.applyMove(move)
 
-                stackForRollback.addFirst(
-                    Rollback(node, additionalMove, fallenPiece)
-                )
+                val currentCastlingState = game.getCastlingState(initiatorSide)
+                val currentLongMoveColumnIndex = game.getPawnLongColumnIndex(initiatorSide)
+
+                val rollback = when {
+                    currentCastlingState != prevCastlingState -> ChangeCastlingStateRollback(
+                        node,
+                        additionalMove,
+                        fallenPiece,
+                        prevCastlingState
+                    )
+                    prevLongMoveColumnIndex != currentLongMoveColumnIndex -> ChangeEnPassantStateRollback(
+                        node,
+                        additionalMove,
+                        fallenPiece,
+                        currentLongMoveColumnIndex
+                    )
+                    else -> Rollback(node, additionalMove, fallenPiece)
+                }
+
+                stackForRollback.addFirst(rollback)
             }
 
-            open inner class Rollback(
+            private open inner class Rollback(
                 val node: Node,
                 protected val additionalMove: Move?,
                 protected val fallenPiece: Piece?
@@ -263,31 +285,30 @@ class BotMoveSelector : IBotMoveSelector {
                 }
             }
 
-            inner class EnableCastlingRollback(
+            private inner class ChangeCastlingStateRollback(
                 node: Node,
                 additionalMove: Move?,
-                fallenPiece: Piece?
+                fallenPiece: Piece?,
+                val prevCastlingState: Int
             ) : Rollback(node, additionalMove, fallenPiece) {
 
                 override fun execute() {
                     val moveInitiatorSide = base.getPiece(move.to).side
-//                    game.enableLongCastling()
-//                    game.enableShortCastling()
-//                    game.setPawnLongMoveColumnIndex(movedPiece.side, pawnLongMoveColumnIndex)
+                    game.setCastlingState(moveInitiatorSide, prevCastlingState)
                     super.execute()
                 }
             }
 
-            inner class EnableLongPawnMoveRollback(
+            private inner class ChangeEnPassantStateRollback(
                 node: Node,
                 additionalMove: Move?,
                 fallenPiece: Piece?,
-                val pawnLongMoveColumnIndex: Int
+                val prevLongMoveColumnIndex: Int?
             ) : Rollback(node, additionalMove, fallenPiece) {
 
                 override fun execute() {
                     val moveInitiatorSide = base.getPiece(move.to).side
-                    game.setPawnLongMoveColumnIndex(moveInitiatorSide, pawnLongMoveColumnIndex)
+                    game.setPawnLongMoveColumnIndex(moveInitiatorSide, prevLongMoveColumnIndex)
                     super.execute()
                 }
             }
@@ -300,7 +321,7 @@ class BotMoveSelector : IBotMoveSelector {
     }
 
     override fun select(game: IUnmodifiableGame, chessboard: IChessboard, botSide: Side): Move {
-        selectBest(game.withoutCastlingEtc(), chessboard, botSide)
+        selectBest(game, chessboard, botSide)
 
         //TODO: TMP block
         val pointsFrom = chessboard.cellsStream(botSide).toList()

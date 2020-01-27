@@ -145,11 +145,7 @@ open class Chessboard private constructor(
     }
 
     override fun rollbackMove(move: Move, additionalMove: Move?, fallenPiece: Piece?) {
-        val movedPiece = getPiece(move.to)
-
-        if (movedPiece.isKing()) {
-            kingPoints[movedPiece.side] = Point.of(move.from.toDTO())
-        }
+        var movedPiece = getPiece(move.to)
 
         additionalMove?.let {
             when (movedPiece.type) {
@@ -176,6 +172,15 @@ open class Chessboard private constructor(
                 )
             }
         }
+
+        if (movedPiece.isKing()) {
+            kingPoints[movedPiece.side] = Point.of(move.from.toDTO())
+        }
+
+        move.pawnTransformationPiece?.let {
+            movedPiece = Piece.of(it.side, PieceType.PAWN)
+        }
+
         rollbackSimpleMove(move, movedPiece, fallenPiece)
         position--
     }

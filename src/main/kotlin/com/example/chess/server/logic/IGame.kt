@@ -10,7 +10,5 @@ interface IGame : IUnmodifiableGame {
 
     fun disableLongCastling(side: Side)
 
-    fun enableShortCastling(side: Side)
-
-    fun enableLongCastling(side: Side)
+    fun setCastlingState(side: Side, castlingState: Int)
 }

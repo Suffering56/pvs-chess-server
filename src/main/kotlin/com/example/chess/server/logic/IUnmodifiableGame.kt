@@ -28,5 +28,9 @@ interface IUnmodifiableGame {
     fun toDTO(userId: String): GameDTO
 
     //TODO: временно
-    fun withoutCastlingEtc(): IGame
+//    fun withoutCastlingEtc(): IGame
+
+    fun copyOf(): IGame
+
+    fun getCastlingState(side: Side): Int
 }

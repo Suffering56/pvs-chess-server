@@ -29,15 +29,11 @@ class EntityProvider {
             initialPosition,
             gameFeatures
         )
+        //TODO: вообще лучше проверять расстановку и затем уже запрещать, если нужно (для конструктора)
+        val castlingState = if (isConstructor) GameFeatures.ALL_CASTLING_DISABLED else GameFeatures.ALL_CASTLING_ENABLED
 
-        gameFeatures[Side.WHITE] = gameFeatures(game = game, side = Side.WHITE)
-        gameFeatures[Side.BLACK] = gameFeatures(game = game, side = Side.BLACK)
-
-        if (isConstructor) {
-            //TODO: вообще лучше проверять расстановку и затем уже запрещать, если нужно
-            gameFeatures[Side.WHITE]?.disableCastling()
-            gameFeatures[Side.BLACK]?.disableCastling()
-        }
+        gameFeatures[Side.WHITE] = gameFeatures(game, Side.WHITE, castlingState)
+        gameFeatures[Side.BLACK] = gameFeatures(game, Side.BLACK, castlingState)
 
         game.registerUser(userId, side)
         return game
@@ -48,20 +44,29 @@ class EntityProvider {
             return 0
         }
 
+        /**
+         * Пояснение к магическим числам:
+         * 0 - это обычный игровой режим (игра была создана не в конструкторе и начинается со стандартной шахматной расстановки)
+         *
+         * 1 - нужно было любое число != 0, но такое чтоб Side.nextTurnSide(initialPosition) было = BLACK (игрок решил играть за черных, но ему предоставляется первый ход)
+         * 2 - аналогично предыдущему пункту, только чтобы nextTurnSide было WHITE.
+         *
+         * Взяты минимальные подходящие числа, но в целом это могли быть любые положительные
+         */
         return when (side) {
             Side.BLACK -> 1
             Side.WHITE -> 2
         }
     }
 
-    private fun gameFeatures(game: Game, side: Side) =
+    private fun gameFeatures(game: Game, side: Side, castlingState: Int) =
         GameFeatures(
             id = null,
             game = game,
             side = side,
             userId = null,
             lastVisitDate = null,
-            castlingState = GameFeatures.ALL_CASTLING_ENABLED,
+            castlingState = castlingState,
             pawnLongMoveColumnIndex = null
         )
 
