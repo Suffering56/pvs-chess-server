@@ -79,18 +79,6 @@ data class GameFeatures(
         castlingState = castlingState.and(SHORT_CASTLING_ENABLED)
     }
 
-//    fun withoutCastlingEtc(owner: Game): GameFeatures {
-//        return GameFeatures(
-//            id,
-//            owner,
-//            side,
-//            userId,
-//            lastVisitDate,
-//            castlingState = ALL_CASTLING_DISABLED,
-//            pawnLongMoveColumnIndex = null
-//        )
-//    }
-
     fun copyOf(owner: Game): GameFeatures {
         return GameFeatures(
             id,

@@ -51,7 +51,6 @@ data class Game(
     val featuresMap: Map<Side, GameFeatures> = emptyMap()
 ) : IGame {
 
-    private fun getSideFeatures(side: Side) = featuresMap.getValue(side)
 
     override fun isUserRegistered(userId: String): Boolean {
         return getUserSide(userId) != null
@@ -61,7 +60,7 @@ data class Game(
         return getSideFeatures(side).userId == null
     }
 
-    fun registerUser(userId: String, side: Side) {
+    override fun registerUser(userId: String, side: Side) {
         getSideFeatures(side).userId = userId
     }
 
@@ -117,6 +116,8 @@ data class Game(
         return freeSides[0]
     }
 
+    private fun getSideFeatures(side: Side) = featuresMap.getValue(side)
+
     /**
      * Возвращает базовую информацию об игре:
      * - id игры
@@ -156,22 +157,6 @@ data class Game(
         gameFeatures[BLACK] = getSideFeatures(BLACK).copyOf(game)
         return game
     }
-
-//    override fun withoutCastlingEtc(): IGame {
-//        val gameFeatures = mutableMapOf<Side, GameFeatures>()
-//
-//         val game = Game(
-//            id,
-//            position,
-//            mode,
-//            initialPosition,
-//            gameFeatures
-//        )
-//
-//        gameFeatures[WHITE] = getSideFeatures(WHITE).withoutCastlingEtc(game)
-//        gameFeatures[BLACK] = getSideFeatures(BLACK).withoutCastlingEtc(game)
-//        return game
-//    }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

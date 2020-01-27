@@ -23,6 +23,7 @@ import kotlin.streams.toList
 class BotMoveSelector : IBotMoveSelector {
 
     @Autowired private lateinit var movesProvider: IMovesProvider
+    @Autowired private lateinit var applyMoveHandler: ApplyMoveHandler
     private var nodesCounter = AtomicInteger(0)
 
     companion object {
@@ -44,8 +45,7 @@ class BotMoveSelector : IBotMoveSelector {
                     val branchChessboard = chessboard.copyOf()
                     val branchGame = game.copyOf()
 
-                    branchChessboard.applyMove(move)
-                    //TODO
+                    applyMoveHandler.applyMove(branchGame, branchChessboard, move)
 
                     MutableChessboardContext(branchGame, branchChessboard)
                 }
@@ -79,7 +79,7 @@ class BotMoveSelector : IBotMoveSelector {
         game: IGame,
         chessboard: IChessboard
     ) {
-        private val chessboard = ChessboardHolder(game, chessboard)
+        private val chessboard = ChessboardStateHolder(game, chessboard)
         private val rootNode: Node = Node(null, null)
 
         fun fillNodes(maxDeep: Int) {
@@ -143,7 +143,7 @@ class BotMoveSelector : IBotMoveSelector {
             }
         }
 
-        private inner class ChessboardHolder(
+        private inner class ChessboardStateHolder(
             val game: IGame,
             val base: IChessboard,
             val initialPosition: Int = base.position
@@ -152,7 +152,7 @@ class BotMoveSelector : IBotMoveSelector {
             private val stackForRollback: Deque<Rollback> = ArrayDeque()
 
             fun getAvailableMoves(pointFrom: Point): Set<Point> {
-                return movesProvider.getAvailableMoves(game, chessboard, pointFrom)
+                return movesProvider.getAvailableMoves(game, base, pointFrom)
             }
 
             fun actualize(node: Node) {
@@ -160,8 +160,8 @@ class BotMoveSelector : IBotMoveSelector {
                     rollbackToRoot()
                     return
                 } else if (stackForRollback.isEmpty()) {
-                    require(chessboard.position == initialPosition) {
-                        "incorrect chessboard position=${chessboard.position}, must be equal initialPosition=$initialPosition"
+                    require(base.position == initialPosition) {
+                        "incorrect chessboard position=${base.position}, must be equal initialPosition=$initialPosition"
                     }
                     actualizeFromRoot(node)
                     return
@@ -173,7 +173,6 @@ class BotMoveSelector : IBotMoveSelector {
                 checkChessboardPositionEquals(node)
                 checkNextStackNodeEquals(node)
             }
-
 
             private fun tryActualizeByNeighbor(node: Node): Boolean {
                 if (base.position != node.currentPosition) {
@@ -249,7 +248,7 @@ class BotMoveSelector : IBotMoveSelector {
                 val prevCastlingState = game.getCastlingState(initiatorSide)
                 val prevLongMoveColumnIndex = game.getPawnLongColumnIndex(initiatorSide)
 
-                val additionalMove = base.applyMove(move)
+                val additionalMove = applyMoveHandler.applyMove(game, base, move)
 
                 val currentCastlingState = game.getCastlingState(initiatorSide)
                 val currentLongMoveColumnIndex = game.getPawnLongColumnIndex(initiatorSide)

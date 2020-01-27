@@ -16,13 +16,10 @@ import com.example.chess.server.repository.HistoryRepository
 import com.example.chess.server.service.IBotService
 import com.example.chess.server.service.IGameService
 import com.example.chess.server.service.IMovesProvider
-import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
-import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.dto.ChangesDTO
 import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.ConstructorGameDTO
 import com.example.chess.shared.enums.GameMode
-import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.Side
 import com.google.common.cache.CacheBuilder
 import com.google.common.cache.CacheLoader
@@ -50,6 +47,7 @@ class GameService : IGameService {
     @Autowired private lateinit var syncManager: SyncManager
     @Autowired private lateinit var arrangementRepository: ArrangementRepository
     @Autowired private lateinit var botService: IBotService
+    @Autowired private lateinit var applyMoveHandler: ApplyMoveHandler
 
     @Value("\${cache_spec.game:expireAfterAccess=1h,maximumSize=100,recordStats}")
     private lateinit var gameCacheSpec: String
@@ -286,52 +284,17 @@ class GameService : IGameService {
 
     private fun applyMove(game: Game, chessboard: IChessboard, move: Move): ChangesDTO {
         val pieceFrom = chessboard.getPiece(move.from)
-        val availableMoves = movesProvider.getAvailableMoves(game, chessboard, move.from)
 
+        val availableMoves = movesProvider.getAvailableMoves(game, chessboard, move.from)
         require(availableMoves.contains(move.to)) {
-            "cannot execute move=${move.toPrettyString(pieceFrom)}, because it not contains in available moves set: " +
+            "cannot applyMove move=${move.toPrettyString(pieceFrom)}, because it not contains in available moves set: " +
                     "${availableMoves.stream().map { it.toPrettyString() }.toList()}"
         }
 
-        require(move.isPawnTransformation(pieceFrom) == (move.pawnTransformationPiece != null)) {
-            "incorrect pawn transformation piece: ${move.pawnTransformationPiece}, expected: " +
-                    "${move.pawnTransformationPiece?.let { "null" } ?: "not null"}, for move: ${move.toPrettyString(
-                        pieceFrom
-                    )}"
-        }
+        val additionalMove = applyMoveHandler.applyMove(game, chessboard, move)
 
-        val initiatorSide = pieceFrom.side
-        val enemySide = initiatorSide.reverse()
-
-        val additionalMove = chessboard.applyMove(move)
-        game.position = chessboard.position
-
-        // очищаем стейт взятия на проходе, т.к. оно допустимо только в течении 1го раунда
-        game.setPawnLongMoveColumnIndex(initiatorSide, null)
-
+        val enemySide = pieceFrom.side.reverse()
         val underCheck = movesProvider.isUnderCheck(enemySide, chessboard)
-
-        when (pieceFrom.type) {
-            PieceType.KING -> {
-                game.disableLongCastling(initiatorSide)
-                game.disableShortCastling(initiatorSide)
-            }
-            PieceType.ROOK -> {
-                if (move.from.col == ROOK_LONG_COLUMN_INDEX) {
-                    game.disableLongCastling(initiatorSide)
-                } else if (move.from.col == ROOK_SHORT_COLUMN_INDEX) {
-                    game.disableShortCastling(initiatorSide)
-                }
-            }
-            PieceType.PAWN -> {
-                if (move.isLongPawnMove(pieceFrom)) {
-                    game.setPawnLongMoveColumnIndex(initiatorSide, move.from.col)
-                }
-            }
-            else -> {
-                //do nothing
-            }
-        }
 
         val historyItem = entityProvider.createHistoryItem(game.id!!, chessboard.position, move, pieceFrom)
         historyRepository.save(historyItem)
