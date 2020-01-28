@@ -5,6 +5,7 @@ import com.example.chess.shared.dto.PointDTO
 import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.PieceType.BISHOP
 import com.example.chess.shared.enums.PieceType.ROOK
+import com.google.common.collect.HashBiMap
 import kotlin.math.abs
 
 /**
@@ -36,16 +37,32 @@ class Point private constructor(
             return of(row, col)
         }
 
-        private val columnNamesMap = mapOf(
-            Pair(0, "h"),
-            Pair(1, "g"),
-            Pair(2, "f"),
-            Pair(3, "e"),
-            Pair(4, "d"),
-            Pair(5, "c"),
-            Pair(6, "b"),
-            Pair(7, "a")
-        )
+        /**
+         * Строка в формате e2/g6/a1/h8 и тд
+         */
+        fun of(str: String): Point {
+            require(str.length == 2)
+
+            val columnAlias = str.substring(0, 1)
+            val rowAlias = str.substring(1).toInt()
+
+            return of(rowAlias - 1, columnIndexByNameMap.get(columnAlias)!!)
+        }
+
+        private val columnNameByIndexMap = HashBiMap.create<Int, String>()
+
+        init {
+            columnNameByIndexMap[0] = "h"
+            columnNameByIndexMap[1] = "g"
+            columnNameByIndexMap[2] = "f"
+            columnNameByIndexMap[3] = "e"
+            columnNameByIndexMap[4] = "d"
+            columnNameByIndexMap[5] = "c"
+            columnNameByIndexMap[6] = "b"
+            columnNameByIndexMap[7] = "a"
+        }
+
+        private val columnIndexByNameMap = columnNameByIndexMap.inverse()
     }
 
     fun compress() = compressPoint(this.row, this.col)
@@ -58,7 +75,7 @@ class Point private constructor(
 
 
     fun toPrettyString(): String {
-        return "${columnNamesMap[col]}${row + 1}"
+        return "${columnNameByIndexMap[col]}${row + 1}"
     }
 
     fun hasCommonVectorWith(other: Point): Boolean = hasCommonVectorWith(other.row, other.col)

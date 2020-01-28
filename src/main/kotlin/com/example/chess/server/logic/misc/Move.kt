@@ -42,6 +42,19 @@ class Move private constructor(
 
         fun of(move: MoveDTO): Move = of(Point.of(move.from), Point.of(move.to), move.pawnTransformationPiece)
 
+        /**
+         * строка в формате e2-e4, b1-f3
+         */
+        fun of(str: String): Move {
+            require(str.length == 5)
+            val split = str.split("-")
+            require(split.size == 2)
+            val from = split[0]
+            val to = split[1]
+
+            return of(Point.of(from), Point.of(to))
+        }
+
         fun cut(point: Point): Move = of(point, point)
     }
 

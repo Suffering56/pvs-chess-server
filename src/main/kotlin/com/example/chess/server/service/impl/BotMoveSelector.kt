@@ -1,5 +1,6 @@
 package com.example.chess.server.service.impl
 
+import com.example.chess.server.Destiny
 import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IGame
 import com.example.chess.server.logic.IUnmodifiableChessboard
@@ -323,6 +324,15 @@ class BotMoveSelector : IBotMoveSelector {
         selectBest(game, chessboard, botSide)
 
         //TODO: TMP block
+        val random = selectRandom(chessboard, botSide, game)
+        return Destiny.predictMove(game.position)
+    }
+
+    private fun selectRandom(
+        chessboard: IChessboard,
+        botSide: Side,
+        game: IUnmodifiableGame
+    ): Move {
         val pointsFrom = chessboard.cellsStream(botSide).toList()
 
         var randomPointFrom: Point

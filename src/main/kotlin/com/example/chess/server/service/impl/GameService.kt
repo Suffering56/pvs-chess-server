@@ -300,6 +300,10 @@ class GameService : IGameService {
         historyRepository.save(historyItem)
         saveGame(game)
 
+        println("\r\nmove successfully applied for game: ${game.id}. new chessboard position: ${chessboard.position}")
+        println(chessboard.toPrettyString())
+        println()
+
         return ChangesDTO(
             chessboard.position,
             move.toDTO(),
