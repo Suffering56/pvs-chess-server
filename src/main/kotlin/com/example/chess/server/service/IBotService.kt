@@ -1,14 +1,10 @@
 package com.example.chess.server.service
 
-import com.example.chess.server.logic.IUnmodifiableChessboard
-import com.example.chess.server.logic.IUnmodifiableGame
-import com.example.chess.server.logic.misc.Move
-
 /**
  * @author v.peschaniy
  *      Date: 22.07.2019
  */
-interface IBotService : (IUnmodifiableGame, IUnmodifiableChessboard) -> Move {
+interface IBotService {
 
     fun fireBotMoveSync(gameId: Long, expectedGamePosition: Int)
 

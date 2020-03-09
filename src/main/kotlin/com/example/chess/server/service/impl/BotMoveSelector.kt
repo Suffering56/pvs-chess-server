@@ -5,6 +5,7 @@ import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IGame
 import com.example.chess.server.logic.IUnmodifiableChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
+import com.example.chess.server.logic.misc.Cell
 import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotMoveSelector
@@ -17,6 +18,8 @@ import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import java.util.stream.Stream
 import kotlin.random.Random
 import kotlin.streams.toList
 
@@ -25,22 +28,34 @@ class BotMoveSelector : IBotMoveSelector {
 
     @Autowired private lateinit var movesProvider: IMovesProvider
     @Autowired private lateinit var applyMoveHandler: ApplyMoveHandler
-    private var nodesCounter = AtomicInteger(0)
+
+    private lateinit var statistic: Statistic
+
+    private class Statistic {
+        val nodesCounter = AtomicInteger(0)
+        val actualizeTime = AtomicLong(0)
+    }
 
     companion object {
         val PAWN_TRANSFORMATION_PIECE_STUB: Piece? = null
+        const val CALCULATED_DEEP = 4
+        const val THREADS_COUNT = 15
     }
 
     fun selectBest(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, botSide: Side): Move {
-        val maxDeep = 5
-        val threadPool = Executors.newFixedThreadPool(1)
-        nodesCounter = AtomicInteger(0)
+        val threadPool = Executors.newFixedThreadPool(THREADS_COUNT)
+        statistic = Statistic()
 
         measure {
             val branches = chessboard.cellsStream(botSide)
                 .flatMap { cell ->
                     movesProvider.getAvailableMoves(game, chessboard, cell.point).stream()
-                        .map { pointTo -> Move.of(cell.point, pointTo, PAWN_TRANSFORMATION_PIECE_STUB) }
+                        .map { pointTo ->
+                            Move.of(
+                                cell.point, pointTo,
+                                PAWN_TRANSFORMATION_PIECE_STUB
+                            )
+                        }
                 }
                 .map { move ->
                     val branchChessboard = chessboard.copyOf()
@@ -53,7 +68,7 @@ class BotMoveSelector : IBotMoveSelector {
                 .toList()
 
             branches.forEach {
-                it.fillNodes(maxDeep - 1)
+                it.fillNodes(CALCULATED_DEEP - 1)
                 it.clean()
             }
 
@@ -73,7 +88,8 @@ class BotMoveSelector : IBotMoveSelector {
         println()
         println("estimated(millis): $estimated")
         println("estimated(sec): ${estimated / 1000}")
-        println("nodesCounter = ${nodesCounter.get()}")
+        println("nodesCounter = ${statistic.nodesCounter.get()}")
+        println("actualizeDeepExchangeTime(sec): ${statistic.actualizeTime.get() / 1000}")
     }
 
     private inner class MutableChessboardContext(
@@ -83,8 +99,8 @@ class BotMoveSelector : IBotMoveSelector {
         private val chessboard = ChessboardStateHolder(game, chessboard)
         private val rootNode: Node = Node(null, null)
 
-        fun fillNodes(maxDeep: Int) {
-            rootNode.fillChildren(maxDeep)
+        fun fillNodes(deep: Int) {
+            rootNode.fillChildren(deep)
             chessboard.actualize(rootNode)
         }
 
@@ -97,12 +113,12 @@ class BotMoveSelector : IBotMoveSelector {
             val previousMove: Move?
         ) {
             init {
-                nodesCounter.incrementAndGet()
+                statistic.nodesCounter.incrementAndGet()
             }
 
             var children: List<Node>? = null
 
-            val isRoot: Boolean get() = parent == null
+            val isRoot: Boolean get() = parent == null || previousMove == null
             val currentPosition: Int get() = chessboard.initialPosition + deep
             val nextTurnSide: Side get() = Side.nextTurnSide(currentPosition)
             val deep: Int   // deep = 0; is root! еще никто не ходил.
@@ -114,21 +130,61 @@ class BotMoveSelector : IBotMoveSelector {
 
             fun fillChildren(deep: Int) {
                 if (deep == 0) {
+                    fillDeepExchange()
                     return
                 }
 
-                chessboard.actualize(this)
+                actualizeChessboard()
 
                 val children = chessboard.cellsStream(nextTurnSide)
-                    .flatMap { cell ->
-                        chessboard.getAvailableMoves(cell.point).stream()
-                            .map { pointTo -> Move.of(cell.point, pointTo, PAWN_TRANSFORMATION_PIECE_STUB) }
-                    }
+                    .flatMap { cell -> getAvailableMovesByCell(cell) }
                     .map { move -> Node(this, move) }
                     .toList()
 
                 this.children = children
                 children.forEach { it.fillChildren(deep - 1) }
+            }
+
+            private fun getAvailableMovesByCell(cell: Cell): Stream<Move> {
+                return toAvailableMoves(
+                    cell.point,
+                    chessboard.getAvailableMoves(cell.point).stream()
+                )
+            }
+
+            private fun toAvailableMoves(pointFrom: Point, availablePoints: Stream<Point>): Stream<Move> {
+                return availablePoints
+                    .map { pointTo ->
+                        Move.of(
+                            pointFrom, pointTo,
+                            PAWN_TRANSFORMATION_PIECE_STUB
+                        )
+                    }
+            }
+
+            private fun fillDeepExchange() {
+                requireNotNull(previousMove) { "operation not supported for root node" }
+                require(children == null) { "children must be null" }
+
+                val start = System.currentTimeMillis()
+                actualizeChessboard()
+                val actualizeTime = System.currentTimeMillis() - start
+                statistic.actualizeTime.addAndGet(actualizeTime)
+
+                val targetPoint = previousMove.to
+
+                val children = chessboard.cellsStream(nextTurnSide)
+                    .flatMap { cell -> getAvailableMovesByCell(cell) }
+                    .filter { move -> move.to == targetPoint }
+                    .map { move -> Node(this, move) }
+                    .toList()
+
+                this.children = children
+                children.forEach { it.fillDeepExchange() }
+            }
+
+            private fun actualizeChessboard() {
+                chessboard.actualize(this)
             }
 
             inline fun processNeighbors(handler: (Node) -> Unit) {
@@ -165,6 +221,9 @@ class BotMoveSelector : IBotMoveSelector {
                         "incorrect chessboard position=${base.position}, must be equal initialPosition=$initialPosition"
                     }
                     actualizeFromRoot(node)
+                    return
+                } else if (stackForRollback.first.node == node) {
+                    //мы там где нужно, ничего актуализировать не требуется
                     return
                 } else if (!tryActualizeByNeighbor(node)) {
                     rollbackToRoot()
@@ -237,7 +296,7 @@ class BotMoveSelector : IBotMoveSelector {
                     actualizeFromRoot(it)
                 }
                 node.previousMove?.let {
-                    applyMove(node)
+                    applyMove(it)
                 }
             }
 

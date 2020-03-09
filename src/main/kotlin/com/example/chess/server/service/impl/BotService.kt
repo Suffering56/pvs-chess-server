@@ -28,7 +28,7 @@ class BotService : IBotService {
 
     override fun fireBotMoveSync(gameId: Long, expectedGamePosition: Int) {
         deferredBotMovesMap.compute(gameId) { _, _ ->
-            gameService.applyBotMove(gameId, expectedGamePosition, this)
+            gameService.applyBotMove(gameId, expectedGamePosition, this::selectBestMove)
             null
         }
     }
@@ -39,14 +39,13 @@ class BotService : IBotService {
 
         threadPool.schedule({
             deferredBotMovesMap.computeIfPresent(gameId) { deferredGameId, expectedGamePosition ->
-                gameService.applyBotMove(deferredGameId, expectedGamePosition, this)
+                gameService.applyBotMove(deferredGameId, expectedGamePosition, this::selectBestMove)
                 null
             }
         }, delay, TimeUnit.MILLISECONDS)
     }
 
-    //будет вызываться под локом игры
-    override fun invoke(game: IUnmodifiableGame, originalChessboard: IUnmodifiableChessboard): Move {
+    fun selectBestMove(game: IUnmodifiableGame, originalChessboard: IUnmodifiableChessboard): Move {
         val botSide = game.getAndCheckBotSide()
         val chessboard = originalChessboard.copyOf()
 
