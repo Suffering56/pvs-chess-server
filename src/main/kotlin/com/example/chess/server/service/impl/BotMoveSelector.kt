@@ -17,9 +17,9 @@ import org.springframework.stereotype.Component
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.stream.Stream
+import kotlin.collections.HashMap
 import kotlin.random.Random
 import kotlin.streams.toList
 
@@ -32,21 +32,56 @@ class BotMoveSelector : IBotMoveSelector {
     private lateinit var statistic: Statistic
 
     private class Statistic {
-        val nodesCounter = AtomicInteger(0)
-        val actualizeTime = AtomicLong(0)
+        val countersMap: MutableMap<String, AtomicLong> = HashMap()
+
+        init {
+            countersMap["totalTime"] = AtomicLong(0)
+            countersMap["deepExchangeTime"] = AtomicLong(0)
+            countersMap["actualizeTime"] = AtomicLong(0)
+            countersMap["fillDeepChildrenTime"] = AtomicLong(0)
+            countersMap["getAvailableMovesTime"] = AtomicLong(0)
+
+            countersMap["totalNodesCount"] = AtomicLong(0)
+            countersMap["deepNodesCount"] = AtomicLong(0)
+        }
+
+        fun addCounterValue(counterName: String, count: Long) {
+            countersMap[counterName]!!.addAndGet(count)
+        }
+
+        inline fun <T> measure(counterName: String, action: () -> T): T {
+            val start = System.currentTimeMillis()
+            val result: T = action.invoke()
+            val invokeTime = System.currentTimeMillis() - start
+
+            addCounterValue(counterName, invokeTime)
+            return result
+        }
+
+        fun print() {
+            println("\r\nstatistic:")
+
+            countersMap.forEach { (key, value) ->
+                if (key.endsWith("Time")) {
+                    println("$key(sec): ${value.get() / 1000.0}")
+                } else {
+                    println("$key: ${value.get()}")
+                }
+            }
+        }
     }
 
     companion object {
         val PAWN_TRANSFORMATION_PIECE_STUB: Piece? = null
         const val CALCULATED_DEEP = 4
-        const val THREADS_COUNT = 15
+        const val THREADS_COUNT = 5
     }
 
     fun selectBest(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, botSide: Side): Move {
         val threadPool = Executors.newFixedThreadPool(THREADS_COUNT)
         statistic = Statistic()
 
-        measure {
+        statistic.measure("totalTime") {
             val branches = chessboard.cellsStream(botSide)
                 .flatMap { cell ->
                     movesProvider.getAvailableMoves(game, chessboard, cell.point).stream()
@@ -77,19 +112,9 @@ class BotMoveSelector : IBotMoveSelector {
             }
         }
 
+        statistic.print()
+
         return Move.cut(Point.of(1, 1))
-    }
-
-    private inline fun measure(action: () -> Unit) {
-        val start = System.currentTimeMillis()
-        action.invoke()
-        val estimated = System.currentTimeMillis() - start
-
-        println()
-        println("estimated(millis): $estimated")
-        println("estimated(sec): ${estimated / 1000}")
-        println("nodesCounter = ${statistic.nodesCounter.get()}")
-        println("actualizeDeepExchangeTime(sec): ${statistic.actualizeTime.get() / 1000}")
     }
 
     private inner class MutableChessboardContext(
@@ -113,7 +138,7 @@ class BotMoveSelector : IBotMoveSelector {
             val previousMove: Move?
         ) {
             init {
-                statistic.nodesCounter.incrementAndGet()
+                statistic.addCounterValue("totalNodesCount", 1)
             }
 
             var children: List<Node>? = null
@@ -130,7 +155,9 @@ class BotMoveSelector : IBotMoveSelector {
 
             fun fillChildren(deep: Int) {
                 if (deep == 0) {
-                    fillDeepExchange()
+                    statistic.measure("deepExchangeTime") {
+                        fillDeepExchange()
+                    }
                     return
                 }
 
@@ -146,17 +173,11 @@ class BotMoveSelector : IBotMoveSelector {
             }
 
             private fun getAvailableMovesByCell(cell: Cell): Stream<Move> {
-                return toAvailableMoves(
-                    cell.point,
-                    chessboard.getAvailableMoves(cell.point).stream()
-                )
-            }
-
-            private fun toAvailableMoves(pointFrom: Point, availablePoints: Stream<Point>): Stream<Move> {
-                return availablePoints
+                return chessboard.getAvailableMoves(cell.point).stream()
                     .map { pointTo ->
                         Move.of(
-                            pointFrom, pointTo,
+                            cell.point,
+                            pointTo,
                             PAWN_TRANSFORMATION_PIECE_STUB
                         )
                     }
@@ -166,25 +187,28 @@ class BotMoveSelector : IBotMoveSelector {
                 requireNotNull(previousMove) { "operation not supported for root node" }
                 require(children == null) { "children must be null" }
 
-                val start = System.currentTimeMillis()
                 actualizeChessboard()
-                val actualizeTime = System.currentTimeMillis() - start
-                statistic.actualizeTime.addAndGet(actualizeTime)
 
                 val targetPoint = previousMove.to
 
-                val children = chessboard.cellsStream(nextTurnSide)
-                    .flatMap { cell -> getAvailableMovesByCell(cell) }
-                    .filter { move -> move.to == targetPoint }
-                    .map { move -> Node(this, move) }
-                    .toList()
+                //TODO: нужна проверка на can attack targetPoint в movesProvider
+                val children = statistic.measure("fillDeepChildrenTime") {
+                    chessboard.cellsStream(nextTurnSide)
+                        .flatMap { cell -> getAvailableMovesByCell(cell) }
+                        .filter { move -> move.to === targetPoint }
+                        .map { move -> Node(this, move) }
+                        .toList()
+                }
 
                 this.children = children
+                statistic.addCounterValue("deepNodesCount", children.size.toLong())
                 children.forEach { it.fillDeepExchange() }
             }
 
             private fun actualizeChessboard() {
-                chessboard.actualize(this)
+                statistic.measure("actualizeTime") {
+                    chessboard.actualize(this)
+                }
             }
 
             inline fun processNeighbors(handler: (Node) -> Unit) {
@@ -209,7 +233,9 @@ class BotMoveSelector : IBotMoveSelector {
             private val stackForRollback: Deque<Rollback> = ArrayDeque()
 
             fun getAvailableMoves(pointFrom: Point): Set<Point> {
-                return movesProvider.getAvailableMoves(game, base, pointFrom)
+                return statistic.measure("getAvailableMovesTime") {
+                    movesProvider.getAvailableMoves(game, base, pointFrom)
+                }
             }
 
             fun actualize(node: Node) {
@@ -218,7 +244,7 @@ class BotMoveSelector : IBotMoveSelector {
                     return
                 } else if (stackForRollback.isEmpty()) {
                     require(base.position == initialPosition) {
-                        "incorrect chessboard position=${base.position}, must be equal initialPosition=$initialPosition"
+                        "incorrect chessboard position=${base.position}, must be equal initialPosition=$initialPosition, \r\n ${chessboard.toPrettyString()}"
                     }
                     actualizeFromRoot(node)
                     return
@@ -295,8 +321,8 @@ class BotMoveSelector : IBotMoveSelector {
                 node.parent?.let {
                     actualizeFromRoot(it)
                 }
-                node.previousMove?.let {
-                    applyMove(it)
+                node.previousMove?.let { _ ->
+                    applyMove(node)
                 }
             }
 
