@@ -13,5 +13,7 @@ interface IMovesProvider {
 
     fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): Set<Point>
 
-    fun isUnderCheck(kingSide: Side, chessboard: IUnmodifiableChessboard): Boolean
+    fun isUnderCheck(chessboard: IUnmodifiableChessboard, kingSide: Side): Boolean
+
+    fun getThreatsToTargetCount(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): Int
 }

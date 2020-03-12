@@ -44,13 +44,28 @@
 + fix pawn transformation rollback
 + game: longCastlingAvailable можно объединить с shortCastlingAvailable и хранить все в битовых флагах
 
-- fill deep exchange
++ fill deep exchange
+
+- fill deep exchange optimizations:
+
+    - MovesProvider -> int getThreatsToTargetPointCount(Point targetPoint)
+    - MovesProvider -> Point getSingleTargetPointThreats(Point targetPoint)     //lazy + findAny
+    - MovesProvider -> Set<Point> getManyTargetPointThreats(Point targetPoint)  //, int expectedPointsCount?)
+
+    - cache:
+        - а что если использовать не HashSet а ArrayList?
+        - а что если закэшировать HashSet<Point> для 1,2,3 (и может даже 4х) элементов?
+        + Move.asTwinOf as Twin<Point>
+        - Tuples.twin(x, null)  as Twin<Point>
+
 - node.calculateCost
     - parameter: material
-    - parameter: moves count difference
-    - parameter: checkmate
+    - parameter: checkmate (1й по важности)
+    - parameter: moves count difference (может привести к тому, что бот всегда будет патовать, be careful)
+    - parameter: check/check if castling enabled/if king need go to border
 
 - flame graph
+- prometheus + grafana metrics
 
 - move cost support:
     - moves tree

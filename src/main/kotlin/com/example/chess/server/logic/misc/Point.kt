@@ -16,6 +16,7 @@ class Point private constructor(
     val row: Int,
     val col: Int
 ) {
+
     companion object {
 
         private val pointsPool = Array(BOARD_SIZE) { rowIndex ->
