@@ -29,6 +29,9 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import javax.annotation.PostConstruct
 import kotlin.streams.toList
 
@@ -368,6 +371,16 @@ class GameService : IGameService {
 }
 
 //fun main() {
+//    val itemsCount = 5
+//    val hashContainersCount = Math.max(itemsCount / 50, 5)
+//
+//    println("hashContainersCount = ${hashContainersCount}")
+//
+//    val result = Math.round(IntMath.divide(itemsCount, hashContainersCount, RoundingMode.CEILING) * 1.1f) + 1
+//    println("result = $result")
+//}
+
+//fun main() {
 //    val stack: Deque<Int> = ArrayDeque()
 //
 //    stack.addFirst(1)
@@ -388,27 +401,59 @@ class GameService : IGameService {
 //    }
 //}
 
-//fun main() {
-//    val poolSize = 10
-//    val executorService = Executors.newFixedThreadPool(poolSize)
-//    val gameCacheSpec = "expireAfterAccess=2s,maximumSize=4,recordStats"
-//
-//    val gameCache = CacheBuilder.from(gameCacheSpec).build(
-//        CacheLoader.from<Long, GameWrapper> { gameId ->
-//            load(gameId!!)
-//        }
-//    )
+fun main() {
+    val poolSize = 10
+    val executorService = Executors.newFixedThreadPool(poolSize)
+    val gameCacheSpec = "expireAfterAccess=2s,maximumSize=4,recordStats"
+
+    val gameCache = CacheBuilder.from(gameCacheSpec).build(
+        CacheLoader.from<Long, GameWrapper> { gameId ->
+            load(gameId!!)
+        }
+    )
 //    val lock = ReentrantLock()
-//    val map = ConcurrentHashMap<Long, GameWrapper>()
+    val map = ConcurrentHashMap<Long, GameWrapper>()
+
+
+    map.put(1, GameWrapper(1))
+    map.put(2, GameWrapper(2))
+
+
+
+    executorService.submit {
+        map.computeIfPresent(1) { clanId, clan ->
+            Thread.sleep(10000)
+
+            clan
+        }
+    }
+
+
+    executorService.shutdown()
+    while (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
+    }
+    println("end")
+}
+
+data class GameWrapper(val gameId: Long)
+
+fun load(gameId: Long) = GameWrapper(gameId)
+
+
+//fun main() {
+//    val lines = Files.readAllLines(File("D:/projects/shelter/gd_data/lotterySettings.json").toPath())
 //
-//
-//    executorService.submit {
-//    }
-//    executorService.shutdown()
-//    while (!executorService.awaitTermination(1, TimeUnit.SECONDS)) {
-//    }
-//    println("end")
+//    PrintWriter(File("D:/z_lottery.txt"))
+//        .use { writer ->
+//            lines.stream()
+//                .filter { it.contains("\"id\"") }
+//                .forEach {
+//                    writer.write("${it
+//                        .trim()
+//                        .replace("{\t\"id\": ", "")
+//                        .replace(",", ";")
+//                        .replace(" \"comment\": ", "")
+//                    }\r\n")
+//                }
+//        }
 //}
-//
-//data class GameWrapper(val gameId: Long)
-//fun load(gameId: Long) = GameWrapper(gameId)

@@ -94,6 +94,8 @@ class MovesProvider : IMovesProvider {
         val targetPointSide = targetPiece.side
 
         if (targetPiece.isKing()) {
+
+            //TODO: STUB
             val kingThreatsTwin = findKingAttackers(targetPoint, targetPointSide, chessboard)
 
             return when {
@@ -103,7 +105,79 @@ class MovesProvider : IMovesProvider {
             }
         }
 
+        val x: Int = findX(targetPoint, targetPointSide, chessboard)
+
+
+
         TODO("NYI")
+    }
+
+    private fun findX(targetPoint: Point, targetPointSide: Side, chessboard: IUnmodifiableChessboard): Int {
+        var counter = 0
+        val allPossibleAttackerVectors = pieceVectorsMap[QUEEN]!!
+
+        for (vector in allPossibleAttackerVectors) {
+            var offset = 0
+
+            while (true) {
+                offset++
+                val row = targetPoint.row + vector.one * offset
+                val col = targetPoint.col + vector.two * offset
+
+                if (isOutOfBoard(row, col)) {
+                    // ничего не нашли и уперлись в край доски
+                    break
+                }
+
+                // если точка пуста - продолжаем поиск по вектору
+                val foundPiece = chessboard.getPieceNullable(row, col) ?: continue
+
+                if (foundPiece.side == targetPointSide) {
+                    // уперлись в союзную фигуру
+                    break
+                }
+
+                if (offset == 1
+                    && foundPiece.isPawn()
+                    && targetPoint.isOnSameDiagonal(row, col)
+                    && targetPointSide.pawnRowDirection == vector.one
+                ) {
+
+                } else if (isVectorPiece(foundPiece.type)) {
+
+                }
+
+                if ((offset == 1) && (isVectorPiece(foundPiece.type) || (isPawnCanAttack(targetPoint))))
+
+                //TODO: if offset == 1 -> process PAWN
+
+
+//                val piece = chessboard.getPieceNullable(row, col)
+//                if (piece != null) {
+//                    return Point.of(row, col)
+//                }
+            }
+
+
+//            val notEmptyPoint = nextPieceByVector(vector.one, vector.two, targetPoint, chessboard)
+//                ?: continue // ничего не нашли и уперлись в край доски
+
+//            val foundPiece = chessboard.getPiece(notEmptyPoint)
+//
+//            if (foundPiece.side == targetPointSide || !isVectorPiece(foundPiece.type)) {
+//                //мы ищем только вражеского слона/ладью/ферзя
+//                continue
+//            }
+
+            if (foundPiece.type != QUEEN && !targetPoint.hasCommonVectorWith(notEmptyPoint, foundPiece.type)) {
+                //найденная фигура не может атаковать targetPoint по заданному вектору
+                continue
+            }
+
+            counter++
+        }
+
+        return counter
     }
 
     private fun getAvailableMoves(ctx: InnerContext): Set<Point> {

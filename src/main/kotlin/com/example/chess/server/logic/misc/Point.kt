@@ -92,11 +92,19 @@ class Point private constructor(
 
     fun hasCommonVectorWith(otherRow: Int, otherCol: Int, otherPieceType: PieceType): Boolean {
         return when (otherPieceType) {
-            ROOK -> return this.row == otherRow || this.col == otherCol
-            BISHOP -> abs(this.row - otherRow) == abs(this.col - otherCol)
+            ROOK -> isOnSameVerticalOrHorizontal(otherRow, otherCol)
+            BISHOP -> isOnSameDiagonal(otherRow, otherCol)
             else -> throw UnsupportedOperationException("unsupported piece type: $otherPieceType")
         }
     }
+
+    fun isOnSameDiagonal(otherRow: Int, otherCol: Int) = abs(this.row - otherRow) == abs(this.col - otherCol)
+
+    fun isOnSameDiagonal(otherPoint: Point) = isOnSameDiagonal(otherPoint.row, otherPoint.col)
+
+    fun isOnSameVerticalOrHorizontal(otherRow: Int, otherCol: Int) = this.row == otherRow || this.col == otherCol
+
+    fun isOnSameVerticalOrHorizontal(otherPoint: Point) = isOnSameVerticalOrHorizontal(otherPoint.row, otherPoint.col)
 
     fun isBorderedWith(otherRow: Int, otherCol: Int): Boolean {
         check(this.row != otherRow || this.col != otherCol) {
