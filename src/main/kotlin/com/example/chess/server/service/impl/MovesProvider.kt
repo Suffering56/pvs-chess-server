@@ -38,7 +38,22 @@ class MovesProvider : IMovesProvider {
     }
 
     override fun getThreatsToTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): List<Point> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        val targetPiece = chessboard.getPiece(targetPoint)
+        val targetPointSide = targetPiece.side
+
+        var result: List<Point> = listOf()
+
+        collectThreatsToTargetByAllVectors(chessboard, targetPoint, targetPointSide, false) {
+            result = addToResult(result, it)
+        }
+
+        collectKnightThreatsToTarget(targetPoint, targetPointSide, chessboard) {
+            result = addToResult(result, it)
+        }
+
+        //TODO: я совершенно точно не учитываю en-passant
+
+        return result
     }
 
     override fun getThreatsToTargetCount(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): Int {
@@ -56,16 +71,22 @@ class MovesProvider : IMovesProvider {
          * PS: выглядит так, словно нас двойной шах не сильно то и интересует (но интересуют обе шахующие фигуры, независимо друг от друга)
          */
 
-        return sum(
-            getThreatsToTargetByAllVectors(chessboard, targetPoint, targetPointSide),
-            getKnightThreatsToTarget(targetPoint, targetPointSide, chessboard)
-            //TODO: я совершенно точно не учитываю en-passant
-        )
+        var threatsCounter = 0
+
+        collectThreatsToTargetByAllVectors(chessboard, targetPoint, targetPointSide, true) {
+            threatsCounter++
+        }
+
+        collectKnightThreatsToTarget(targetPoint, targetPointSide, chessboard) {
+            threatsCounter++
+        }
+
+        //TODO: я совершенно точно не учитываю en-passant
+
+        return threatsCounter
     }
 
-    private fun getKnightThreatsToTarget(targetPoint: Point, targetPointSide: Side, chessboard: IUnmodifiableChessboard): Int {
-        var counter = 0
-
+    private inline fun collectKnightThreatsToTarget(targetPoint: Point, targetPointSide: Side, chessboard: IUnmodifiableChessboard, collectFunction: (Point) -> Unit) {
         for (vector in knightOffsets) {
             val row = targetPoint.row + vector.row
             val col = targetPoint.col + vector.col
@@ -83,11 +104,9 @@ class MovesProvider : IMovesProvider {
             }
 
             if (piece.isTypeOf(KNIGHT)) {
-                counter++
+                collectFunction.invoke(Point.of(row, col))
             }
         }
-
-        return counter
     }
 
     /**
@@ -96,8 +115,13 @@ class MovesProvider : IMovesProvider {
      * 3) Увеличивает счетчик на единицу
      * 4) Может продолжить идти по тому же направлению после увеличения счетчика, чтобы вычислить "батарею", которая будет учтена счетчиком
      */
-    private fun getThreatsToTargetByAllVectors(chessboard: IUnmodifiableChessboard, targetPoint: Point, targetPointSide: Side): Int {
-        var counter = 0
+    private inline fun collectThreatsToTargetByAllVectors(
+        chessboard: IUnmodifiableChessboard,
+        targetPoint: Point,
+        targetPointSide: Side,
+        isBatterySupported: Boolean,
+        collectFunction: (Point) -> Unit
+    ) {
         val allPossibleAttackerVectors = pieceVectorsMap[QUEEN]!!
 
         for (vector in allPossibleAttackerVectors) {
@@ -124,7 +148,7 @@ class MovesProvider : IMovesProvider {
 
                 if (offset == 1 && foundPiece.isTypeOf(KING)) {
                     // на этапе подсчета нас вроде не интересует факт того, что король может залезть под шах
-                    counter++
+                    collectFunction.invoke(Point.of(row, col))
                     // батарея Q -> K -> targetPoint невалидна, т.к. она подразумевает что король (K) пойдет в размен, что недопустимо
                     // поэтому дальнейшее следование по этому вектору не имеет смысла
                     break
@@ -143,25 +167,29 @@ class MovesProvider : IMovesProvider {
                 }
 
                 // мы уверены что threat-король не под шахом, либо он может срубить targetPoint а значит стоит вплотную
+                //TODO: мы больше не уверены что король не под шахом, из-за изменений работы алгоритма
+                // больше нельзя передавать null просто так
                 val kingAttacker = null
                 val kingThreatsForCurrentObstacle = getKingThreatsForCurrentObstacle(chessboard, Point.of(row, col), kingAttacker)
 
                 // выбранную фигуру можно двигать, она не защищает короля от шаха
                 // либо рубит фигуру, от шаха которой она защищает короля
                 if (kingThreatsForCurrentObstacle == null || kingThreatsForCurrentObstacle == targetPoint) {
-                    counter++
+                    collectFunction.invoke(Point.of(row, col))
                     // за фигурой может другая фигура такого же типа (назовем такое сочетание батареей)
                     // примеры батарей: R -> R -> targetPoint,  Q -> P -> targetPoint, Q -> B -> targetPoint
                     // так вот батарея из фигур имеет значение для подсчета
-                    continue
+                    if (isBatterySupported) {
+                        continue
+                    } else {
+                        break
+                    }
                 } else {
                     // если эту фигуру двигать нельзя, то остальные (стоящие сзади) не помогут и подавно
                     break
                 }
             }
         }
-
-        return counter
     }
 
     private fun getAvailableMoves(ctx: InnerContext): List<Point> {
@@ -328,9 +356,9 @@ class MovesProvider : IMovesProvider {
                 if (piece.side == threatSide && piece.isTypeOf(expectedThreatType, QUEEN)) {
                     if (!obstacleFound) {
                         // прежде чем найти хотя бы одно препятствие по заданному вектору (двигаясь от короля) мы нашли фигуру, которая шахует нашего короля прямо здесь и сейчас
-                        check(kingAttacker != null && kingAttacker.isEqual(row, col)) {
-                            "kingThreat(${Point.of(row, col)}) is not equals with kingAttacker($kingAttacker)"
-                        }
+//                        check(kingAttacker != null && kingAttacker.isEqual(row, col)) {
+//                            "kingThreat(${Point.of(row, col)}) is not equals with kingAttacker($kingAttacker)"
+//                        }
                         // дальнейшее следование по вектору не имеет смысла, а possibleObstacle не является препятствием
                         return null
                     }

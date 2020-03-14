@@ -29,8 +29,6 @@ class BotMoveSelector : IBotMoveSelector {
     @Autowired private lateinit var movesProvider: IMovesProvider
     @Autowired private lateinit var applyMoveHandler: ApplyMoveHandler
 
-    private lateinit var statistic: Statistic
-
     companion object {
         val PAWN_TRANSFORMATION_PIECE_STUB: Piece? = null
         const val CALCULATED_DEEP = 4
@@ -51,6 +49,16 @@ class BotMoveSelector : IBotMoveSelector {
             countersMap["deepNodesCount"] = AtomicLong(0)
         }
 
+        companion object {
+            inline fun <T> measureAndPrint(title: String, action: () -> T): T {
+                val start = System.currentTimeMillis()
+                val result: T = action.invoke()
+                val invokeTime = System.currentTimeMillis() - start
+                println("$title(sec) = ${invokeTime / 1000.0}")
+                return result
+            }
+        }
+
         fun addCounterValue(counterName: String, count: Long) {
             countersMap[counterName]!!.addAndGet(count)
         }
@@ -64,24 +72,30 @@ class BotMoveSelector : IBotMoveSelector {
             return result
         }
 
+        fun addValues(other: Statistic) {
+            countersMap.forEach { (key, value) ->
+                value.addAndGet(other.countersMap[key]!!.get())
+            }
+        }
+
         fun print() {
             println("\r\nstatistic:")
 
             countersMap.forEach { (key, value) ->
                 if (key.endsWith("Time")) {
-                    println("$key(sec): ${value.get() / 1000.0}")
+                    println("$key(avg, sec): ${value.get() / 1000.0 / THREADS_COUNT}")
                 } else {
                     println("$key: ${value.get()}")
                 }
             }
+            println()
         }
     }
 
     fun selectBest(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, botSide: Side): Move {
         val threadPool = Executors.newFixedThreadPool(THREADS_COUNT)
-        statistic = Statistic()
 
-        statistic.measure("totalTime") {
+        Statistic.measureAndPrint("globalInvokeTime") {
             val branches = chessboard.cellsStream(botSide)
                 .flatMap { cell ->
                     movesProvider.getAvailableMoves(game, chessboard, cell.point).stream()
@@ -103,16 +117,22 @@ class BotMoveSelector : IBotMoveSelector {
                 .toList()
 
             branches.forEach {
-                it.fillNodes(CALCULATED_DEEP - 1)
-                it.clean()
+                threadPool.submit {
+                    it.fillNodes(CALCULATED_DEEP - 1)
+                    it.clean()
+                }
             }
 
             threadPool.shutdown()
             while (!threadPool.awaitTermination(1, TimeUnit.SECONDS)) {
             }
-        }
 
-        statistic.print()
+            val totalStatistic = Statistic()
+            branches.forEach {
+                totalStatistic.addValues(it.statistic)
+            }
+            totalStatistic.print()
+        }
 
         return Move.cut(Point.of(1, 1))
     }
@@ -121,12 +141,16 @@ class BotMoveSelector : IBotMoveSelector {
         game: IGame,
         chessboard: IChessboard
     ) {
+        val statistic: Statistic = Statistic()
+
         private val chessboard = ChessboardStateHolder(game, chessboard)
         private val rootNode: Node = Node(null, null)
 
         fun fillNodes(deep: Int) {
-            rootNode.fillChildren(deep)
-            chessboard.actualize(rootNode)
+            statistic.measure("totalTime") {
+                rootNode.fillChildren(deep)
+                chessboard.actualize(rootNode)
+            }
         }
 
         fun clean() {
@@ -202,6 +226,13 @@ class BotMoveSelector : IBotMoveSelector {
                         .filter { move -> move.to === targetPoint }
                         .map { move -> Node(this, move) }
                         .toList()
+
+
+//                    movesProvider.getThreatsToTarget(chessboard.game, chessboard, targetPoint)
+//                        .stream()
+//                        .map { Move.of(it, targetPoint, PAWN_TRANSFORMATION_PIECE_STUB) }
+//                        .map { move -> Node(this, move) }
+//                        .toList()
                 }
 
                 statistic.addCounterValue("deepNodesCount", children.size.toLong())
