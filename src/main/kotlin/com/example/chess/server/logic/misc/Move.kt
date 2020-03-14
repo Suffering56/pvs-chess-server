@@ -5,9 +5,6 @@ import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.dto.MoveDTO
 import com.example.chess.shared.enums.Piece
-import org.eclipse.collections.api.tuple.Pair
-import org.eclipse.collections.api.tuple.Twin
-import org.eclipse.collections.impl.tuple.ImmutableEntry
 import kotlin.math.abs
 
 /**
@@ -18,7 +15,7 @@ class Move private constructor(
     val from: Point,
     val to: Point,
     val pawnTransformationPiece: Piece?
-) : Twin<Point> {
+) {
 
     companion object {
 
@@ -32,8 +29,6 @@ class Move private constructor(
         }
 
         fun of(from: Point, to: Point): Move = movesPool[from.compress()][to.compress()]
-
-        fun asTwinOf(from: Point, to: Point): Twin<Point> = of(from, to)
 
         fun of(from: Point, to: Point, pawnTransformationPiece: Piece?): Move {
             return if (pawnTransformationPiece == null) {
@@ -98,20 +93,4 @@ class Move private constructor(
     }
 
     fun toDTO() = MoveDTO(from.toDTO(), to.toDTO(), pawnTransformationPiece)
-
-    override fun swap() = of(to, from)
-
-    override fun getOne() = from
-
-    override fun getTwo() = to
-
-    override fun put(map: MutableMap<Point, Point>) {
-        map[from] = to
-    }
-
-    override fun toEntry(): ImmutableEntry<Point, Point> = ImmutableEntry.of(from, to)
-
-    override fun compareTo(other: Pair<Point, Point>): Int {
-        throw UnsupportedOperationException("compareTo unsupported in ${javaClass.canonicalName}")
-    }
 }

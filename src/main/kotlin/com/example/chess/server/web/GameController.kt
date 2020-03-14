@@ -30,7 +30,7 @@ class GameController {
         @RequestParam clientPosition: Int,
         @RequestParam rowIndex: Int,
         @RequestParam columnIndex: Int
-    ): Set<PointDTO> {
+    ): Set<PointDTO> {      //TODO: List<PointDTO> ?
         return gameService.getMovesByPoint(gameId, Point.of(rowIndex, columnIndex), clientPosition)
             .result
             .stream()

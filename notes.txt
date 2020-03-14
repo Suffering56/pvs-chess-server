@@ -53,10 +53,9 @@
     - MovesProvider -> Set<Point> getManyTargetPointThreats(Point targetPoint)  //, int expectedPointsCount?)
 
     - cache:
-        - а что если использовать не HashSet а ArrayList?
-        - а что если закэшировать HashSet<Point> для 1,2,3 (и может даже 4х) элементов?
-        + Move.asTwinOf as Twin<Point>
-        - Tuples.twin(x, null)  as Twin<Point>
+        + а что если использовать не HashSet а ArrayList?
+        + а что если закэшировать HashSet<Point> для 1,2,3
+        + а что если закэшировать HashSet<Point> для 4 элементов: это оказалось слишком дорого
 
 - node.calculateCost
     - parameter: material

@@ -190,7 +190,7 @@ class GameService : IGameService {
         }
     }
 
-    override fun getMovesByPoint(gameId: Long, point: Point, clientPosition: Int): GameResult<Set<Point>> {
+    override fun getMovesByPoint(gameId: Long, point: Point, clientPosition: Int): GameResult<List<Point>> {
         val game: IUnmodifiableGame = getUnchecked(gameId)
         checkPosition(game.position, clientPosition)
 

@@ -31,6 +31,12 @@ class BotMoveSelector : IBotMoveSelector {
 
     private lateinit var statistic: Statistic
 
+    companion object {
+        val PAWN_TRANSFORMATION_PIECE_STUB: Piece? = null
+        const val CALCULATED_DEEP = 4
+        const val THREADS_COUNT = 8
+    }
+
     private class Statistic {
         val countersMap: MutableMap<String, AtomicLong> = HashMap()
 
@@ -69,12 +75,6 @@ class BotMoveSelector : IBotMoveSelector {
                 }
             }
         }
-    }
-
-    companion object {
-        val PAWN_TRANSFORMATION_PIECE_STUB: Piece? = null
-        const val CALCULATED_DEEP = 4
-        const val THREADS_COUNT = 5
     }
 
     fun selectBest(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, botSide: Side): Move {
@@ -191,7 +191,11 @@ class BotMoveSelector : IBotMoveSelector {
 
                 val targetPoint = previousMove.to
 
-                //TODO: нужна проверка на can attack targetPoint в movesProvider
+                val threatsToTargetCount = movesProvider.getThreatsToTargetCount(chessboard.game, chessboard, targetPoint)
+                if (threatsToTargetCount == 0) {
+                    return
+                }
+
                 val children = statistic.measure("fillDeepChildrenTime") {
                     chessboard.cellsStream(nextTurnSide)
                         .flatMap { cell -> getAvailableMovesByCell(cell) }
@@ -200,8 +204,9 @@ class BotMoveSelector : IBotMoveSelector {
                         .toList()
                 }
 
-                this.children = children
                 statistic.addCounterValue("deepNodesCount", children.size.toLong())
+
+                this.children = children
                 children.forEach { it.fillDeepExchange() }
             }
 
@@ -232,7 +237,7 @@ class BotMoveSelector : IBotMoveSelector {
 
             private val stackForRollback: Deque<Rollback> = ArrayDeque()
 
-            fun getAvailableMoves(pointFrom: Point): Set<Point> {
+            fun getAvailableMoves(pointFrom: Point): List<Point> {
                 return statistic.measure("getAvailableMovesTime") {
                     movesProvider.getAvailableMoves(game, base, pointFrom)
                 }
@@ -424,7 +429,7 @@ class BotMoveSelector : IBotMoveSelector {
         var availableMoves: List<Point>
         do {
             randomPointFrom = random(pointsFrom).point
-            availableMoves = movesProvider.getAvailableMoves(game, chessboard, randomPointFrom).toList()
+            availableMoves = movesProvider.getAvailableMoves(game, chessboard, randomPointFrom)
         } while (availableMoves.isEmpty())
 
         return Move.of(

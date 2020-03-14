@@ -11,9 +11,11 @@ import com.example.chess.shared.enums.Side
  */
 interface IMovesProvider {
 
-    fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): Set<Point>
+    fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): List<Point>
 
     fun isUnderCheck(chessboard: IUnmodifiableChessboard, kingSide: Side): Boolean
 
     fun getThreatsToTargetCount(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): Int
+
+    fun getThreatsToTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): List<Point>
 }

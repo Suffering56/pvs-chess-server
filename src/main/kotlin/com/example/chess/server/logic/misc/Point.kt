@@ -19,6 +19,9 @@ class Point private constructor(
 
     companion object {
 
+        private const val POINTS_POOL_SIZE = BOARD_SIZE * BOARD_SIZE
+        private val EMPTY_POINTS_LIST = emptyList<Point>()
+
         private val pointsPool = Array(BOARD_SIZE) { rowIndex ->
             Array(BOARD_SIZE) { columnIndex ->
                 Point(rowIndex, columnIndex)
@@ -64,6 +67,32 @@ class Point private constructor(
         }
 
         private val columnIndexByNameMap = columnNameByIndexMap.inverse()
+
+        private val pointListsPoolOfOne: Array<List<Point>> = Array(POINTS_POOL_SIZE) { compressedPoint ->
+            listOf(of(compressedPoint))
+        }
+
+        private val pointListsPoolOfTwo: Array<Array<List<Point>>> = Array(POINTS_POOL_SIZE) { p1 ->
+            Array(POINTS_POOL_SIZE) { p2 ->
+                listOf(of(p1), of(p2))
+            }
+        }
+
+        private val pointListsPoolOfThree: Array<Array<Array<List<Point>>>> = Array(POINTS_POOL_SIZE) { p1 ->
+            Array(POINTS_POOL_SIZE) { p2 ->
+                Array(POINTS_POOL_SIZE) { p3 ->
+                    listOf(of(p1), of(p2), of(p3))
+                }
+            }
+        }
+
+        fun pointsOf(): List<Point> = EMPTY_POINTS_LIST
+
+        fun pointsOf(p1: Point): List<Point> = pointListsPoolOfOne[p1.compress()]
+
+        fun pointsOf(p1: Point, p2: Point): List<Point> = pointListsPoolOfTwo[p1.compress()][p2.compress()]
+
+        fun pointsOf(p1: Point, p2: Point, p3: Point): List<Point> = pointListsPoolOfThree[p1.compress()][p2.compress()][p3.compress()]
     }
 
     fun compress() = compressPoint(this.row, this.col)
@@ -119,16 +148,7 @@ class Point private constructor(
 
 
     override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other === null) return false
-        if (other.javaClass != javaClass) throw UnsupportedOperationException("think about it")
-
-        other as Point
-
-        if (row != other.row) return false
-        if (col != other.col) return false
-
-        return true
+        return this === other
     }
 
     override fun hashCode(): Int {

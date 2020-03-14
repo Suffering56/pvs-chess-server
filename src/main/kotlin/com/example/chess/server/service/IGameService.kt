@@ -29,7 +29,7 @@ interface IGameService {
     fun findAndCheckGame(gameId: Long, userId: String, chessboardPosition: Int? = null): GameResult<IUnmodifiableChessboard>
 
     // read
-    fun getMovesByPoint(gameId: Long, point: Point, clientPosition: Int): GameResult<Set<Point>>
+    fun getMovesByPoint(gameId: Long, point: Point, clientPosition: Int): GameResult<List<Point>>
 
     fun listenChanges(gameId: Long, userId: String, clientPosition: Int): GameResult<ChangesDTO>
 
