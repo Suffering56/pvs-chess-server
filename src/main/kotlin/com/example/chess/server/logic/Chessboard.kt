@@ -25,7 +25,7 @@ import java.util.stream.StreamSupport
 open class Chessboard private constructor(
     override var position: Int,
     private val flatMatrix: Array<Piece?>,
-    private val kingPoints: MutableMap<Side, Point>
+    private val kingPoints: EnumMap<Side, Point>
 ) : IChessboard {
 
     override fun getPieceNullable(compressedPoint: Int): Piece? = flatMatrix[compressedPoint]
