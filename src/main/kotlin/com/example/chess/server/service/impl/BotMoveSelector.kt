@@ -262,7 +262,18 @@ class BotMoveSelector : IBotMoveSelector {
                 //если мы сюда дошли, значит нас постиг deepExchange
 
                 statistic.measure("calculateDeepExchangeTime") {
-                    val threats = movesProvider.getTargetThreats(chessboard.game, chessboard, targetPoint)
+
+                    val threats = movesProvider.getTargetThreats(chessboard.game, chessboard, targetPoint, false)
+                    val defenders = movesProvider.getTargetDefenders(chessboard.game, chessboard, targetPoint, false)
+
+                    if (threats.size < targetThreatsCount) {
+                        val allThreats = movesProvider.getTargetThreats(chessboard.game, chessboard, targetPoint, true)
+                    }
+
+                    if (defenders.size < targetDefendersCount) {
+                        val allDefenders = movesProvider.getTargetDefenders(chessboard.game, chessboard, targetPoint, true)
+                    }
+
                     statistic.addCounterValue("deepNodesCount", threats.size.toLong())
                 }
             }

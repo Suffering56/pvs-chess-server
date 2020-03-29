@@ -42,12 +42,23 @@ class MovesProvider : IMovesProvider {
         return false
     }
 
-    override fun getTargetThreats(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): List<Point> {
+    override fun getTargetThreats(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, isBatterySupported: Boolean): List<Point> {
         val targetPiece = chessboard.getPiece(targetPoint)
         val expectedSide = targetPiece.side.reverse()
         var result: List<Point> = Points.empty()
 
-        collectTargetThreatsOrDefenders(game, chessboard, targetPoint, expectedSide, false) {
+        collectTargetThreatsOrDefenders(game, chessboard, targetPoint, expectedSide, isBatterySupported) {
+            result = result.with(it)
+        }
+        return result
+    }
+
+    override fun getTargetDefenders(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, isBatterySupported: Boolean): List<Point> {
+        val targetPiece = chessboard.getPiece(targetPoint)
+        val expectedSide = targetPiece.side
+        var result: List<Point> = Points.empty()
+
+        collectTargetThreatsOrDefenders(game, chessboard, targetPoint, expectedSide, isBatterySupported) {
             result = result.with(it)
         }
         return result
@@ -213,7 +224,7 @@ class MovesProvider : IMovesProvider {
             return addKingMoves(accumulator, ctx)
         }
 
-        val kingAttackers = getTargetThreats(ctx.game, ctx.chessboard, ctx.kingPoint)
+        val kingAttackers = getTargetThreats(ctx.game, ctx.chessboard, ctx.kingPoint, false)
         require(kingAttackers.size <= 2) { "triple check unsupported in chess game.\r\n ${ctx.chessboard.toPrettyString()}" }
 
         if (kingAttackers.size == 2) {
