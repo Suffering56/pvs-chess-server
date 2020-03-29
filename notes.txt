@@ -46,17 +46,11 @@
 
 + fill deep exchange
 
-- fill deep exchange optimizations:
-
++ fill deep exchange optimizations:
     + MovesProvider -> int getThreatsToTargetPointCount(Point targetPoint)
     + MovesProvider -> Set<Point> getManyTargetPointThreats(Point targetPoint)
-
-    - getAvailableMoves -> rework to result = addAvailableMoves(List<result> result)
-        - или даже collect/processAvailableMoves и передавать туда лямбду
-
-    - MovesProvider -> Point getSingleTargetPointThreats(Point targetPoint)     //lazy + findAny
-
-    - cache:
+    + возможно inline функции это не есть хорошо в моем случае
+    + cache:
         + а что если использовать не HashSet а ArrayList?
         + а что если закэшировать HashSet<Point> для 1,2,3
         + а что если закэшировать HashSet<Point> для 4 элементов: это оказалось слишком дорого

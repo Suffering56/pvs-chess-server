@@ -29,7 +29,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.*
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import javax.annotation.PostConstruct
@@ -197,7 +196,7 @@ class GameService : IGameService {
         val chessboard = chessboardProvider.createChessboardForGame(game)
 
         check(Side.nextTurnSide(game.position) == chessboard.getPiece(point).side) {
-            "incorrect side of pointFrom. expected:${Side.nextTurnSide(game.position)}, " +
+            "incorrect side empty pointFrom. expected:${Side.nextTurnSide(game.position)}, " +
                     "found: ${chessboard.getPiece(point).side}"
         }
 
@@ -401,32 +400,68 @@ class GameService : IGameService {
 //    }
 //}
 
-fun main() {
+fun x() {
+
     val poolSize = 10
     val executorService = Executors.newFixedThreadPool(poolSize)
-    val gameCacheSpec = "expireAfterAccess=2s,maximumSize=4,recordStats"
+//    val gameCacheSpec = "expireAfterAccess=2s,maximumSize=4,concurrencyLevel=16,recordStats"
+//    val gameCache = CacheBuilder.from(gameCacheSpec)
 
-    val gameCache = CacheBuilder.from(gameCacheSpec).build(
-        CacheLoader.from<Long, GameWrapper> { gameId ->
-            load(gameId!!)
-        }
-    )
+    val gameCache = CacheBuilder.newBuilder()
+        .expireAfterAccess(2, TimeUnit.SECONDS)
+        .maximumSize(100000)
+        .concurrencyLevel(8)
+        .recordStats()
+        .build(
+            CacheLoader.from<Long, GameWrapper> { gameId ->
+                load(gameId!!)
+            }
+        )
 //    val lock = ReentrantLock()
-    val map = ConcurrentHashMap<Long, GameWrapper>()
+    val map = gameCache.asMap() //ConcurrentHashMap<Long, GameWrapper>()
 
 
     map.put(1, GameWrapper(1))
     map.put(2, GameWrapper(2))
 
-
-
     executorService.submit {
-        map.computeIfPresent(1) { clanId, clan ->
-            Thread.sleep(10000)
-
-            clan
+        map.compute(1) { gameId, game ->
+            println("computing $gameId started: 1")
+            Thread.sleep(3000)
+            println("computing $gameId finished: 1")
+            game
         }
     }
+
+    executorService.submit {
+        map.compute(2) { gameId, game ->
+            println("computing $gameId started: 2")
+            Thread.sleep(10000)
+            println("computing $gameId finished: 2")
+            game
+        }
+    }
+
+    Thread.sleep(1000)
+
+    executorService.submit {
+        map.compute(1) { gameId, game ->
+            println("computing $gameId started: 3")
+            Thread.sleep(3000)
+            println("computing $gameId finished: 3")
+            game
+        }
+    }
+
+    executorService.submit {
+        map.compute(2) { gameId, game ->
+            println("computing $gameId started: 4")
+            Thread.sleep(10000)
+            println("computing $gameId finished: 4")
+            game
+        }
+    }
+
 
 
     executorService.shutdown()

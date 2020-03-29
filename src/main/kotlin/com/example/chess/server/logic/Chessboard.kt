@@ -90,7 +90,7 @@ open class Chessboard private constructor(
                     "move=${move.toPrettyString(pawn)}\r\n${toPrettyString()}"
         }
         require(pawn.side != attackedPiece.side) {
-            "attacked piece side must be opposite to the side of moved pawn:" +
+            "attacked piece side must be opposite to the side empty moved pawn:" +
                     "move=${move.toPrettyString(pawn)}\r\n${toPrettyString()}"
         }
 

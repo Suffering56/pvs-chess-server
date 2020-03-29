@@ -221,18 +221,17 @@ class BotMoveSelector : IBotMoveSelector {
                 }
 
                 val children = statistic.measure("fillDeepChildrenTime") {
-                    chessboard.cellsStream(nextTurnSide)
-                        .flatMap { cell -> getAvailableMovesByCell(cell) }
-                        .filter { move -> move.to === targetPoint }
-                        .map { move -> Node(this, move) }
-                        .toList()
-
-
-//                    movesProvider.getThreatsToTarget(chessboard.game, chessboard, targetPoint)
-//                        .stream()
-//                        .map { Move.of(it, targetPoint, PAWN_TRANSFORMATION_PIECE_STUB) }
+//                    chessboard.cellsStream(nextTurnSide)
+//                        .flatMap { cell -> getAvailableMovesByCell(cell) }
+//                        .filter { move -> move.to === targetPoint }
 //                        .map { move -> Node(this, move) }
 //                        .toList()
+
+                    movesProvider.getThreatsToTarget(chessboard.game, chessboard, targetPoint)
+                        .stream()
+                        .map { Move.of(it, targetPoint, PAWN_TRANSFORMATION_PIECE_STUB) }
+                        .map { move -> Node(this, move) }
+                        .toList()
                 }
 
                 statistic.addCounterValue("deepNodesCount", children.size.toLong())

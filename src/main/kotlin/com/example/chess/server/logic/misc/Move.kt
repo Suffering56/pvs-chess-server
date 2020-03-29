@@ -35,7 +35,7 @@ class Move private constructor(
                 of(from, to)
             } else {
                 //TODO: cache it if needed
-                println("new no-cached instance of Move created, because pawnTransformationPiece is $pawnTransformationPiece")
+                println("new no-cached instance empty Move created, because pawnTransformationPiece is $pawnTransformationPiece")
                 Move(from, to, pawnTransformationPiece)
             }
         }
