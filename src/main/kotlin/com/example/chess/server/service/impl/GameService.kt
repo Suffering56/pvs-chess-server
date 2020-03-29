@@ -238,7 +238,7 @@ class GameService : IGameService {
         val move = nextMoveHistory.toMove()
 
         val additionalMove = chessboard.applyMove(move)
-        val isUnderCheck = movesProvider.isUnderCheck(chessboard, clientSide)
+        val isUnderCheck = movesProvider.isUnderCheck(game, chessboard, clientSide)
 
         val changes = ChangesDTO(
             chessboard.position,
@@ -273,7 +273,7 @@ class GameService : IGameService {
             val initialArrangement = arrangementRepository.saveAll(arrangement)
 
             val serverChessboard = chessboardProvider.createChessboardForGameWithArrangement(game, game.position, initialArrangement)
-            val underCheck = movesProvider.isUnderCheck(serverChessboard, side.reverse())
+            val underCheck = movesProvider.isUnderCheck(game, serverChessboard, side.reverse())
 
             ConstructorGameDTO(
                 gameId,
@@ -296,7 +296,7 @@ class GameService : IGameService {
         val additionalMove = applyMoveHandler.applyMove(game, chessboard, move)
 
         val enemySide = pieceFrom.side.reverse()
-        val underCheck = movesProvider.isUnderCheck(chessboard, enemySide)
+        val underCheck = movesProvider.isUnderCheck(game, chessboard, enemySide)
 
         val historyItem = entityProvider.createHistoryItem(game.id!!, chessboard.position, move, pieceFrom)
         historyRepository.save(historyItem)

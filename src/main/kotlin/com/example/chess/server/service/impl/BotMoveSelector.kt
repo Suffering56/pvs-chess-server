@@ -11,6 +11,7 @@ import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.service.IBotMoveSelector
 import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.enums.Piece
+import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
@@ -26,6 +27,7 @@ import kotlin.random.Random
 import kotlin.streams.toList
 
 @Component
+@ExperimentalUnsignedTypes
 class BotMoveSelector : IBotMoveSelector {
 
     @Autowired private lateinit var movesProvider: IMovesProvider
@@ -44,9 +46,9 @@ class BotMoveSelector : IBotMoveSelector {
             countersMap["totalTime"] = AtomicLong(0)
             countersMap["deepExchangeTime"] = AtomicLong(0)
             countersMap["actualizeTime"] = AtomicLong(0)
-            countersMap["fillDeepChildrenTime"] = AtomicLong(0)
+            countersMap["calculateDeepExchangeTime"] = AtomicLong(0)
             countersMap["getAvailableMovesTime"] = AtomicLong(0)
-            countersMap["getThreatsToTargetCountTime"] = AtomicLong(0)
+            countersMap["getTargetThreatsCountTime"] = AtomicLong(0)
             countersMap["getTargetDefendersCountTime"] = AtomicLong(0)
 
             countersMap["totalNodesCount"] = AtomicLong(0)
@@ -150,7 +152,7 @@ class BotMoveSelector : IBotMoveSelector {
         val statistic: Statistic = Statistic()
 
         private val chessboard = ChessboardStateHolder(game, chessboard)
-        private val rootNode: Node = Node(null, null)
+        private val rootNode: Node = Node(null, null, null)
 
         fun fillNodes(deep: Int) {
             statistic.measure("totalTime") {
@@ -165,14 +167,20 @@ class BotMoveSelector : IBotMoveSelector {
 
         inner class Node(
             val parent: Node?,
-            val previousMove: Move?
+            val previousMove: Move?,
+            val killedPiece: PieceType?
         ) {
             init {
                 statistic.addCounterValue("totalNodesCount", 1)
             }
 
             var children: List<Node>? = null
-            var weight: Byte = 0    //100 - checkmate
+
+            /**
+             * Рассчитывается относительно текущей ноды.
+             * То есть положительный рейтинг выгоден для стороны, которая передвинула фигуру в previousMove, а отрицательный - для ее противника
+             */
+            var weight: UByte = UByte.MIN_VALUE    //UByte.MAX_VALUE - checkmate
 
             val isRoot: Boolean get() = parent == null || previousMove == null
             val currentPosition: Int get() = chessboard.initialPosition + getDeep()
@@ -199,7 +207,7 @@ class BotMoveSelector : IBotMoveSelector {
 
                 val children = chessboard.cellsStream(nextTurnSide)
                     .flatMap { cell -> getAvailableMovesByCell(cell) }
-                    .map { move -> Node(this, move) }
+                    .map { move -> Node(this, move, chessboard.getPieceNullable(move.to)?.type) }
                     .toList()
 
                 this.children = children
@@ -225,42 +233,38 @@ class BotMoveSelector : IBotMoveSelector {
 
                 val targetPoint = previousMove.to
 
-                val threatsToTargetCount = statistic.measure("getThreatsToTargetCountTime") {
-                    movesProvider.getThreatsToTargetCount(chessboard.game, chessboard, targetPoint)
+                val targetThreatsCount = statistic.measure("getTargetThreatsCountTime") {
+                    movesProvider.getTargetThreatsCount(chessboard.game, chessboard, targetPoint)
                 }
 
-                if (threatsToTargetCount == 0) {
+                if (targetThreatsCount == 0) {
+                    // текущий ход (previousMove) безопасен, потому что никто не может срубить, передвинутую фигуру
+                    // разменов не будет
+                    weight = (killedPiece?.value ?: 0).toUByte()
                     return
+                } else {
+                    // противник (следующая по глубине нода) может ответить срубив передвиную фигуру
                 }
 
                 val targetDefendersCount = statistic.measure("getTargetDefendersCountTime") {
                     movesProvider.getTargetDefendersCount(chessboard.game, chessboard, targetPoint)
                 }
 
+                val movedPiece = chessboard.getPiece(targetPoint).type
 
                 if (targetDefendersCount == 0) {
-                    val targetWeight = chessboard.getPiece(targetPoint).type.value
-                    weight = targetWeight.toByte()
+                    // previousMove текущей ноды поставил под удар передвинутую фигуру. а защиты у нее нет
+                    // противник ее может срубить любым из доступных способов (хотя бы 1 такой способ гарантированно есть)
+                    weight = ((killedPiece?.value ?: 0) - movedPiece.value).toUByte()
                     return
                 }
 
-//                if (threatsToTargetCount == 1) {
-//                    weight
-//                }
+                //если мы сюда дошли, значит нас постиг deepExchange
 
-
-                val children = statistic.measure("fillDeepChildrenTime") {
-                    movesProvider.getThreatsToTarget(chessboard.game, chessboard, targetPoint)
-                        .stream()
-                        .map { Move.of(it, targetPoint, PAWN_TRANSFORMATION_PIECE_STUB) }
-                        .map { move -> Node(this, move) }
-                        .toList()
+                statistic.measure("calculateDeepExchangeTime") {
+                    val threats = movesProvider.getTargetThreats(chessboard.game, chessboard, targetPoint)
+                    statistic.addCounterValue("deepNodesCount", threats.size.toLong())
                 }
-
-                statistic.addCounterValue("deepNodesCount", children.size.toLong())
-
-                this.children = children
-                children.forEach { it.fillDeepExchange() }
             }
 
             private fun actualizeChessboard() {

@@ -1,0 +1,99 @@
+1)
+    - deep = 5
+    - threadsCount = 8
+    - MovesProvider.addKingAttackers replaced by getTargetThreats(kingPoint)
+    - больше не делаем fillChildren для deepExchange
+
+move successfully applied for game: 209. new chessboard position: 2
+
+getAvailableMovesTime(avg, sec): 1.27
+getTargetDefendersCountTime(avg, sec): 0.26
+getTargetThreatsCountTime(avg, sec): 0.73
+totalTime(avg, sec): 4.33
+actualizeTime(avg, sec): 0.88
+calculateDeepExchangeTime(avg, sec): 0.39
+totalNodesCount: 9244932
+deepNodesCount: 1797301
+deepExchangeTime(avg, sec): 2.32
+
+globalInvokeTime(sec) = 4.917
+---------------------------------------------------------------------
+
+move successfully applied for game: 209. new chessboard position: 4
+
+statistic:
+getAvailableMovesTime(avg, sec): 1.07
+getTargetDefendersCountTime(avg, sec): 0.63
+getTargetThreatsCountTime(avg, sec): 1.36
+totalTime(avg, sec): 2.37
+actualizeTime(avg, sec): 1.39
+calculateDeepExchangeTime(avg, sec): 0.41
+totalNodesCount: 23845349
+deepNodesCount: 6307260
+deepExchangeTime(avg, sec): 3.92
+
+globalInvokeTime(sec) = 7.664
+---------------------------------------------------------------------
+
+move successfully applied for game: 209. new chessboard position: 6
+
+statistic:
+getAvailableMovesTime(avg, sec): 1.35
+getTargetDefendersCountTime(avg, sec): 0.94
+getTargetThreatsCountTime(avg, sec): 1.77
+totalTime(avg, sec): 1.39
+actualizeTime(avg, sec): 2.07
+calculateDeepExchangeTime(avg, sec): 0.63
+totalNodesCount: 34486456
+deepNodesCount: 11588821
+deepExchangeTime(avg, sec): 5.62
+
+globalInvokeTime(sec) = 10.293
+---------------------------------------------------------------------
+2)
+move successfully applied for game: 209. new chessboard position: 2
+
+getAvailableMovesTime(avg, sec): 1.27
+getTargetDefendersCountTime(avg, sec): 0.26
+getTargetThreatsCountTime(avg, sec): 0.73
+totalTime(avg, sec): 4.33
+actualizeTime(avg, sec): 0.88
+calculateDeepExchangeTime(avg, sec): 0.39
+totalNodesCount: 9244932
+deepNodesCount: 1797301
+deepExchangeTime(avg, sec): 2.32
+
+globalInvokeTime(sec) = 4.917
+---------------------------------------------------------------------
+
+move successfully applied for game: 209. new chessboard position: 4
+
+statistic:
+getAvailableMovesTime(avg, sec): 1.07
+getTargetDefendersCountTime(avg, sec): 0.63
+getTargetThreatsCountTime(avg, sec): 1.36
+totalTime(avg, sec): 2.37
+actualizeTime(avg, sec): 1.39
+calculateDeepExchangeTime(avg, sec): 0.41
+totalNodesCount: 23845349
+deepNodesCount: 6307260
+deepExchangeTime(avg, sec): 3.92
+
+globalInvokeTime(sec) = 7.664
+---------------------------------------------------------------------
+
+move successfully applied for game: 209. new chessboard position: 6
+
+statistic:
+getAvailableMovesTime(avg, sec): 1.35
+getTargetDefendersCountTime(avg, sec): 0.94
+getTargetThreatsCountTime(avg, sec): 1.77
+totalTime(avg, sec): 1.39
+actualizeTime(avg, sec): 2.07
+calculateDeepExchangeTime(avg, sec): 0.63
+totalNodesCount: 34486456
+deepNodesCount: 11588821
+deepExchangeTime(avg, sec): 5.62
+
+globalInvokeTime(sec) = 10.293
+---------------------------------------------------------------------
