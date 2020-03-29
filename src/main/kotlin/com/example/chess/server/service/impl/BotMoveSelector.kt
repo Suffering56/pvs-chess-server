@@ -166,19 +166,23 @@ class BotMoveSelector : IBotMoveSelector {
             }
 
             var children: List<Node>? = null
+            var weight: Byte = 0    //100 - checkmate
 
             val isRoot: Boolean get() = parent == null || previousMove == null
-            val currentPosition: Int get() = chessboard.initialPosition + deep
+            val currentPosition: Int get() = chessboard.initialPosition + getDeep()
             val nextTurnSide: Side get() = Side.nextTurnSide(currentPosition)
-            val deep: Int   // deep = 0; is root! еще никто не ходил.
-                get() = if (isRoot) {
+
+            fun getDeep(): Int {
+                // deep = 0; is root! еще никто не ходил.
+                return if (isRoot) {
                     0
                 } else {
-                    1 + parent!!.deep
+                    1 + parent!!.getDeep()
                 }
+            }
 
-            fun fillChildren(deep: Int) {
-                if (deep == 0) {
+            fun fillChildren(reverseDeep: Int) {
+                if (reverseDeep == 0) {
                     statistic.measure("deepExchangeTime") {
                         fillDeepExchange()
                     }
@@ -193,7 +197,7 @@ class BotMoveSelector : IBotMoveSelector {
                     .toList()
 
                 this.children = children
-                children.forEach { it.fillChildren(deep - 1) }
+                children.forEach { it.fillChildren(reverseDeep - 1) }
             }
 
             private fun getAvailableMovesByCell(cell: Cell): Stream<Move> {
@@ -221,12 +225,6 @@ class BotMoveSelector : IBotMoveSelector {
                 }
 
                 val children = statistic.measure("fillDeepChildrenTime") {
-//                    chessboard.cellsStream(nextTurnSide)
-//                        .flatMap { cell -> getAvailableMovesByCell(cell) }
-//                        .filter { move -> move.to === targetPoint }
-//                        .map { move -> Node(this, move) }
-//                        .toList()
-
                     movesProvider.getThreatsToTarget(chessboard.game, chessboard, targetPoint)
                         .stream()
                         .map { Move.of(it, targetPoint, PAWN_TRANSFORMATION_PIECE_STUB) }

@@ -1,0 +1,130 @@
+ PVS-CHESS-2.0
+
+Заметки:
+- разделить имплементации для анализаторов deep < MAX_DEEP и deep = MAX_DEEP
+- analyzedSide (bot)
+- opponentSide (player)
+- moveCycle - это цикл ходов состоящий из двух ходов обеих сторон (ход - ответный ход)	это не обязательно сначала ход белых а потом черных, это может быть и черный ход-белый ход
+
+- во всех методах которые должны одинаково работать как для analyzedSide так и для opponentSide - у нас будет attackerSide - сторона которая начала размен/сделала ход первой, и defenderSide - защищающаяся сторона
+
+- предлагаю оптимизационные методы выносить куда-то и включать флагом аля serverProperties
+
+- приоритеты: check(mate) -> material rating -> check (deprive castling) -> position rating
+- сначала маркируем маты и ищем 100%-ные варианты, если такие есть - то нет смысла вообще ничего больше считать
+
+
+- аналогично обрубаем расчеты позиций и шахов если materialRating > 2 (полторы пешки) - возможно дешевле позиции посчитать
+
+- если у хода currentMove с deep < maxDeep, нет детей, значит currentMove.markCheckmate(winner = currentMove.pointFrom.side)
+- если currentMove.hasChildren && currentMove.childrenStream().allMatch(hasWinner) - то ЭТО ОЧЕНЬ ПЛОХОЙ ХОД - mark
+
+=============================================================================================================================================================================================================================================================================================
+Задача о том что делаем с разменами при подсчете тотального рейтинга:
+
+	- очевидно что exchangeDiff - нельзя складывать друг с другом	!!! НО и слепо игнорить ходы из размена нельзя - а вдруг в середине размена появилась возможность срубить дорогую фигуру за пределами exchangePoint
+	- для этого вводим новое поле в gameContext под названием exchangeInfo (class ExchangeInfo {}Integer diffValue; GameContext exchangeSource; - ссылка на контекст породивший размен)
+
+	- как вариант сначала отдельно посчитать простые размены глубиной 1,2,3
+	- materialLinkedGraph - ходы связанные материально - должны все вести к инициатору
+
+
+	Решение:
+
+	1) Формула нахождения лучшего хода следующая:
+
+	private int getTotal() {
+		return getCurrentWeight() - childrenStream().max(children.getTotal());
+	}
+
+
+	Доказательство что таким образом будут посчитаны все ходы верно не зависимо от четности-нечетности глубины:
+	current_XX 			= deep < MAX_DEEP ? getExchangeDiff(может быть любым, в т.ч. и отрицательным) : getPointToWeight(всегда >= 0)
+	------------------
+	Четная глубина(4):
+	- analyzedTotal_AO 	= current_A0 - maxChildren_O1;
+	- maxChildren_O1 	= current_O1 - maxChildren_A2;
+	- maxChildren_A2 	= current_A2 - maxChildren_O3;
+	- maxChildren_O3 	= current_O3 - maxChildren_A4;
+
+	=>> analyzedTotal_AO     = current_A0 - (current_O1 - (current_A2 - (current_O3 - maxChildren_A4)))
+							== current_A0 - (current_O1 - (current_A2 -  current_O3 + maxChildren_A4))
+							== current_A0 - (current_O1 -  current_A2 +  current_O3 - maxChildren_A4)
+							== current_A0 -  current_O1 +  current_A2 -  current_O3 + maxChildren_A4
+	------------------
+	Нечетная глубина(3):
+	- analyzedTotal_AO = current_A0 - maxChildren_O1;
+	- maxChildren_O1 = current_O1 - maxChildren_A2;
+	- maxChildren_A2 = current_A2 - maxChildren_O3;
+
+	=>> analyzedTotal_AO 	 = current_A0 - (current_O1 - (current_A2 - maxChildren_O3))
+							== current_A0 - (current_O1 -  current_A2 + maxChildren_O3)
+							== current_A0 -  current_O1 +  current_A2 - maxChildren_O3
+	------------------
+
+	2) Что делаем с разменами:
+	- считаем exchange только для ходов максимальной глубины, которую мы расчитываем, calculateExchange when deep = MAX_DEEP
+=============================================================================================================================================================================================================================================================================================
+exchangeDiff:
+
+Решение:
+	- кастомная обработка разменов глубиной 1,2,3
+	- универсальная для 4+ :
+
+		- у нас будет attackerSide - сторона которая начала размен, и defenderSide - защищающаяся сторона
+		- diff > 0 - хорошо для attackerSide, diff < 0 - хорошо для defenderSide
+
+		- нам понадобится список diff-ов до конца всего размена	= exchangeDiffList (индекс начинается с 0)
+
+		- calculateExchangeDiff(List exchangeDiffList)
+		- checkState(!exchangeDiffList.isEmpty)
+		- fillDiffList(local): если exchangeDiffList.size % 2 != 0, то exchangeDiffList.add(exchangeDiffList.get(exchangeDiffList.size-1);	вызывается в самом начале calculateExchangeDiff
+
+		- далее находим индекс когда attackerSide захочет остановиться: attackerFinishIndex = exchangeDiffList.stream().filter(index%2 == 0).MAX(for diff)	//TODO: если таких будет несколько - то берем ПЕРВЫЙ (findFirst)
+		- далее находим индекс когда defenderSide захочет остановиться: defenderFinishIndex = exchangeDiffList.stream().filter(index%2 == 1).MIN(for diff)	//TODO: если таких будет несколько - то берем ПЕРВЫЙ (findFirst)
+
+		- сравниваем полученные индексы:
+
+			- ОПТИМИЗАЦИЯ: если exchangeDiffList.size == 1 то
+				=>> materialRating == exchangeDiffList.get(0)
+			- если exchangeDiffList.size == 2 то
+				=>> materialRating == exchangeDiffList.get(1)
+
+			- diffBy(attackerFinishIndex) == diffBy(defenderFinishIndex)	- обеим сторонам норм, поэтому соглашаемся на размен
+				=>> materialRating = diffBy(attackerFinishIndex || defenderFinishIndex)
+
+			- если attackerFinishIndex > defenderFinishIndex:																			- защитник решает останавливать размен или нет, т.к. он достигает своего максимума первым
+				- && diffBy(attackerFinishIndex) < diffBy(defenderFinishIndex)															- защитник ничего не может поделать, т.к. предотвращение размена ему не выгодно (где бы он ни остановился это будет ЕЩЕ ХУЖЕ чем если остановиться там где наиболее выгодно для атакующего)
+					=>> materialRating = diffBy(attackerFinishIndex)
+				- && diffBy(attackerFinishIndex) > diffBy(defenderFinishIndex) тогда materialRating = [diffBy(attackerFinishIndex)]		- защитник может предотвратить размен в более выгодной ему точке и заставляет атакующего пересчитать размен основываясь на новой глубине размена
+					- exchangeDiffList.removeIf(index > defenderFinishIndex)	ИМЕННО БОЛЬШЕ А НЕ БОЛЬШЕ РАВНО
+					- пересчитываем attackerFinishIndex или просто рекурсивно возвращаемся в метод calculateExchangeDiff
+
+			- если attackerFinishIndex < defenderFinishIndex:																			- атакующий решает останавливать размен или нет, т.к. он достигает своего максимума первым
+				- exchangeDiffList.removeIf(index > attackerFinishIndex)	ИМЕННО БОЛЬШЕ А НЕ БОЛЬШЕ РАВНО								- исходя из того что атакующий достигает максимума первым, защитник должен поискать свой новый максимум для ходов, которые будут совершены ДО attackerFinishIndex
+				- пересчитываем defenderFinishIndex или просто рекурсивно возвращаемся в метод	calculateExchangeDiff
+============================================================================================================================================================================================================================================================================================
+calculateRating:
+
+Дано:
+1) дерево доступных ходов до n-й глубины включительно (просто ходов - без каких либо расчетов):
+	- глубина 1:  	список доступных ходов для стороны analyzedSide
+	- глубина 2:  	список доступных ответных ходов для стороны opponentSide для каждого хода глубины 1
+	- ...
+	- глубина n:  	список доступных ходов для side = n%2==1 ? analyzedSide : opponentSide
+	- глубина n+x:	список доступных ходов, которые будут расчитаны только в случае разменов (если на ходу n - была срублена фигура на клетке exchangePoint - то далее будут расчитаны все следующие ходы, у которых pointTo = exchangePoint). глубина может быть любой - но беспокоиться не нужно - количество фигур не бесконечно
+
+2) все матовые ситуации посчитаны и везде где можно расставлены флаги isGuaranteedCheckmate
+
+Решение:
+	- делаем цепочки начальных ходов
+	- для каждого analyzedMove - находим лучший ответ противника (предварительно отфильтрованных: move.childrenStream().filter(move -> analyzedMove.exchangeSource != move.exchangeSource)
+
+
+
+
+	- список доступных на данный момент ходов для бота(глубина 1)
+	- список ответов игрока на каждый из наших ходов (глубина 2)
+	- список ответов бота на каждый из ходов глубины 2 (глубина 3)
+	- ходы игрока - (глубина 4)
+	- ходы бота - (глубина 5)
