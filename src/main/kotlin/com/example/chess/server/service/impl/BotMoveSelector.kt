@@ -14,6 +14,8 @@ import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.Side
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -31,7 +33,7 @@ class BotMoveSelector : IBotMoveSelector {
 
     companion object {
         val PAWN_TRANSFORMATION_PIECE_STUB: Piece? = null
-        const val CALCULATED_DEEP = 4
+        const val CALCULATED_DEEP = 5
         const val THREADS_COUNT = 8
     }
 
@@ -44,6 +46,8 @@ class BotMoveSelector : IBotMoveSelector {
             countersMap["actualizeTime"] = AtomicLong(0)
             countersMap["fillDeepChildrenTime"] = AtomicLong(0)
             countersMap["getAvailableMovesTime"] = AtomicLong(0)
+            countersMap["getThreatsToTargetCountTime"] = AtomicLong(0)
+            countersMap["getTargetDefendersCountTime"] = AtomicLong(0)
 
             countersMap["totalNodesCount"] = AtomicLong(0)
             countersMap["deepNodesCount"] = AtomicLong(0)
@@ -78,12 +82,12 @@ class BotMoveSelector : IBotMoveSelector {
             }
         }
 
-        fun print() {
+        fun print(threadsCount: Int) {
             println("\r\nstatistic:")
 
             countersMap.forEach { (key, value) ->
                 if (key.endsWith("Time")) {
-                    println("$key(avg, sec): ${value.get() / 1000.0 / THREADS_COUNT}")
+                    println("$key(avg, sec): ${BigDecimal.valueOf(value.get() / 1000.0 / threadsCount).setScale(2, RoundingMode.HALF_UP).toPlainString()}")
                 } else {
                     println("$key: ${value.get()}")
                 }
@@ -93,7 +97,6 @@ class BotMoveSelector : IBotMoveSelector {
     }
 
     fun selectBest(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, botSide: Side): Move {
-        val threadPool = Executors.newFixedThreadPool(THREADS_COUNT)
 
         Statistic.measureAndPrint("globalInvokeTime") {
             val branches = chessboard.cellsStream(botSide)
@@ -116,6 +119,9 @@ class BotMoveSelector : IBotMoveSelector {
                 }
                 .toList()
 
+            val threadsCount = THREADS_COUNT
+            val threadPool = Executors.newFixedThreadPool(threadsCount)
+
             branches.forEach {
                 threadPool.submit {
                     it.fillNodes(CALCULATED_DEEP - 1)
@@ -131,7 +137,7 @@ class BotMoveSelector : IBotMoveSelector {
             branches.forEach {
                 totalStatistic.addValues(it.statistic)
             }
-            totalStatistic.print()
+            totalStatistic.print(threadsCount)
         }
 
         return Move.cut(Point.of(1, 1))
@@ -219,10 +225,29 @@ class BotMoveSelector : IBotMoveSelector {
 
                 val targetPoint = previousMove.to
 
-                val threatsToTargetCount = movesProvider.getThreatsToTargetCount(chessboard.game, chessboard, targetPoint)
+                val threatsToTargetCount = statistic.measure("getThreatsToTargetCountTime") {
+                    movesProvider.getThreatsToTargetCount(chessboard.game, chessboard, targetPoint)
+                }
+
                 if (threatsToTargetCount == 0) {
                     return
                 }
+
+                val targetDefendersCount = statistic.measure("getTargetDefendersCountTime") {
+                    movesProvider.getTargetDefendersCount(chessboard.game, chessboard, targetPoint)
+                }
+
+
+                if (targetDefendersCount == 0) {
+                    val targetWeight = chessboard.getPiece(targetPoint).type.value
+                    weight = targetWeight.toByte()
+                    return
+                }
+
+//                if (threatsToTargetCount == 1) {
+//                    weight
+//                }
+
 
                 val children = statistic.measure("fillDeepChildrenTime") {
                     movesProvider.getThreatsToTarget(chessboard.game, chessboard, targetPoint)

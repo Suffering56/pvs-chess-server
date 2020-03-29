@@ -17,5 +17,7 @@ interface IMovesProvider {
 
     fun getThreatsToTargetCount(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): Int
 
+    fun getTargetDefendersCount(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): Int
+
     fun getThreatsToTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): List<Point>
 }

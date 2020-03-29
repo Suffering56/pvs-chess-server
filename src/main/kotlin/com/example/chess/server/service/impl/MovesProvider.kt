@@ -43,16 +43,17 @@ class MovesProvider : IMovesProvider {
     override fun getThreatsToTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): List<Point> {
         val targetPiece = chessboard.getPiece(targetPoint)
         val targetPointSide = targetPiece.side
+        val expectedThreatSide = targetPointSide.reverse()
 
         var result: List<Point> = Points.empty()
 
         //TODO: мы больше не уверены что король не под шахом, из-за изменений работы алгоритма
         // больше нельзя передавать null просто так
-        collectThreatsToTargetByAllVectors(chessboard, targetPoint, targetPointSide, null, false) {
+        collectMovesToTargetByAllVectors(chessboard, targetPoint, expectedThreatSide, null, false) {
             result = result.with(it)
         }
 
-        collectKnightThreatsToTarget(targetPoint, targetPointSide, chessboard) {
+        collectKnightMovesToTarget(chessboard, targetPoint, expectedThreatSide) {
             result = result.with(it)
         }
 
@@ -63,8 +64,19 @@ class MovesProvider : IMovesProvider {
 
     override fun getThreatsToTargetCount(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): Int {
         val targetPiece = chessboard.getPiece(targetPoint)
-        val targetPointSide = targetPiece.side
+        val expectedSide = targetPiece.side.reverse()
 
+        return getThreatsOrDefendersToTargetCount(chessboard, targetPoint, expectedSide)
+    }
+
+    override fun getTargetDefendersCount(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): Int {
+        val targetPiece = chessboard.getPiece(targetPoint)
+        val expectedSide = targetPiece.side
+
+        return getThreatsOrDefendersToTargetCount(chessboard, targetPoint, expectedSide)
+    }
+
+    private fun getThreatsOrDefendersToTargetCount(chessboard: IUnmodifiableChessboard, targetPoint: Point, expectedSide: Side): Int {
         /*
          * TODO: нужно ли проверять что король под шахом?
          * Пока решил, что в данном кейсе это не очень важная проверка. Но если вдруг потребуется то:
@@ -76,25 +88,24 @@ class MovesProvider : IMovesProvider {
          * PS: выглядит так, словно нас двойной шах не сильно то и интересует (но интересуют обе шахующие фигуры, независимо друг от друга)
          */
 
-        var threatsCounter = 0
-
+        var counter = 0
 
         //TODO: мы больше не уверены что король не под шахом, из-за изменений работы алгоритма
         // больше нельзя передавать null просто так
-        collectThreatsToTargetByAllVectors(chessboard, targetPoint, targetPointSide, null, true) {
-            threatsCounter++
+        collectMovesToTargetByAllVectors(chessboard, targetPoint, expectedSide, null, true) {
+            counter++
         }
 
-        collectKnightThreatsToTarget(targetPoint, targetPointSide, chessboard) {
-            threatsCounter++
+        collectKnightMovesToTarget(chessboard, targetPoint, expectedSide) {
+            counter++
         }
 
         //TODO: я совершенно точно не учитываю en-passant
 
-        return threatsCounter
+        return counter
     }
 
-    private fun collectKnightThreatsToTarget(targetPoint: Point, targetPointSide: Side, chessboard: IUnmodifiableChessboard, collectFunction: (Point) -> Unit) {
+    private fun collectKnightMovesToTarget(chessboard: IUnmodifiableChessboard, targetPoint: Point, expectedSide: Side, collectFunction: (Point) -> Unit) {
         for (vector in knightOffsets) {
             val row = targetPoint.row + vector.row
             val col = targetPoint.col + vector.col
@@ -106,8 +117,8 @@ class MovesProvider : IMovesProvider {
             val piece = chessboard.getPieceNullable(row, col)
                 ?: continue
 
-            if (piece.side == targetPointSide) {
-                // нас интересуют только враги targetPoint-а
+            if (piece.side != expectedSide) {
+                // нас интересует только expectedSide
                 continue
             }
 
@@ -123,10 +134,10 @@ class MovesProvider : IMovesProvider {
      * 3) Увеличивает счетчик на единицу
      * 4) Может продолжить идти по тому же направлению после увеличения счетчика, чтобы вычислить "батарею", которая будет учтена счетчиком
      */
-    private fun collectThreatsToTargetByAllVectors(
+    private fun collectMovesToTargetByAllVectors(
         chessboard: IUnmodifiableChessboard,
         targetPoint: Point,
-        targetPointSide: Side,
+        expectedSide: Side,
         kingAttacker: Point?,
         isBatterySupported: Boolean,
         collectFunction: (Point) -> Unit
@@ -149,8 +160,8 @@ class MovesProvider : IMovesProvider {
                 // если точка пуста - продолжаем поиск по вектору
                 val foundPiece = chessboard.getPieceNullable(row, col) ?: continue
 
-                if (foundPiece.side == targetPointSide) {
-                    // уперлись в союзную фигуру
+                if (foundPiece.side != expectedSide) {
+                    // уперлись в фигуру не того цвета
                     // дальнейшее следование по вектору не имеет смысла
                     break
                 }
@@ -162,7 +173,7 @@ class MovesProvider : IMovesProvider {
                     // поэтому дальнейшее следование по этому вектору не имеет смысла
                     break
 
-                } else if (offset == 1 && foundPiece.isTypeOf(PAWN) && targetPointSide.pawnRowDirection == vector.row && vector.isDiagonal()) {
+                } else if (offset == 1 && foundPiece.isTypeOf(PAWN) && expectedSide.reverse().pawnRowDirection == vector.row && vector.isDiagonal()) {
                     // пешка тоже может являться угрозой если все условия выше были выполнены
                     // do nothing, it's ok!
                 } else if (vector.isDiagonal() && foundPiece.isTypeOf(BISHOP, QUEEN)) {
@@ -198,9 +209,9 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    private fun addAvailableMoves(input: List<Point>, game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): List<Point> {
+    private fun addAvailableMoves(accumulator: List<Point>, game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): List<Point> {
         val context = InnerContext(game, chessboard, pointFrom)
-        return addAvailableMoves(input, context)
+        return addAvailableMoves(accumulator, context)
     }
 
     private fun addAvailableMoves(accumulator: List<Point>, ctx: InnerContext): List<Point> {

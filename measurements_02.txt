@@ -72,3 +72,35 @@ deepNodesCount: 7556146
 deepExchangeTime(sec): 241.29
 fillDeepChildrenTime(sec): 139.554
 ======================================================================
+6)
+- после ввода оптимизации if (getThreatsToTargetCount == 0) return
+- после ввода оптимизации getThreatsToTarget() вместо chessboard.cellsStream().flatMap(getAvailableMovesByCell)
+- после ввода оптимизации if (getTargetDefendersCount == 0) return
+- deep = 5
+- threadsCount = 8
+- move successfully applied for game: 196. new chessboard position: 2
+
+statistic:
+getAvailableMovesTime(avg, sec): 0.769625
+totalTime(avg, sec): 5.825625
+actualizeTime(avg, sec): 1.617
+totalNodesCount: 12920412
+deepNodesCount: 2731303
+deepExchangeTime(avg, sec): 4.213375
+fillDeepChildrenTime(avg, sec): 0.605625
+
+globalInvokeTime(sec) = 6.189
+
+- тоже самое но:
+- move successfully applied for game: 196. new chessboard position: 6
+
+statistic:
+getAvailableMovesTime(avg, sec): 4.020625
+totalTime(avg, sec): 49.62925
+actualizeTime(avg, sec): 19.442625
+totalNodesCount: 134678982
+deepNodesCount: 54594779
+deepExchangeTime(avg, sec): 40.95925
+fillDeepChildrenTime(avg, sec): 6.510625
+
+globalInvokeTime(sec) = 53.396
