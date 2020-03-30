@@ -55,8 +55,17 @@
         + а что если закэшировать HashSet<Point> для 1,2,3
         + а что если закэшировать HashSet<Point> для 4 элементов: это оказалось слишком дорого
 
+- рефакторинг MovesProvider
+    - можно переписать все в стиле collectMovesTo, collectMovesFrom
+    - я там где-то с шахами и взятием на проходе не разобрался
+
+
 - node.calculateCost
     - parameter: material
+        - deep exchange
+        - calculateWeight
+
+
     - parameter: checkmate (1й по важности)
     - parameter: moves count difference (может привести к тому, что бот всегда будет патовать, be careful)
     - parameter: check/check if castling enabled/if king need go to border

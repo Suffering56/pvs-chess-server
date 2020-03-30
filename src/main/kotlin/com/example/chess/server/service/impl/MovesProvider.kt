@@ -29,14 +29,27 @@ import kotlin.math.abs
 @Component
 class MovesProvider : IMovesProvider {
 
+    //collectTargetAttackers/Defenders
+
+
     override fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): List<Point> {
-        return addAvailableMoves(Points.empty(), game, chessboard, pointFrom)
+        var accumulator = Points.empty()
+
+        collectMovesFrom(game, chessboard, pointFrom) {
+            accumulator = accumulator.with(it)
+            true
+        }
+
+        return accumulator
     }
 
     override fun isUnderCheck(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, kingSide: Side): Boolean {
         val kingPoint = chessboard.getKingPoint(kingSide)
+        return canAttackTarget(game, chessboard, kingPoint, kingSide.reverse())
+    }
 
-        collectTargetThreatsOrDefenders(game, chessboard, kingPoint, kingSide.reverse(), false) {
+    private fun canAttackTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, attackerSide: Side): Boolean {
+        collectTargetThreatsOrDefenders(game, chessboard, targetPoint, attackerSide, false) {
             return true
         }
         return false
@@ -213,35 +226,76 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    private fun addAvailableMoves(accumulator: List<Point>, game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): List<Point> {
-        val context = InnerContext(game, chessboard, pointFrom)
-        return addAvailableMoves(accumulator, context)
-    }
+    private fun collectMovesFrom(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, accumulator: (Point) -> Boolean) {
+        val pieceFrom = chessboard.getPiece(pointFrom)
+        val kingPoint = chessboard.getKingPoint(pieceFrom.side)
 
-    private fun addAvailableMoves(accumulator: List<Point>, ctx: InnerContext): List<Point> {
-        if (ctx.pieceFrom.isKing()) {
+        if (pieceFrom.isKing()) {
             //ходы короля слишком непохожи на другие, т.к. нас уже неинтересуют текущие шахи, а так же препятствия
-            return addKingMoves(accumulator, ctx)
+            return collectKingMoves(game, chessboard, pointFrom, accumulator)
         }
 
-        val kingAttackers = getTargetThreats(ctx.game, ctx.chessboard, ctx.kingPoint, false)
-        require(kingAttackers.size <= 2) { "triple check unsupported in chess game.\r\n ${ctx.chessboard.toPrettyString()}" }
+        val kingAttackers = getTargetThreats(game, chessboard, kingPoint, false)
+        require(kingAttackers.size <= 2) { "triple check unsupported in chess game.\r\n ${chessboard.toPrettyString()}" }
 
         if (kingAttackers.size == 2) {
             //двойной шах, ходить можно только королем
-            return Points.empty()
+            return
         }
 
         val kingAttacker = if (kingAttackers.isNotEmpty()) kingAttackers[0] else null
-        val kingPossibleAttackerForObstacle = getKingThreatForCurrentObstacle(ctx.chessboard, ctx.pointFrom)
+        val kingPossibleAttackerForObstacle = getKingThreatForCurrentObstacle(chessboard, pointFrom)
 
-        return when (ctx.pieceFrom.type) {
-            PAWN -> addPawnMoves(accumulator, ctx, kingAttacker, kingPossibleAttackerForObstacle)
-            KNIGHT -> addKnightMoves(accumulator, ctx, kingAttacker, kingPossibleAttackerForObstacle)
-            BISHOP -> addBishopMoves(accumulator, ctx, kingAttacker, kingPossibleAttackerForObstacle)
-            ROOK -> addRookMoves(accumulator, ctx, kingAttacker, kingPossibleAttackerForObstacle)
-            QUEEN -> addQueenMoves(accumulator, ctx, kingAttacker, kingPossibleAttackerForObstacle)
-            else -> throw UnsupportedOperationException("unsupported piece type: ${ctx.pieceFrom.type}")
+        val modifiedAccumulator: (Point) -> Boolean = {
+
+            //TODO: FOR PAWN
+//            // ход допустИм
+//            if (isAvailableMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle, ctx)
+//                // или при взятии на проходе мы рубим пешку, объявившую шах
+//                || (kingAttacker != null && kingPossibleAttackerForObstacle == null
+//                        && kingAttacker.isEqual(ctx.pointFrom.row, colTo))
+//            ) {
+//                // наконец все проверки пройдены. ход ЭВЭЙЛЭБЛ!
+//                accumulator.invoke(Point.of(rowTo, colTo))
+//            }
+
+
+            //TODO: for vector pieces and knights
+//            private fun isDestroyingThreatMove(
+//                rowTo: Int,
+//                colTo: Int,
+//                kingAttacker: Point?,
+//                kingPossibleAttackerForObstacle: Point?
+//            ): Boolean {
+//                if (kingAttacker != null && kingPossibleAttackerForObstacle != null) {
+//                    return false
+//                }
+//
+//                if (kingAttacker != null) {
+//                    return kingAttacker.isEqual(rowTo, colTo)
+//                }
+//
+//                if (kingPossibleAttackerForObstacle != null) {
+//                    return kingPossibleAttackerForObstacle.isEqual(rowTo, colTo)
+//                }
+//
+//                return true
+//            }
+
+
+            if (!isAvailableMove(chessboard, kingPoint, kingAttacker, kingPossibleAttackerForObstacle, it.row, it.col)) {
+                accumulator.invoke(it)
+            }
+            true
+        }
+
+        when (pieceFrom.type) {
+            PAWN -> collectPawnMoves(game, chessboard, pointFrom, modifiedAccumulator)
+            KNIGHT -> collectOffsetMoves(chessboard, knightOffsets, pointFrom, modifiedAccumulator)
+            BISHOP -> collectVectorMoves(chessboard, pieceVectorsMap[BISHOP]!!, pointFrom, modifiedAccumulator)
+            ROOK -> collectVectorMoves(chessboard, pieceVectorsMap[ROOK]!!, pointFrom, modifiedAccumulator)
+            QUEEN -> collectVectorMoves(chessboard, pieceVectorsMap[QUEEN]!!, pointFrom, modifiedAccumulator)
+            else -> throw UnsupportedOperationException("unsupported piece type: ${pieceFrom.type}")
         }
     }
 
@@ -382,175 +436,67 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    private fun addKingMoves(accumulator: List<Point>, ctx: InnerContext): List<Point> {
-        check(ctx.kingPoint == ctx.pointFrom) {
-            "king expected in point from: $ctx.pointFrom, but found in $ctx.kingPoint"
+    private fun collectKingMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, accumulator: (Point) -> Boolean) {
+
+        val pieceFrom = chessboard.getPiece(pointFrom)
+        val sideFrom = pieceFrom.side
+        val kingPoint = chessboard.getKingPoint(sideFrom)
+
+        check(kingPoint == pointFrom) {
+            "king expected in point from: $pointFrom, but found in $kingPoint"
         }
 
-        var result = accumulator
         val kingMoveOffsets = pieceVectorsMap[QUEEN]!!
-        val enemyKingPoint = ctx.chessboard.getKingPoint(ctx.enemySide)
 
         // try add simple king moves
         for (offset in kingMoveOffsets) {
-            val rowTo = ctx.kingPoint.row + offset.row
-            val colTo = ctx.kingPoint.col + offset.col
+            val rowTo = kingPoint.row + offset.row
+            val colTo = kingPoint.col + offset.col
 
-            if (isAvailableKingMove(rowTo, colTo, enemyKingPoint, ctx)) {
-                result = result.with(Point.of(rowTo, colTo))
+            if (isAvailableKingMove(game, chessboard, sideFrom, rowTo, colTo)) {
+                accumulator.invoke(Point.of(rowTo, colTo))
             }
         }
 
         // под шахом рокировка невозможна
-        if (isUnderCheck(ctx.game, ctx.chessboard, ctx.sideFrom)) {
-            return result
+        if (isUnderCheck(game, chessboard, sideFrom)) {
+            return
         }
 
         // try add castling moves
-        if (ctx.game.isLongCastlingAvailable(ctx.sideFrom)) {
-            tryAddCastlingMove(ctx, result, true)
+        if (game.isLongCastlingAvailable(sideFrom)) {
+            tryAddCastlingMove(game, chessboard, kingPoint, true, accumulator)
         }
 
-        if (ctx.game.isShortCastlingAvailable(ctx.sideFrom)) {
-            tryAddCastlingMove(ctx, result, false)
+        if (game.isShortCastlingAvailable(sideFrom)) {
+            tryAddCastlingMove(game, chessboard, kingPoint, false, accumulator)
         }
-
-        return result
-    }
-
-    private fun addPawnMoves(
-        accumulator: List<Point>,
-        ctx: InnerContext,
-        kingAttacker: Point?,
-        kingPossibleAttackerForObstacle: Point?
-    ): List<Point> {
-        var result = accumulator
-
-        val rowOffset = ctx.sideFrom.pawnRowDirection
-
-        val rowTo = ctx.pointFrom.row + rowOffset
-        var colTo = ctx.pointFrom.col
-
-        // simple move
-        result = tryAddPawnMove(rowTo, colTo, result, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-        val simpleMoveAvailable = result.isNotEmpty()
-
-        // long distance move
-        if (simpleMoveAvailable && ctx.sideFrom.pawnInitialRow == ctx.pointFrom.row) {
-            result = tryAddPawnMove(rowTo + rowOffset, colTo, result, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-        }
-
-        colTo = ctx.pointFrom.col + 1
-
-        // attack
-        result = tryAddPawnMove(rowTo, colTo, result, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-        // en passant
-        result = tryAddPawnEnPassantMove(rowTo, colTo, result, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-
-        colTo = ctx.pointFrom.col - 1
-
-        // attack
-        result = tryAddPawnMove(rowTo, colTo, result, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-        // en passant
-        result = tryAddPawnEnPassantMove(rowTo, colTo, result, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-
-        return result
-    }
-
-    private fun addKnightMoves(
-        accumulator: List<Point>,
-        ctx: InnerContext,
-        kingAttacker: Point?,
-        kingPossibleAttackerForObstacle: Point?
-    ): List<Point> {
-        return addMovesForOffsets(accumulator, knightOffsets, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-    }
-
-    private fun addBishopMoves(
-        accumulator: List<Point>,
-        ctx: InnerContext,
-        kingAttacker: Point?,
-        kingPossibleAttackerForObstacle: Point?
-    ): List<Point> {
-        return addMovesForDirections(accumulator, pieceVectorsMap[BISHOP]!!, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-    }
-
-    private fun addRookMoves(
-        accumulator: List<Point>,
-        ctx: InnerContext,
-        kingAttacker: Point?,
-        kingPossibleAttackerForObstacle: Point?
-    ): List<Point> {
-        return addMovesForDirections(accumulator, pieceVectorsMap[ROOK]!!, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-    }
-
-    private fun addQueenMoves(
-        accumulator: List<Point>,
-        ctx: InnerContext,
-        kingAttacker: Point?,
-        kingPossibleAttackerForObstacle: Point?
-    ): List<Point> {
-        return addMovesForDirections(accumulator, pieceVectorsMap[QUEEN]!!, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-    }
-
-    private fun tryAddCastlingMove(ctx: InnerContext, result: List<Point>, isLong: Boolean): List<Point> {
-        val direction = if (isLong) 1 else -1
-        val rookCol = if (isLong) ROOK_LONG_COLUMN_INDEX else ROOK_SHORT_COLUMN_INDEX
-
-        val row = ctx.kingPoint.row
-        var offset = 1
-
-        while (true) {
-            val col = ctx.kingPoint.col + direction * offset
-
-            if (col == rookCol) {
-                // достигли ладьи, с которой рокируемся
-                break
-            }
-
-            if (ctx.getPieceNullable(row, col) != null) {
-                // между королем и ладьей есть фигура. рокировка невозможна
-                return result
-            }
-
-            if (offset == 1 && !result.contains(Point.of(row, col))) {
-                // рокировка через битое поле невозможна
-                return result
-            }
-
-            if (offset == 2 && isUnderCheck(ctx.game, ctx.chessboard, ctx.sideFrom)) {
-                // под шах вставать при рокировке тоже как ни странно - нельзя
-                return result
-            }
-
-            offset++
-        }
-
-        return result.with(Point.of(ctx.kingPoint.row, ctx.kingPoint.col + 2 * direction))
     }
 
     private fun isAvailableKingMove(
+        game: IUnmodifiableGame,
+        chessboard: IUnmodifiableChessboard,
+        kingSide: Side,
         rowTo: Int,
-        colTo: Int,
-        enemyKingPoint: Point,
-        ctx: InnerContext
+        colTo: Int
     ): Boolean {
+
         if (isOutOfBoard(rowTo, colTo)) {
             // нельзя вставать за пределы доски
             return false
         }
 
-        if (enemyKingPoint.isBorderedWith(rowTo, colTo)) {
+        if (chessboard.getKingPoint(kingSide.reverse()).isBorderedWith(rowTo, colTo)) {
             // нельзя вставать вплотную к вражескому королю
             return false
         }
 
-        if (ctx.getPieceNullable(rowTo, colTo)?.side == ctx.sideFrom) {
+        if (chessboard.getPieceNullable(rowTo, colTo)?.side == kingSide) {
             // нельзя рубить своих
             return false
         }
 
-        if (isUnderCheck(ctx.game, ctx.chessboard, ctx.sideFrom)) {
+        if (isUnderCheck(game, chessboard, kingSide)) {
             // нельзя вставать под шах (случай когда рубим фигуру под защитой тоже входит в этот кейс)
             return false
         }
@@ -559,138 +505,211 @@ class MovesProvider : IMovesProvider {
         return true
     }
 
-    private fun tryAddPawnMove(
-        rowTo: Int,
-        colTo: Int,
-        result: List<Point>,
-        kingAttacker: Point?,
-        kingPossibleAttackerForObstacle: Point?,
-        ctx: InnerContext
-    ): List<Point> {
+    private fun tryAddCastlingMove(
+        game: IUnmodifiableGame,
+        chessboard: IUnmodifiableChessboard,
+        kingPoint: Point,
+        isLong: Boolean,
+        accumulator: (Point) -> Boolean
+    ) {
+        val kingSide = chessboard.getPiece(kingPoint).side
 
-        if (isOutOfBoard(rowTo, colTo)) {
-            return result
+        val direction = if (isLong) 1 else -1
+        val rookCol = if (isLong) ROOK_LONG_COLUMN_INDEX else ROOK_SHORT_COLUMN_INDEX
+
+        val row = kingPoint.row
+        var offset = 1
+
+        while (true) {
+            val col = kingPoint.col + direction * offset
+
+            if (col == rookCol) {
+                // достигли ладьи, с которой рокируемся
+                break
+            }
+
+            if (chessboard.getPieceNullable(row, col) != null) {
+                // между королем и ладьей есть фигура. рокировка невозможна
+                return
+            }
+
+            if (offset == 1 && canAttackTarget(game, chessboard, Point.of(row, col), kingSide.reverse())) {
+                // рокировка через битое поле невозможна
+                return
+            }
+
+            if (offset == 2 && isUnderCheck(game, chessboard, kingSide)) {
+                // под шах вставать при рокировке тоже как ни странно - нельзя
+                return
+            }
+
+            offset++
         }
 
-        if (!isAvailableMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle, ctx)) {
-            return result
-        }
-
-        if (ctx.pointFrom.col == colTo && ctx.getPieceNullable(rowTo, colTo) != null) {
-            // обычный ход возможен только на пустую клетку и не может рубить ни чужих ни своих
-            return result
-        }
-
-        if (ctx.pointFrom.col != colTo && ctx.getPieceNullable(rowTo, colTo)?.side != ctx.enemySide) {
-            // атака доступна только если по диагонали от пешки находится вражеская фигура
-            return result
-        }
-
-        return result.with(Point.of(rowTo, colTo))
+        accumulator.invoke(Point.of(kingPoint.row, kingPoint.col + 2 * direction))
     }
 
-    private fun tryAddPawnEnPassantMove(
-        rowTo: Int,
-        colTo: Int,
-        result: List<Point>,
-        kingAttacker: Point?,
-        kingPossibleAttackerForObstacle: Point?,
-        ctx: InnerContext
-    ): List<Point> {
-        if (ctx.sideFrom.pawnEnPassantStartRow != ctx.pointFrom.row) {
-            // плохая горизонталь
-            return result
+
+    private fun collectPawnMoves(
+        game: IUnmodifiableGame,
+        chessboard: IUnmodifiableChessboard,
+        pointFrom: Point,
+        accumulator: (Point) -> Boolean
+    ) {
+        val pieceFrom = chessboard.getPiece(pointFrom)
+        val sideFrom = pieceFrom.side
+
+        val rowOffset = sideFrom.pawnRowDirection
+        val rowTo = pointFrom.row + rowOffset
+        var colTo = pointFrom.col
+
+        // simple move
+        val simpleMoveAvailable = tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo, colTo, accumulator)
+
+        // long distance move
+        if (simpleMoveAvailable && sideFrom.pawnInitialRow == pointFrom.row) {
+            tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo + rowOffset, colTo, accumulator)
         }
 
-        if (ctx.game.getPawnLongColumnIndex(ctx.enemySide) != colTo) {
+        colTo = pointFrom.col + 1
+
+        // attack
+        tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo, colTo, accumulator)
+        // en passant
+        tryAddPawnEnPassantMove(game, chessboard, pointFrom, sideFrom, rowTo, colTo, accumulator)
+
+        colTo = pointFrom.col - 1
+
+        // attack
+        tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo, colTo, accumulator)
+        // en passant
+        tryAddPawnEnPassantMove(game, chessboard, pointFrom, sideFrom, rowTo, colTo, accumulator)
+    }
+
+    private fun tryAddPawnMove(
+        chessboard: IUnmodifiableChessboard,
+        pawnPointFrom: Point,
+        pawnSide: Side,
+        rowTo: Int,
+        colTo: Int,
+        accumulator: (Point) -> Boolean
+    ): Boolean {
+
+        if (isOutOfBoard(rowTo, colTo)) {
+            return false
+        }
+
+        if (pawnPointFrom.col == colTo && chessboard.getPieceNullable(rowTo, colTo) != null) {
+            // обычный ход возможен только на пустую клетку и не может рубить ни чужих ни своих
+            return false
+        }
+
+        if (pawnPointFrom.col != colTo && chessboard.getPieceNullable(rowTo, colTo)?.side != pawnSide.reverse()) {
+            // атака доступна только если по диагонали от пешки находится вражеская фигура
+            return false
+        }
+
+        accumulator.invoke(Point.of(rowTo, colTo))
+        return true
+    }
+
+
+    private fun tryAddPawnEnPassantMove(
+        game: IUnmodifiableGame,
+        chessboard: IUnmodifiableChessboard,
+        pawnPointFrom: Point,
+        pawnSide: Side,
+        rowTo: Int,
+        colTo: Int,
+        accumulator: (Point) -> Boolean
+    ) {
+        if (pawnSide.pawnEnPassantStartRow != pawnPointFrom.row) {
+            // плохая горизонталь
+            return
+        }
+
+        if (game.getPawnLongColumnIndex(pawnSide.reverse()) != colTo) {
             // плохая вертикаль
-            return result
+            return
         }
 
         check(!isOutOfBoard(rowTo, colTo)) {
             // все плохое
-            "isOutOfBoard: $ctx.pointFrom -> ${Point.of(rowTo, colTo)}"
+            "isOutOfBoard: $pawnPointFrom -> ${Point.of(rowTo, colTo)}"
         }
 
-        check(ctx.getPieceNullable(rowTo, colTo) == null) {
+        check(chessboard.getPieceNullable(rowTo, colTo) == null) {
             // при взятии на проходе пешку можно ставить только на пустую клетку,
             //      но факт, что само по себе взятие на проходе доступно означает что эту клетку
             //      только что перепрыгнула пешка противника делая long distance move, что фантастически странно
-            "en passant point[move.to]=${Point.of(rowTo, colTo)} can't be not empty, but found: ${ctx.getPieceNullable(
+            "en passant point[move.to]=${Point.of(rowTo, colTo)} can't be not empty, but found: ${chessboard.getPieceNullable(
                 rowTo,
                 colTo
             )}"
         }
 
-        check(ctx.getPieceNullable(ctx.pointFrom.row, colTo) == Piece.of(ctx.enemySide, PAWN)) {
+        check(chessboard.getPieceNullable(pawnPointFrom.row, colTo) == Piece.of(pawnSide.reverse(), PAWN)) {
             // справа(или слева) от пешки на pointFrom должна стоять пешка противника.
             // только такая позиция может привести к взятию на проходе
-            "en passant is not available for current state: expected: ${Piece.of(ctx.enemySide, PAWN)} " +
-                    "on position=${Point.of(ctx.pointFrom.row, colTo)}, " +
+            "en passant is not available for current state: expected: ${Piece.of(pawnSide.reverse(), PAWN)} " +
+                    "on position=${Point.of(pawnPointFrom.row, colTo)}, " +
                     "but found: chessboard.getPieceNullable(pointFrom.row, colTo)"
         }
 
-        // ход допустИм
-        if (isAvailableMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle, ctx)
-            // или при взятии на проходе мы рубим пешку, объявившую шах
-            || (kingAttacker != null && kingPossibleAttackerForObstacle == null
-                    && kingAttacker.isEqual(ctx.pointFrom.row, colTo))
-        ) {
-            // наконец все проверки пройдены. ход ЭВЭЙЛЭБЛ!
-            return result.with(Point.of(rowTo, colTo))
-        }
-
-        return result
+        // наконец все проверки пройдены. ход ЭВЭЙЛЭБЛ!
+        accumulator.invoke(Point.of(rowTo, colTo))
     }
 
-    private fun addMovesForOffsets(
-        accumulator: List<Point>,
+    private fun collectOffsetMoves(
+        chessboard: IUnmodifiableChessboard,
         offsets: Set<Vector>,
-        kingAttacker: Point?,
-        kingPossibleAttackerForObstacle: Point?,
-        ctx: InnerContext
-    ): List<Point> {
-        var result = accumulator
+        pointFrom: Point,
+        accumulator: (Point) -> Boolean
+    ) {
+        val pieceFrom = chessboard.getPiece(pointFrom)
 
         for (offset in offsets) {
-            val rowTo = ctx.pointFrom.row + offset.row
-            val colTo = ctx.pointFrom.col + offset.col
+            val rowTo = pointFrom.row + offset.row
+            val colTo = pointFrom.col + offset.col
 
             if (isOutOfBoard(rowTo, colTo)) {
                 continue
             }
 
-            val piece = ctx.getPieceNullable(rowTo, colTo)
-
-            if (piece == null) {
-                // свободная точка - ход доступен (если пройдет проверки)
-                if (isAvailableMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle, ctx)) {
-                    result = result.with(Point.of(rowTo, colTo))
-                }
-            } else if (ctx.isEnemy(piece)) {
-                // рубим врага (если ход пройдет проверки)
-                if (isDestroyingThreatMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle)) {
-                    result = result.with(Point.of(rowTo, colTo))
-                }
+            if (pieceFrom.side == chessboard.getPieceNullable(rowTo, colTo)?.side) {
+                //защита от friendlyFire
+                //мы можем либо встать на пустую клетку, либо срубить вражескую фигуру, а вот своих рубить нельзя =)
+                continue
             }
-        }
 
-        return result
+            accumulator.invoke(Point.of(rowTo, colTo))
+
+            //TODO
+//            if (piece == null) {
+//                // свободная точка - ход доступен (если пройдет проверки)
+//                if (isAvailableMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle, ctx)) {
+//                    result = result.with(Point.of(rowTo, colTo))
+//                }
+//            } else if (ctx.isEnemy(piece)) {
+//                // рубим врага (если ход пройдет проверки)
+//                if (isDestroyingThreatMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle)) {
+//                    result = result.with(Point.of(rowTo, colTo))
+//                }
+//            }
+        }
     }
 
-    private fun addMovesForDirections(
-        accumulator: List<Point>,
+    private fun collectVectorMoves(
+        chessboard: IUnmodifiableChessboard,
         directions: Set<Vector>,
-        kingAttacker: Point?,
-        kingPossibleAttackerForObstacle: Point?,
-        ctx: InnerContext
-    ): List<Point> {
-
-        var result = accumulator
+        pointFrom: Point,
+        accumulator: (Point) -> Boolean
+    ) {
+        val pieceFrom = chessboard.getPiece(pointFrom)
 
         for (direction in directions) {
-            var rowTo: Int = ctx.pointFrom.row
-            var colTo: Int = ctx.pointFrom.col
+            var rowTo: Int = pointFrom.row
+            var colTo: Int = pointFrom.col
 
             while (true) {
                 rowTo += direction.row
@@ -700,57 +719,46 @@ class MovesProvider : IMovesProvider {
                     break
                 }
 
-                val piece = ctx.getPieceNullable(rowTo, colTo)
+                val piece = chessboard.getPieceNullable(rowTo, colTo)
 
                 if (piece == null) {
-                    // свободная точка - ход доступен (если пройдет проверки)
-                    if (isAvailableMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle, ctx)) {
-                        result = result.with(Point.of(rowTo, colTo))
-                    }
+                    accumulator.invoke(Point.of(rowTo, colTo))
                     continue
                 }
 
-                if (ctx.isEnemy(piece)) {
-                    // рубим врага - текущая точка доступна для хода (если пройдет проверки), но перепрыгнуть ее нельзя, поэтому делаем после break
-                    if (isDestroyingThreatMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle)) {
-                        result = result.with(Point.of(rowTo, colTo))
-                    }
+                if (pieceFrom.side != piece.side) {
+                    accumulator.invoke(Point.of(rowTo, colTo))
                 }
+
                 // дальнейшее следование по вектору невозможно, потому что мы уперлись в фигуру(свою или чужую - не важно)
                 break
+
+                //TODO
+//                if (piece == null) {
+//                    // свободная точка - ход доступен (если пройдет проверки)
+//                    if (isAvailableMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle, ctx)) {
+//                        result = result.with(Point.of(rowTo, colTo))
+//                    }
+//                    continue
+//                }
+//
+//                if (ctx.isEnemy(piece)) {
+//                    // рубим врага - текущая точка доступна для хода (если пройдет проверки), но перепрыгнуть ее нельзя, поэтому делаем после break
+//                    if (isDestroyingThreatMove(rowTo, colTo, kingAttacker, kingPossibleAttackerForObstacle)) {
+//                        result = result.with(Point.of(rowTo, colTo))
+//                    }
+//                }
             }
         }
-
-        return result
-    }
-
-    private fun isDestroyingThreatMove(
-        rowTo: Int,
-        colTo: Int,
-        kingAttacker: Point?,
-        kingPossibleAttackerForObstacle: Point?
-    ): Boolean {
-        if (kingAttacker != null && kingPossibleAttackerForObstacle != null) {
-            return false
-        }
-
-        if (kingAttacker != null) {
-            return kingAttacker.isEqual(rowTo, colTo)
-        }
-
-        if (kingPossibleAttackerForObstacle != null) {
-            return kingPossibleAttackerForObstacle.isEqual(rowTo, colTo)
-        }
-
-        return true
     }
 
     private fun isAvailableMove(
-        rowTo: Int,
-        colTo: Int,
+        chessboard: IUnmodifiableChessboard,
+        kingPoint: Point,
         kingAttacker: Point?,
         kingPossibleAttackerForObstacle: Point?,
-        ctx: InnerContext
+        rowTo: Int,
+        colTo: Int
     ): Boolean {
         if (kingAttacker != null && kingPossibleAttackerForObstacle != null) {
             // нам шах, но при этом текущая фигура еще и является припятствием. в таком случае:
@@ -764,11 +772,11 @@ class MovesProvider : IMovesProvider {
         }
 
         if (kingAttacker != null) {
-            return canDefendKing(rowTo, colTo, kingAttacker, ctx)
+            return canDefendKing(chessboard, kingPoint, kingAttacker, colTo, rowTo)
         }
 
         if (kingPossibleAttackerForObstacle != null) {
-            return canMoveObstacle(rowTo, colTo, kingPossibleAttackerForObstacle, ctx.kingPoint)
+            return canMoveObstacle(kingPoint, kingPossibleAttackerForObstacle, rowTo, colTo)
         }
 
         // ничем не ограниченный ход: kingAttacker == null && kingPossibleAttackerForObstacle == null
@@ -776,17 +784,17 @@ class MovesProvider : IMovesProvider {
     }
 
     private fun canMoveObstacle(
-        rowTo: Int,
-        colTo: Int,
+        kingPoint: Point,
         kingPossibleAttackerForObstacle: Point,
-        kingPoint: Point
+        rowTo: Int,
+        colTo: Int
     ): Boolean {
         if (kingPossibleAttackerForObstacle.isEqual(rowTo, colTo)) {
             // рубим фигуру, из-за которой перемещаемая фигура являлась obstacle
             return true
         }
         // перемещение в рамках вектора допустимо
-        return canBeObstacle(rowTo, colTo, kingPossibleAttackerForObstacle, kingPoint)
+        return canBeObstacle(kingPoint, kingPossibleAttackerForObstacle, rowTo, colTo)
     }
 
     /**
@@ -794,18 +802,24 @@ class MovesProvider : IMovesProvider {
      *
      * Защитить короля можно срубив атакующую фигуру, либо закрыться (если возможно)
      */
-    private fun canDefendKing(rowTo: Int, colTo: Int, kingAttacker: Point, ctx: InnerContext): Boolean {
+    private fun canDefendKing(
+        chessboard: IUnmodifiableChessboard,
+        kingPoint: Point,
+        kingAttacker: Point,
+        colTo: Int,
+        rowTo: Int
+    ): Boolean {
         if (kingAttacker.isEqual(rowTo, colTo)) {
             // рубим фигуру, объявившую шах.
             return true
         }
 
-        if (kingAttacker.isBorderedWith(ctx.kingPoint)) {
+        if (kingAttacker.isBorderedWith(kingPoint)) {
             // фигура, объявившая шах стоит вплотную к нашему королю, но при этом мы ее не рубим. такой ход недопустим
             return false
         }
 
-        val kingAttackerPiece = ctx.getPiece(kingAttacker)
+        val kingAttackerPiece = chessboard.getPiece(kingAttacker)
 
         if (kingAttackerPiece.type == KNIGHT) {
             // нам объявили шах конем
@@ -813,32 +827,32 @@ class MovesProvider : IMovesProvider {
             return false
         }
 
-        return canBeObstacle(rowTo, colTo, kingAttacker, ctx.kingPoint)
+        return canBeObstacle(kingPoint, kingAttacker, rowTo, colTo)
     }
 
-    private fun canBeObstacle(rowTo: Int, colTo: Int, kingThreat: Point, kingPoint: Point): Boolean {
-        if (!kingThreat.hasCommonVectorWith(rowTo, colTo)) {
+    private fun canBeObstacle(kingPoint: Point, kingAttacker: Point, rowTo: Int, colTo: Int): Boolean {
+        if (!kingAttacker.hasCommonVectorWith(rowTo, colTo)) {
             // данный ход находится где-то сбоку от вектора шаха и никак не защищает короля
             return false
         }
 
         return when {
             // horizontal vector
-            kingPoint.row == kingThreat.row -> rowTo == kingPoint.row && between(kingPoint.col, colTo, kingThreat.col)
+            kingPoint.row == kingAttacker.row -> rowTo == kingPoint.row && between(kingPoint.col, colTo, kingAttacker.col)
             // vertical vector
-            kingPoint.col == kingThreat.col -> colTo == kingPoint.col && between(kingPoint.row, rowTo, kingThreat.row)
+            kingPoint.col == kingAttacker.col -> colTo == kingPoint.col && between(kingPoint.row, rowTo, kingAttacker.row)
             // diagonal vector
             else -> {
-                val rowOffset = kingThreat.row - kingPoint.row
-                val colOffset = kingThreat.col - kingPoint.col
+                val rowOffset = kingAttacker.row - kingPoint.row
+                val colOffset = kingAttacker.col - kingPoint.col
 
                 val absAttackerRowOffset = abs(rowOffset)
                 check(absAttackerRowOffset == abs(colOffset)) {
-                    "kingThreat($kingThreat) has different diagonal vector with kingPoint($kingPoint)"
+                    "kingThreat($kingAttacker) has different diagonal vector with kingPoint($kingPoint)"
                 }
 
-                return between(kingPoint.row, rowTo, kingThreat.row)
-                        && between(kingPoint.col, colTo, kingThreat.col)
+                return between(kingPoint.row, rowTo, kingAttacker.row)
+                        && between(kingPoint.col, colTo, kingAttacker.col)
                         // moveTo доложен быть на одной диагонали с атакуемым королем
                         && abs(rowTo - kingPoint.row) == abs(colTo - kingPoint.col)
             }
