@@ -5,6 +5,9 @@ import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
 import com.example.chess.shared.dto.MoveDTO
 import com.example.chess.shared.enums.Piece
+import com.example.chess.shared.enums.PieceType
+import com.example.chess.shared.enums.PieceType.KING
+import com.example.chess.shared.enums.PieceType.PAWN
 import kotlin.math.abs
 
 /**
@@ -61,7 +64,7 @@ class Move private constructor(
     fun isCut() = from == to
 
     fun isPawnAttacks(pieceFrom: Piece): Boolean {
-        return pieceFrom.isPawn() && from.col != to.col
+        return pieceFrom.isTypeOf(PAWN) && from.col != to.col
     }
 
     fun isEnPassant(pieceFrom: Piece, pieceTo: Piece?): Boolean {
@@ -69,23 +72,23 @@ class Move private constructor(
     }
 
     fun isPawnTransformation(pieceFrom: Piece): Boolean {
-        return pieceFrom.isPawn() && (to.row == ROOK_SHORT_COLUMN_INDEX || to.row == ROOK_LONG_COLUMN_INDEX)
+        return pieceFrom.isTypeOf(PAWN) && (to.row == ROOK_SHORT_COLUMN_INDEX || to.row == ROOK_LONG_COLUMN_INDEX)
     }
 
     fun isCastling(pieceFrom: Piece): Boolean {
-        return pieceFrom.isKing() && abs(from.col - to.col) == 2
+        return pieceFrom.isTypeOf(KING) && abs(from.col - to.col) == 2
     }
 
     fun isLongCastling(pieceFrom: Piece): Boolean {
-        return pieceFrom.isKing() && from.col - to.col == -2
+        return pieceFrom.isTypeOf(KING) && from.col - to.col == -2
     }
 
     fun isShortCastling(pieceFrom: Piece): Boolean {
-        return pieceFrom.isKing() && from.col - to.col == 2
+        return pieceFrom.isTypeOf(KING) && from.col - to.col == 2
     }
 
     fun isLongPawnMove(pieceFrom: Piece): Boolean {
-        return pieceFrom.isPawn() && from.col == to.col && abs(from.row - to.row) == 2
+        return pieceFrom.isTypeOf(PAWN) && from.col == to.col && abs(from.row - to.row) == 2
     }
 
     fun toPrettyString(pieceFrom: Piece): String {

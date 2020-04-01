@@ -11,6 +11,8 @@ import com.example.chess.shared.dto.ChessboardDTO
 import com.example.chess.shared.dto.PointDTO
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.PieceType
+import com.example.chess.shared.enums.PieceType.KING
+import com.example.chess.shared.enums.PieceType.PAWN
 import com.example.chess.shared.enums.Side
 import java.util.*
 import java.util.stream.Collectors
@@ -50,7 +52,7 @@ open class Chessboard private constructor(
     override fun applyMove(move: Move): Move? {
         val pieceFrom = getPiece(move.from)
 
-        if (pieceFrom.isKing()) {
+        if (pieceFrom.isTypeOf(KING)) {
             kingPoints[pieceFrom.side] = Point.of(move.to.toDTO())
         }
 
@@ -149,7 +151,7 @@ open class Chessboard private constructor(
 
         additionalMove?.let {
             when (movedPiece.type) {
-                PieceType.KING -> {
+                KING -> {
                     val rook = getPiece(additionalMove.to)
                     require(rook == Piece.of(movedPiece.side, PieceType.ROOK)) {
                         "incorrect additionalMove, expected piece.to=${Piece.of(
@@ -173,7 +175,7 @@ open class Chessboard private constructor(
             }
         }
 
-        if (movedPiece.isKing()) {
+        if (movedPiece.isTypeOf(KING)) {
             kingPoints[movedPiece.side] = Point.of(move.from.toDTO())
         }
 
@@ -247,7 +249,7 @@ open class Chessboard private constructor(
                 val point = Point.of(compressedPoint)
                 val piece = pieceGenerator(point.row, point.col)
 
-                if (piece != null && piece.isKing()) {
+                if (piece != null && piece.isTypeOf(KING)) {
                     kingPoints[piece.side] = point
                 }
 
@@ -274,7 +276,7 @@ open class Chessboard private constructor(
                     0, 7 -> PieceType.ROOK
                     1, 6 -> PieceType.KNIGHT
                     2, 5 -> PieceType.BISHOP
-                    3 -> PieceType.KING
+                    3 -> KING
                     4 -> PieceType.QUEEN
                     else -> throw UnsupportedOperationException("incorrect col=$col")
                 }
@@ -292,7 +294,7 @@ open class Chessboard private constructor(
             result += "${rowIndex + 1}| "
             for (columnIndex in 7 downTo 0) {
                 val piece = getPieceNullable(Point.of(rowIndex, columnIndex))
-                result += if (piece?.isPawn() == true) "P" else piece?.shortName ?: "."
+                result += if (piece?.isTypeOf(PAWN) == true) "P" else piece?.shortName ?: "."
 
                 result += when (piece?.side) {
                     Side.WHITE -> "+"

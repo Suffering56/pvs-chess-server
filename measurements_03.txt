@@ -12,7 +12,7 @@ getTargetThreatsCountTime(avg, sec): 0.73
 totalTime(avg, sec): 4.33
 actualizeTime(avg, sec): 0.88
 calculateDeepExchangeTime(avg, sec): 0.39
-totalNodesCount: 9244932
+totalNodesCount: 9 244 932    /9 245 011
 deepNodesCount: 1797301
 deepExchangeTime(avg, sec): 2.32
 
@@ -96,3 +96,30 @@ deepExchangeTime(avg, sec): 6.71
 globalInvokeTime(sec) = 12.242
 
 ---------------------------------------------------------------------
+
+
+
+
+
+<<<<<-------------------------------->>>>>
+   a   b   c   d   e   f   g   h
+  ------------------------------
+8| R-  N-  B-  Q-  K-  B-  N-  R- |8
+7| P-  P-  P-  .   P-  P-  P-  .  |7
+6| .   .   .   P-  .   .   .   P- |6
+5| .   B+  .   .   .   .   .   .  |5
+4| .   .   .   .   P+  .   .   .  |4
+3| .   .   .   .   .   N+  .   .  |3
+2| P+  P+  P+  P+  .   P+  P+  P+ |2
+1| R+  N+  B+  Q+  K+  .   .   R+ |1
+  ------------------------------
+   a   b   c   d   e   f   g   h
+
+
+
+newVersion(0):
+
+
+
+oldVersion(1):
+ : c7 -> c6 (BLACK)
