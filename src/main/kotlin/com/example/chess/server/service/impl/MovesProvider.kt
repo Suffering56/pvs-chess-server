@@ -26,9 +26,10 @@ import kotlin.math.abs
  *          за исключением InnerContext-а и пишет результат сразу в результирующую коллекцию
  *          таким образом минимизируется выделяемая память и сильно снижается нагрузка на GC
  */
+typealias PointsAccumulator = (Point) -> Unit
+
 @Component
 class MovesProvider : IMovesProvider {
-
     //collectTargetAttackers/Defenders
 
     override fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): List<Point> {
@@ -36,7 +37,7 @@ class MovesProvider : IMovesProvider {
 
         collectMovesFrom(game, chessboard, pointFrom) {
             accumulator = accumulator.with(it)
-            true
+            return@collectMovesFrom
         }
 
         return accumulator
@@ -48,10 +49,13 @@ class MovesProvider : IMovesProvider {
     }
 
     private fun canAttackTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, attackerSide: Side): Boolean {
+        var canAttack = false
+
         collectTargetThreatsOrDefenders(game, chessboard, targetPoint, attackerSide, false) {
-            return true
+            canAttack = true
+            return@collectTargetThreatsOrDefenders
         }
-        return false
+        return canAttack
     }
 
     override fun getTargetThreats(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, isBatterySupported: Boolean): List<Point> {
@@ -98,13 +102,13 @@ class MovesProvider : IMovesProvider {
         return counter
     }
 
-    private inline fun collectTargetThreatsOrDefenders(
+    private fun collectTargetThreatsOrDefenders(
         game: IUnmodifiableGame,
         chessboard: IUnmodifiableChessboard,
         targetPoint: Point,
         expectedSide: Side,
         isBatterySupported: Boolean,
-        collectFunction: (Point) -> Unit
+        collectFunction: PointsAccumulator
     ) {
         /*
          * TODO: нужно ли проверять что король под шахом?
@@ -123,7 +127,7 @@ class MovesProvider : IMovesProvider {
         collectKnightMovesToTarget(chessboard, targetPoint, expectedSide, collectFunction)
     }
 
-    private inline fun collectKnightMovesToTarget(chessboard: IUnmodifiableChessboard, targetPoint: Point, expectedSide: Side, collectFunction: (Point) -> Unit) {
+    private fun collectKnightMovesToTarget(chessboard: IUnmodifiableChessboard, targetPoint: Point, expectedSide: Side, collectFunction: PointsAccumulator) {
         for (vector in knightOffsets) {
             val row = targetPoint.row + vector.row
             val col = targetPoint.col + vector.col
@@ -152,12 +156,12 @@ class MovesProvider : IMovesProvider {
      * 3) Увеличивает счетчик на единицу
      * 4) Может продолжить идти по тому же направлению после увеличения счетчика, чтобы вычислить "батарею", которая будет учтена счетчиком
      */
-    private inline fun collectVectorMovesToTarget(
+    private fun collectVectorMovesToTarget(
         chessboard: IUnmodifiableChessboard,
         targetPoint: Point,
         expectedSide: Side,
         isBatterySupported: Boolean,
-        collectFunction: (Point) -> Unit
+        collectFunction: PointsAccumulator
     ) {
         val allPossibleAttackerVectors = pieceVectorsMap[QUEEN]!!
 
@@ -225,7 +229,7 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    private fun collectMovesFrom(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, accumulator: (Point) -> Boolean) {
+    private fun collectMovesFrom(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, accumulator: PointsAccumulator) {
         val pieceFrom = chessboard.getPiece(pointFrom)
         val kingPoint = chessboard.getKingPoint(pieceFrom.side)
         val enemySide = pieceFrom.side.reverse()
@@ -246,15 +250,14 @@ class MovesProvider : IMovesProvider {
         val kingAttacker = if (kingAttackers.isNotEmpty()) kingAttackers[0] else null
         val kingPossibleAttackerForObstacle = getKingThreatForCurrentObstacle(chessboard, pointFrom)
 
-        val onlyAvailableAccumulator: (Point) -> Boolean = lambda@{
+        val onlyAvailableAccumulator: PointsAccumulator = {
             val pieceTo = chessboard.getPieceNullable(it)
 
             if (pieceTo == null && isAvailableHarmlessMove(chessboard, kingPoint, kingAttacker, kingPossibleAttackerForObstacle, it)) {
-                return@lambda accumulator.invoke(it)
+                accumulator.invoke(it)
             } else if (pieceTo?.side == enemySide && isAvailableHarmfulMove(pointFrom, pieceFrom, kingAttacker, kingPossibleAttackerForObstacle, it)) {
-                return@lambda accumulator.invoke(it)
+                accumulator.invoke(it)
             }
-            return@lambda true
         }
 
         when (pieceFrom.type) {
@@ -431,7 +434,7 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    private fun collectKingMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, accumulator: (Point) -> Boolean) {
+    private fun collectKingMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, accumulator: PointsAccumulator) {
 
         val pieceFrom = chessboard.getPiece(pointFrom)
         val sideFrom = pieceFrom.side
@@ -505,7 +508,7 @@ class MovesProvider : IMovesProvider {
         chessboard: IUnmodifiableChessboard,
         kingPoint: Point,
         isLong: Boolean,
-        accumulator: (Point) -> Boolean
+        accumulator: PointsAccumulator
     ) {
         val kingSide = chessboard.getPiece(kingPoint).side
 
@@ -533,7 +536,7 @@ class MovesProvider : IMovesProvider {
                 return
             }
 
-            if (offset == 2 && isUnderCheck(game, chessboard, kingSide)) {
+            if (offset == 2 && canAttackTarget(game, chessboard, Point.of(row, col), kingSide.reverse())) {
                 // под шах вставать при рокировке тоже как ни странно - нельзя
                 return
             }
@@ -548,7 +551,7 @@ class MovesProvider : IMovesProvider {
         game: IUnmodifiableGame,
         chessboard: IUnmodifiableChessboard,
         pointFrom: Point,
-        accumulator: (Point) -> Boolean
+        accumulator: PointsAccumulator
     ) {
         val pieceFrom = chessboard.getPiece(pointFrom)
         val sideFrom = pieceFrom.side
@@ -586,7 +589,7 @@ class MovesProvider : IMovesProvider {
         pawnSide: Side,
         rowTo: Int,
         colTo: Int,
-        accumulator: (Point) -> Boolean
+        accumulator: PointsAccumulator
     ): Boolean {
 
         if (isOutOfBoard(rowTo, colTo)) {
@@ -614,7 +617,7 @@ class MovesProvider : IMovesProvider {
         pawnSide: Side,
         rowTo: Int,
         colTo: Int,
-        accumulator: (Point) -> Boolean
+        accumulator: PointsAccumulator
     ) {
         if (pawnSide.pawnEnPassantStartRow != pawnPointFrom.row) {
             // плохая горизонталь
@@ -657,7 +660,7 @@ class MovesProvider : IMovesProvider {
         chessboard: IUnmodifiableChessboard,
         offsets: Set<Vector>,
         pointFrom: Point,
-        accumulator: (Point) -> Boolean
+        accumulator: PointsAccumulator
     ) {
         val pieceFrom = chessboard.getPiece(pointFrom)
 
@@ -683,7 +686,7 @@ class MovesProvider : IMovesProvider {
         chessboard: IUnmodifiableChessboard,
         directions: Set<Vector>,
         pointFrom: Point,
-        accumulator: (Point) -> Boolean
+        accumulator: PointsAccumulator
     ) {
         val pieceFrom = chessboard.getPiece(pointFrom)
 

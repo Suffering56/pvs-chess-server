@@ -53,47 +53,46 @@ globalInvokeTime(sec) = 10.293
 2)
 move successfully applied for game: 209. new chessboard position: 2
 
-getAvailableMovesTime(avg, sec): 1.27
+getAvailableMovesTime(avg, sec): 0.86
 getTargetDefendersCountTime(avg, sec): 0.26
-getTargetThreatsCountTime(avg, sec): 0.73
-totalTime(avg, sec): 4.33
-actualizeTime(avg, sec): 0.88
-calculateDeepExchangeTime(avg, sec): 0.39
-totalNodesCount: 9244932
-deepNodesCount: 1797301
-deepExchangeTime(avg, sec): 2.32
+getTargetThreatsCountTime(avg, sec): 0.71
+totalTime(avg, sec): 3.59
+actualizeTime(avg, sec): 0.74
+calculateDeepExchangeTime(avg, sec): 0.34
+totalNodesCount: 9245011
+deepNodesCount: 1797548
+deepExchangeTime(avg, sec): 2.11
 
-globalInvokeTime(sec) = 4.917
+globalInvokeTime(sec) = 4.154
 ---------------------------------------------------------------------
 
 move successfully applied for game: 209. new chessboard position: 4
 
-statistic:
-getAvailableMovesTime(avg, sec): 1.07
-getTargetDefendersCountTime(avg, sec): 0.63
-getTargetThreatsCountTime(avg, sec): 1.36
-totalTime(avg, sec): 2.37
-actualizeTime(avg, sec): 1.39
-calculateDeepExchangeTime(avg, sec): 0.41
-totalNodesCount: 23845349
-deepNodesCount: 6307260
-deepExchangeTime(avg, sec): 3.92
+getAvailableMovesTime(avg, sec): 1.15
+getTargetDefendersCountTime(avg, sec): 0.58
+getTargetThreatsCountTime(avg, sec): 1.31
+totalTime(avg, sec): 2.45
+actualizeTime(avg, sec): 1.51
+calculateDeepExchangeTime(avg, sec): 0.80
+totalNodesCount: 23869270
+deepNodesCount: 6308194
+deepExchangeTime(avg, sec): 4.34
 
-globalInvokeTime(sec) = 7.664
+globalInvokeTime(sec) = 8.271
 ---------------------------------------------------------------------
 
 move successfully applied for game: 209. new chessboard position: 6
 
-statistic:
-getAvailableMovesTime(avg, sec): 1.35
-getTargetDefendersCountTime(avg, sec): 0.94
-getTargetThreatsCountTime(avg, sec): 1.77
-totalTime(avg, sec): 1.39
-actualizeTime(avg, sec): 2.07
-calculateDeepExchangeTime(avg, sec): 0.63
-totalNodesCount: 34486456
-deepNodesCount: 11588821
-deepExchangeTime(avg, sec): 5.62
+getAvailableMovesTime(avg, sec): 1.55
+getTargetDefendersCountTime(avg, sec): 0.93
+getTargetThreatsCountTime(avg, sec): 2.10
+totalTime(avg, sec): 1.68
+actualizeTime(avg, sec): 2.12
+calculateDeepExchangeTime(avg, sec): 1.32
+totalNodesCount: 34520196
+deepNodesCount: 11592535
+deepExchangeTime(avg, sec): 6.71
 
-globalInvokeTime(sec) = 10.293
+globalInvokeTime(sec) = 12.242
+
 ---------------------------------------------------------------------
