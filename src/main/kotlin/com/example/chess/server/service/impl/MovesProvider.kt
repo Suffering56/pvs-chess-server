@@ -734,9 +734,13 @@ class MovesProvider : IMovesProvider {
         }
 
         if (kingAttacker != null) {
-            val pieceFrom = chessboard.getPiece(pointFrom)
-            if (pieceFrom.isTypeOf(PAWN)) {
-                return kingAttacker.isEqual(pointFrom.row, pointTo.col)
+
+            if (pointTo.col != pointFrom.col
+                && (kingAttacker.isEqual(pointFrom.row, pointTo.col))
+                && chessboard.getPiece(pointFrom).isTypeOf(PAWN)
+            ) {
+                //фантастическая ситуация, когда при взятии на проходе (en-passant) мы рубим пешку, объявившую королю шах
+                return true
             }
             return canDefendKing(chessboard, kingPoint, kingAttacker, pointTo)
         }

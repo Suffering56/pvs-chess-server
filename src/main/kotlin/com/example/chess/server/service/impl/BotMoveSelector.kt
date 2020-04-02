@@ -25,14 +25,12 @@ import java.util.stream.Stream
 import kotlin.collections.HashMap
 import kotlin.random.Random
 import kotlin.streams.toList
-import kotlin.system.exitProcess
 
 @Component
 @ExperimentalUnsignedTypes
 class BotMoveSelector : IBotMoveSelector {
 
     @Autowired private lateinit var movesProvider: IMovesProvider
-    @Autowired private lateinit var movesProviderOld: MovesProviderOld
     @Autowired private lateinit var applyMoveHandler: ApplyMoveHandler
 
     companion object {
@@ -135,6 +133,7 @@ class BotMoveSelector : IBotMoveSelector {
 
             threadPool.shutdown()
             while (!threadPool.awaitTermination(1, TimeUnit.SECONDS)) {
+                //do nothing, all ok!
             }
 
             val totalStatistic = Statistic()
@@ -217,27 +216,7 @@ class BotMoveSelector : IBotMoveSelector {
             }
 
             private fun getAvailableMovesByCell(cell: Cell): Stream<Move> {
-                val availableMoves = chessboard.getAvailableMoves(cell.point)
-                val availableMovesOld = chessboard.getAvailableMovesOld(cell.point)
-                if (availableMoves.size != availableMovesOld.size) {
-                    println("\r\n\r\n\r\n\r\n\r\n<<<<<-------------------------------->>>>>")
-                    println(chessboard.toPrettyString())
-
-                    println("\r\n\r\n\r\nnewVersion(${availableMoves.size}):")
-                    availableMoves.forEach {
-                        println(Move.of(cell.point, it).toPrettyString(cell.piece))
-                    }
-
-                    println("\r\n\r\n\r\noldVersion(${availableMovesOld.size}):")
-                    availableMovesOld.forEach {
-                        println(Move.of(cell.point, it).toPrettyString(cell.piece))
-                    }
-                    Thread.sleep(1000)
-                    exitProcess(0)
-                }
-
-
-                return availableMoves.stream()
+                return chessboard.getAvailableMoves(cell.point).stream()
                     .map { pointTo ->
                         Move.of(
                             cell.point,
@@ -330,12 +309,6 @@ class BotMoveSelector : IBotMoveSelector {
             fun getAvailableMoves(pointFrom: Point): List<Point> {
                 return statistic.measure("getAvailableMovesTime") {
                     movesProvider.getAvailableMoves(game, base, pointFrom)
-                }
-            }
-
-            fun getAvailableMovesOld(pointFrom: Point): List<Point> {
-                return statistic.measure("getAvailableMovesTime") {
-                    movesProviderOld.getAvailableMoves(game, base, pointFrom)
                 }
             }
 
