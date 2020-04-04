@@ -496,7 +496,7 @@ class MovesProvider : IMovesProvider {
             return false
         }
 
-        if (isUnderCheck(game, chessboard, kingSide)) {
+        if (canAttackTarget(game, chessboard, Point.of(rowTo, colTo), kingSide.reverse())) {
             // нельзя вставать под шах (случай когда рубим фигуру под защитой тоже входит в этот кейс)
             return false
         }

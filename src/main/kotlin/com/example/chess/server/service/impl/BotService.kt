@@ -39,7 +39,11 @@ class BotService : IBotService {
 
         threadPool.schedule({
             deferredBotMovesMap.computeIfPresent(gameId) { deferredGameId, expectedGamePosition ->
-                gameService.applyBotMove(deferredGameId, expectedGamePosition, this::selectBestMove)
+                try {
+                    gameService.applyBotMove(deferredGameId, expectedGamePosition, this::selectBestMove)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
                 null
             }
         }, delay, TimeUnit.MILLISECONDS)

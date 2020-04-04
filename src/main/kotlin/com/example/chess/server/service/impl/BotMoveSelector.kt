@@ -122,7 +122,7 @@ class BotMoveSelector : IBotMoveSelector {
 
                     applyMoveHandler.applyMove(branchGame, branchChessboard, move)
 
-                    MutableChessboardContext(branchGame, branchChessboard)
+                    MutableChessboardContext(branchGame, branchChessboard, move)
                 }
                 .toList()
 
@@ -153,12 +153,13 @@ class BotMoveSelector : IBotMoveSelector {
 
     private inner class MutableChessboardContext(
         game: IGame,
-        chessboard: IChessboard
+        chessboard: IChessboard,
+        previousMove: Move
     ) {
         val statistic: Statistic = Statistic()
 
         private val chessboard = ChessboardStateHolder(game, chessboard)
-        private val rootNode: Node = Node(null, null, null)
+        private val rootNode: Node = Node(null, previousMove, null)
 
         fun fillNodes(deep: Int) {
             statistic.measure("totalTime") {
@@ -173,7 +174,7 @@ class BotMoveSelector : IBotMoveSelector {
 
         inner class Node(
             val parent: Node?,
-            val previousMove: Move?,
+            val previousMove: Move,
             val killedPiece: PieceType?
         ) {
             init {
@@ -188,7 +189,7 @@ class BotMoveSelector : IBotMoveSelector {
              */
             var weight: UByte = UByte.MIN_VALUE    //UByte.MAX_VALUE - checkmate
 
-            val isRoot: Boolean get() = parent == null || previousMove == null
+            val isRoot: Boolean get() = parent == null
             val currentPosition: Int get() = chessboard.initialPosition + getDeep()
             val nextTurnSide: Side get() = Side.nextTurnSide(currentPosition)
 
@@ -232,7 +233,6 @@ class BotMoveSelector : IBotMoveSelector {
             }
 
             private fun fillDeepExchange() {
-                requireNotNull(previousMove) { "operation not supported for root node" }
                 require(children == null) { "children must be null" }
 
                 actualizeChessboard()
@@ -333,7 +333,6 @@ class BotMoveSelector : IBotMoveSelector {
                 }
 
                 requireNotNull(node.parent) { "action does not support the root node" }
-                node.previousMove!!
 
                 val nextRollback = requireNotNull(stackForRollback.peekFirst()) {
                     "stack for rollback can't be empty"
@@ -388,13 +387,12 @@ class BotMoveSelector : IBotMoveSelector {
                 node.parent?.let {
                     actualizeFromRoot(it)
                 }
-                node.previousMove?.let { _ ->
-                    applyMove(node)
-                }
+
+                applyMove(node)
             }
 
             private fun applyMove(node: Node) {
-                val move = node.previousMove!!
+                val move = node.previousMove
                 val initiatorSide = base.getPiece(move.from).side
                 val fallenPiece = base.getPieceNullable(move.to)
 
@@ -430,7 +428,7 @@ class BotMoveSelector : IBotMoveSelector {
                 protected val additionalMove: Move?,
                 protected val fallenPiece: Piece?
             ) {
-                protected val move: Move get() = node.previousMove!!
+                protected val move: Move get() = node.previousMove
 
                 open fun execute() {
                     base.rollbackMove(move, additionalMove, fallenPiece)
