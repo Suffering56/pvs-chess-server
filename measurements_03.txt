@@ -96,3 +96,52 @@ deepExchangeTime(avg, sec): 6.71
 globalInvokeTime(sec) = 12.242
 
 ---------------------------------------------------------------------
+3)
+    - без вызова getTargetAttackersCount. сразу вызываем getTargetAttackers
+    - с пофикшенными багами MovesProvider-а
+    - без досрочного return-а в MovesProvider-е и inline функций
+
+move successfully applied for game: 232. new chessboard position: 2
+
+getAvailableMovesTime(avg, sec): 0.81
+getTargetDefendersTime(avg, sec): 0.34
+getTargetAttackersTime(avg, sec): 0.84
+totalTime(avg, sec): 3.42
+actualizeTime(avg, sec): 0.73
+calculateDeepExchangeTime(avg, sec): 0.00
+totalNodesCount: 9245315
+deepNodesCount: 0
+deepExchangeTime(avg, sec): 1.99
+
+globalInvokeTime(sec) = 3.99
+---------------------------------------------------------------------
+
+move successfully applied for game: 232. new chessboard position: 4
+
+getAvailableMovesTime(avg, sec): 1.09
+getTargetDefendersTime(avg, sec): 0.70
+getTargetAttackersTime(avg, sec): 1.45
+totalTime(avg, sec): 2.16
+actualizeTime(avg, sec): 1.40
+calculateDeepExchangeTime(avg, sec): 0.00
+totalNodesCount: 23870505
+deepNodesCount: 0
+deepExchangeTime(avg, sec): 3.76
+
+globalInvokeTime(sec) = 7.167
+---------------------------------------------------------------------
+
+move successfully applied for game: 232. new chessboard position: 6
+
+getAvailableMovesTime(avg, sec): 1.56
+getTargetDefendersTime(avg, sec): 1.05
+getTargetAttackersTime(avg, sec): 2.24
+totalTime(avg, sec): 1.38
+actualizeTime(avg, sec): 1.95
+calculateDeepExchangeTime(avg, sec): 0.01
+totalNodesCount: 34513134
+deepNodesCount: 0
+deepExchangeTime(avg, sec): 5.60
+
+globalInvokeTime(sec) = 10.441
+---------------------------------------------------------------------

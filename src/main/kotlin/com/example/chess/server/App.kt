@@ -1,5 +1,6 @@
 package com.example.chess.server
 
+import com.example.chess.server.logic.misc.Point
 import org.slf4j.LoggerFactory
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.SpringApplication
@@ -27,3 +28,6 @@ class App : CommandLineRunner {
 fun main(args: Array<String>) {
     SpringApplication.run(App::class.java, *args)
 }
+
+typealias PointsCollector = (Point) -> Unit
+

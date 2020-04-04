@@ -1,5 +1,6 @@
 package com.example.chess.server.service.impl
 
+import com.example.chess.server.PointsCollector
 import com.example.chess.server.logic.IUnmodifiableChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.Point
@@ -26,8 +27,6 @@ import kotlin.math.abs
  *          за исключением InnerContext-а и пишет результат сразу в результирующую коллекцию
  *          таким образом минимизируется выделяемая память и сильно снижается нагрузка на GC
  */
-typealias PointsAccumulator = (Point) -> Unit
-
 @Component
 class MovesProvider : IMovesProvider {
 
@@ -51,7 +50,7 @@ class MovesProvider : IMovesProvider {
     private fun canAttackTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, attackerSide: Side): Boolean {
         var canAttack = false
 
-        collectTargetThreatsOrDefenders(game, chessboard, targetPoint, attackerSide, false) {
+        collectMovesTo(game, chessboard, targetPoint, attackerSide, false) {
             canAttack = true
         }
         return canAttack
@@ -62,7 +61,7 @@ class MovesProvider : IMovesProvider {
         val expectedSide = targetPiece.side.reverse()
         var result: List<Point> = Points.empty()
 
-        collectTargetThreatsOrDefenders(game, chessboard, targetPoint, expectedSide, isBatterySupported) {
+        collectMovesTo(game, chessboard, targetPoint, expectedSide, isBatterySupported) {
             result = result.with(it)
         }
         return result
@@ -73,7 +72,7 @@ class MovesProvider : IMovesProvider {
         val expectedSide = targetPiece.side
         var result: List<Point> = Points.empty()
 
-        collectTargetThreatsOrDefenders(game, chessboard, targetPoint, expectedSide, isBatterySupported) {
+        collectMovesTo(game, chessboard, targetPoint, expectedSide, isBatterySupported) {
             result = result.with(it)
         }
         return result
@@ -84,7 +83,7 @@ class MovesProvider : IMovesProvider {
         val expectedSide = targetPiece.side.reverse()
         var counter = 0
 
-        collectTargetThreatsOrDefenders(game, chessboard, targetPoint, expectedSide, true) {
+        collectMovesTo(game, chessboard, targetPoint, expectedSide, true) {
             counter++
         }
         return counter
@@ -95,19 +94,70 @@ class MovesProvider : IMovesProvider {
         val expectedSide = targetPiece.side
         var counter = 0
 
-        collectTargetThreatsOrDefenders(game, chessboard, targetPoint, expectedSide, true) {
+        collectMovesTo(game, chessboard, targetPoint, expectedSide, true) {
             counter++
         }
         return counter
     }
 
-    private fun collectTargetThreatsOrDefenders(
+    private fun collectMovesFrom(
+        game: IUnmodifiableGame,
+        chessboard: IUnmodifiableChessboard,
+        pointFrom: Point,
+        collector: PointsCollector
+    ) {
+        val pieceFrom = chessboard.getPiece(pointFrom)
+        val kingPoint = chessboard.getKingPoint(pieceFrom.side)
+
+        if (pieceFrom.isTypeOf(KING)) {
+            //ходы короля слишком непохожи на другие, т.к. нас уже неинтересуют текущие шахи, а так же препятствия
+            return collectKingMoves(game, chessboard, pointFrom, collector)
+        }
+
+        val kingAttackers = getTargetThreats(game, chessboard, kingPoint, false)
+        require(kingAttackers.size <= 2) { "triple check unsupported in chess game.\r\n ${chessboard.toPrettyString()}" }
+
+        if (kingAttackers.size == 2) {
+            //двойной шах, ходить можно только королем
+            return
+        }
+
+        val kingAttacker = if (kingAttackers.isNotEmpty()) kingAttackers[0] else null
+        val kingPossibleAttackerForObstacle = getKingThreatForCurrentObstacle(chessboard, pointFrom)
+
+        val onlyAvailableCollector: PointsCollector = {
+            val pieceTo = chessboard.getPieceNullable(it)
+
+            if (pieceTo == null && isAvailableHarmlessMove(chessboard, pointFrom, kingPoint, kingAttacker, kingPossibleAttackerForObstacle, it)) {
+                collector.invoke(it)
+            } else if (pieceFrom.isEnemyFor(pieceTo) && isAvailableHarmfulMove(kingAttacker, kingPossibleAttackerForObstacle, it)) {
+                collector.invoke(it)
+            }
+        }
+
+        when (pieceFrom.type) {
+            PAWN -> collectPawnMoves(game, chessboard, pointFrom, onlyAvailableCollector)
+            KNIGHT -> collectOffsetMoves(chessboard, knightOffsets, pointFrom, onlyAvailableCollector)
+            BISHOP -> collectVectorMoves(chessboard, pieceVectorsMap[BISHOP]!!, pointFrom, onlyAvailableCollector)
+            ROOK -> collectVectorMoves(chessboard, pieceVectorsMap[ROOK]!!, pointFrom, onlyAvailableCollector)
+            QUEEN -> collectVectorMoves(chessboard, pieceVectorsMap[QUEEN]!!, pointFrom, onlyAvailableCollector)
+            else -> throw UnsupportedOperationException("unsupported piece type: ${pieceFrom.type}")
+        }
+    }
+
+    /**
+     * Собирает все ходы, которые ведут в targetPoint (move.to == targetPoint),
+     * а источником хода является фигура с expectedSide (pieceFrom == expectedSide)
+     *
+     * @param isBatterySupported - поддержка конструкций вида Q->R->R->targetPoint, или B->Q->P->targetPoint.
+     */
+    private fun collectMovesTo(
         game: IUnmodifiableGame,
         chessboard: IUnmodifiableChessboard,
         targetPoint: Point,
         expectedSide: Side,
         isBatterySupported: Boolean,
-        collectFunction: PointsAccumulator
+        collectFunction: PointsCollector
     ) {
         /*
          * TODO: нужно ли проверять что король под шахом?
@@ -126,7 +176,7 @@ class MovesProvider : IMovesProvider {
         collectKnightMovesToTarget(chessboard, targetPoint, expectedSide, collectFunction)
     }
 
-    private fun collectKnightMovesToTarget(chessboard: IUnmodifiableChessboard, targetPoint: Point, expectedSide: Side, collectFunction: PointsAccumulator) {
+    private fun collectKnightMovesToTarget(chessboard: IUnmodifiableChessboard, targetPoint: Point, expectedSide: Side, collectFunction: PointsCollector) {
         for (vector in knightOffsets) {
             val row = targetPoint.row + vector.row
             val col = targetPoint.col + vector.col
@@ -160,7 +210,7 @@ class MovesProvider : IMovesProvider {
         targetPoint: Point,
         expectedSide: Side,
         isBatterySupported: Boolean,
-        collectFunction: PointsAccumulator
+        collectFunction: PointsCollector
     ) {
         val allPossibleAttackerVectors = pieceVectorsMap[QUEEN]!!
 
@@ -225,46 +275,6 @@ class MovesProvider : IMovesProvider {
                     break
                 }
             }
-        }
-    }
-
-    private fun collectMovesFrom(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, accumulator: PointsAccumulator) {
-        val pieceFrom = chessboard.getPiece(pointFrom)
-        val kingPoint = chessboard.getKingPoint(pieceFrom.side)
-
-        if (pieceFrom.isTypeOf(KING)) {
-            //ходы короля слишком непохожи на другие, т.к. нас уже неинтересуют текущие шахи, а так же препятствия
-            return collectKingMoves(game, chessboard, pointFrom, accumulator)
-        }
-
-        val kingAttackers = getTargetThreats(game, chessboard, kingPoint, false)
-        require(kingAttackers.size <= 2) { "triple check unsupported in chess game.\r\n ${chessboard.toPrettyString()}" }
-
-        if (kingAttackers.size == 2) {
-            //двойной шах, ходить можно только королем
-            return
-        }
-
-        val kingAttacker = if (kingAttackers.isNotEmpty()) kingAttackers[0] else null
-        val kingPossibleAttackerForObstacle = getKingThreatForCurrentObstacle(chessboard, pointFrom)
-
-        val onlyAvailableAccumulator: PointsAccumulator = {
-            val pieceTo = chessboard.getPieceNullable(it)
-
-            if (pieceTo == null && isAvailableHarmlessMove(chessboard, pointFrom, kingPoint, kingAttacker, kingPossibleAttackerForObstacle, it)) {
-                accumulator.invoke(it)
-            } else if (pieceFrom.isEnemyFor(pieceTo) && isAvailableHarmfulMove(kingAttacker, kingPossibleAttackerForObstacle, it)) {
-                accumulator.invoke(it)
-            }
-        }
-
-        when (pieceFrom.type) {
-            PAWN -> collectPawnMoves(game, chessboard, pointFrom, onlyAvailableAccumulator)
-            KNIGHT -> collectOffsetMoves(chessboard, knightOffsets, pointFrom, onlyAvailableAccumulator)
-            BISHOP -> collectVectorMoves(chessboard, pieceVectorsMap[BISHOP]!!, pointFrom, onlyAvailableAccumulator)
-            ROOK -> collectVectorMoves(chessboard, pieceVectorsMap[ROOK]!!, pointFrom, onlyAvailableAccumulator)
-            QUEEN -> collectVectorMoves(chessboard, pieceVectorsMap[QUEEN]!!, pointFrom, onlyAvailableAccumulator)
-            else -> throw UnsupportedOperationException("unsupported piece type: ${pieceFrom.type}")
         }
     }
 
@@ -426,7 +436,7 @@ class MovesProvider : IMovesProvider {
         }
     }
 
-    private fun collectKingMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, accumulator: PointsAccumulator) {
+    private fun collectKingMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, collector: PointsCollector) {
 
         val pieceFrom = chessboard.getPiece(pointFrom)
         val sideFrom = pieceFrom.side
@@ -444,7 +454,7 @@ class MovesProvider : IMovesProvider {
             val colTo = kingPoint.col + offset.col
 
             if (isAvailableKingMove(game, chessboard, sideFrom, rowTo, colTo)) {
-                accumulator.invoke(Point.of(rowTo, colTo))
+                collector.invoke(Point.of(rowTo, colTo))
             }
         }
 
@@ -455,11 +465,11 @@ class MovesProvider : IMovesProvider {
 
         // try add castling moves
         if (game.isLongCastlingAvailable(sideFrom)) {
-            tryAddCastlingMove(game, chessboard, kingPoint, true, accumulator)
+            tryAddCastlingMove(game, chessboard, kingPoint, true, collector)
         }
 
         if (game.isShortCastlingAvailable(sideFrom)) {
-            tryAddCastlingMove(game, chessboard, kingPoint, false, accumulator)
+            tryAddCastlingMove(game, chessboard, kingPoint, false, collector)
         }
     }
 
@@ -500,7 +510,7 @@ class MovesProvider : IMovesProvider {
         chessboard: IUnmodifiableChessboard,
         kingPoint: Point,
         isLong: Boolean,
-        accumulator: PointsAccumulator
+        collector: PointsCollector
     ) {
         val kingSide = chessboard.getPiece(kingPoint).side
 
@@ -536,14 +546,14 @@ class MovesProvider : IMovesProvider {
             offset++
         }
 
-        accumulator.invoke(Point.of(kingPoint.row, kingPoint.col + 2 * direction))
+        collector.invoke(Point.of(kingPoint.row, kingPoint.col + 2 * direction))
     }
 
     private fun collectPawnMoves(
         game: IUnmodifiableGame,
         chessboard: IUnmodifiableChessboard,
         pointFrom: Point,
-        accumulator: PointsAccumulator
+        collector: PointsCollector
     ) {
         val pieceFrom = chessboard.getPiece(pointFrom)
         val sideFrom = pieceFrom.side
@@ -553,26 +563,26 @@ class MovesProvider : IMovesProvider {
         var colTo = pointFrom.col
 
         // simple move
-        val simpleMoveAvailable = tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo, colTo, accumulator)
+        val simpleMoveAvailable = tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo, colTo, collector)
 
         // long distance move
         if (simpleMoveAvailable && sideFrom.pawnInitialRow == pointFrom.row) {
-            tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo + rowOffset, colTo, accumulator)
+            tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo + rowOffset, colTo, collector)
         }
 
         colTo = pointFrom.col + 1
 
         // attack
-        tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo, colTo, accumulator)
+        tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo, colTo, collector)
         // en passant
-        tryAddPawnEnPassantMove(game, chessboard, pointFrom, sideFrom, rowTo, colTo, accumulator)
+        tryAddPawnEnPassantMove(game, chessboard, pointFrom, sideFrom, rowTo, colTo, collector)
 
         colTo = pointFrom.col - 1
 
         // attack
-        tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo, colTo, accumulator)
+        tryAddPawnMove(chessboard, pointFrom, sideFrom, rowTo, colTo, collector)
         // en passant
-        tryAddPawnEnPassantMove(game, chessboard, pointFrom, sideFrom, rowTo, colTo, accumulator)
+        tryAddPawnEnPassantMove(game, chessboard, pointFrom, sideFrom, rowTo, colTo, collector)
     }
 
     private fun tryAddPawnMove(
@@ -581,7 +591,7 @@ class MovesProvider : IMovesProvider {
         pawnSide: Side,
         rowTo: Int,
         colTo: Int,
-        accumulator: PointsAccumulator
+        collector: PointsCollector
     ): Boolean {
 
         if (isOutOfBoard(rowTo, colTo)) {
@@ -600,7 +610,7 @@ class MovesProvider : IMovesProvider {
             return false
         }
 
-        accumulator.invoke(Point.of(rowTo, colTo))
+        collector.invoke(Point.of(rowTo, colTo))
         return true
     }
 
@@ -611,7 +621,7 @@ class MovesProvider : IMovesProvider {
         pawnSide: Side,
         rowTo: Int,
         colTo: Int,
-        accumulator: PointsAccumulator
+        collector: PointsCollector
     ) {
         if (pawnSide.pawnEnPassantStartRow != pawnPointFrom.row) {
             // плохая горизонталь
@@ -647,14 +657,14 @@ class MovesProvider : IMovesProvider {
         }
 
         // наконец все проверки пройдены. ход ЭВЭЙЛЭБЛ!
-        accumulator.invoke(Point.of(rowTo, colTo))
+        collector.invoke(Point.of(rowTo, colTo))
     }
 
     private fun collectOffsetMoves(
         chessboard: IUnmodifiableChessboard,
         offsets: Set<Vector>,
         pointFrom: Point,
-        accumulator: PointsAccumulator
+        collector: PointsCollector
     ) {
         val pieceFrom = chessboard.getPiece(pointFrom)
 
@@ -672,7 +682,7 @@ class MovesProvider : IMovesProvider {
                 continue
             }
 
-            accumulator.invoke(Point.of(rowTo, colTo))
+            collector.invoke(Point.of(rowTo, colTo))
         }
     }
 
@@ -680,7 +690,7 @@ class MovesProvider : IMovesProvider {
         chessboard: IUnmodifiableChessboard,
         directions: Set<Vector>,
         pointFrom: Point,
-        accumulator: PointsAccumulator
+        collector: PointsCollector
     ) {
         val pieceFrom = chessboard.getPiece(pointFrom)
 
@@ -699,12 +709,12 @@ class MovesProvider : IMovesProvider {
                 val piece = chessboard.getPieceNullable(rowTo, colTo)
 
                 if (piece == null) {
-                    accumulator.invoke(Point.of(rowTo, colTo))
+                    collector.invoke(Point.of(rowTo, colTo))
                     continue
                 }
 
                 if (pieceFrom.side != piece.side) {
-                    accumulator.invoke(Point.of(rowTo, colTo))
+                    collector.invoke(Point.of(rowTo, colTo))
                 }
 
                 // дальнейшее следование по вектору невозможно, потому что мы уперлись в фигуру(свою или чужую - не важно)

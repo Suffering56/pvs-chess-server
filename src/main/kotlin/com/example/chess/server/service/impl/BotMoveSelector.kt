@@ -36,7 +36,7 @@ class BotMoveSelector : IBotMoveSelector {
     companion object {
         val PAWN_TRANSFORMATION_PIECE_STUB: Piece? = null
         const val CALCULATED_DEEP = 5
-        const val THREADS_COUNT = 1
+        const val THREADS_COUNT = 8
     }
 
     private class Statistic {
@@ -48,8 +48,8 @@ class BotMoveSelector : IBotMoveSelector {
             countersMap["actualizeTime"] = AtomicLong(0)
             countersMap["calculateDeepExchangeTime"] = AtomicLong(0)
             countersMap["getAvailableMovesTime"] = AtomicLong(0)
-            countersMap["getTargetThreatsCountTime"] = AtomicLong(0)
-            countersMap["getTargetDefendersCountTime"] = AtomicLong(0)
+            countersMap["getTargetAttackersTime"] = AtomicLong(0)
+            countersMap["getTargetDefendersTime"] = AtomicLong(0)
 
             countersMap["totalNodesCount"] = AtomicLong(0)
             countersMap["deepNodesCount"] = AtomicLong(0)
@@ -66,7 +66,12 @@ class BotMoveSelector : IBotMoveSelector {
         }
 
         fun addCounterValue(counterName: String, count: Long) {
-            countersMap[counterName]!!.addAndGet(count)
+            try {
+                requireNotNull(countersMap[counterName]) { "counter with name $counterName not found" }
+                    .addAndGet(count)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
 
         inline fun <T> measure(counterName: String, action: () -> T): T {
@@ -234,11 +239,11 @@ class BotMoveSelector : IBotMoveSelector {
 
                 val targetPoint = previousMove.to
 
-                val targetThreatsCount = statistic.measure("getTargetThreatsCountTime") {
-                    movesProvider.getTargetThreatsCount(chessboard.game, chessboard, targetPoint)
+                val attackers = statistic.measure("getTargetAttackersTime") {
+                    movesProvider.getTargetThreats(chessboard.game, chessboard, targetPoint, true)
                 }
 
-                if (targetThreatsCount == 0) {
+                if (attackers.isEmpty()) {
                     // текущий ход (previousMove) безопасен, потому что никто не может срубить, передвинутую фигуру
                     // разменов не будет
                     weight = (killedPiece?.value ?: 0).toUByte()
@@ -247,13 +252,13 @@ class BotMoveSelector : IBotMoveSelector {
                     // противник (следующая по глубине нода) может ответить срубив передвиную фигуру
                 }
 
-                val targetDefendersCount = statistic.measure("getTargetDefendersCountTime") {
-                    movesProvider.getTargetDefendersCount(chessboard.game, chessboard, targetPoint)
+                val defenders = statistic.measure("getTargetDefendersTime") {
+                    movesProvider.getTargetDefenders(chessboard.game, chessboard, targetPoint, true)
                 }
 
                 val movedPiece = chessboard.getPiece(targetPoint).type
 
-                if (targetDefendersCount == 0) {
+                if (defenders.isEmpty()) {
                     // previousMove текущей ноды поставил под удар передвинутую фигуру. а защиты у нее нет
                     // противник ее может срубить любым из доступных способов (хотя бы 1 такой способ гарантированно есть)
                     weight = ((killedPiece?.value ?: 0) - movedPiece.value).toUByte()
@@ -263,19 +268,7 @@ class BotMoveSelector : IBotMoveSelector {
                 //если мы сюда дошли, значит нас постиг deepExchange
 
                 statistic.measure("calculateDeepExchangeTime") {
-
-                    val threats = movesProvider.getTargetThreats(chessboard.game, chessboard, targetPoint, false)
-                    val defenders = movesProvider.getTargetDefenders(chessboard.game, chessboard, targetPoint, false)
-//
-//                    if (threats.size < targetThreatsCount) {
-//                        val allThreats = movesProvider.getTargetThreats(chessboard.game, chessboard, targetPoint, true)
-//                    }
-//
-//                    if (defenders.size < targetDefendersCount) {
-//                        val allDefenders = movesProvider.getTargetDefenders(chessboard.game, chessboard, targetPoint, true)
-//                    }
-
-                    statistic.addCounterValue("deepNodesCount", threats.size.toLong())
+//                    statistic.addCounterValue("deepNodesCount", attackers.size.toLong())
                 }
             }
 
