@@ -56,9 +56,17 @@
         + а что если закэшировать HashSet<Point> для 4 элементов: это оказалось слишком дорого
 
 - рефакторинг MovesProvider
-    - можно переписать все в стиле collectMovesTo, collectMovesFrom
-    - я там где-то с шахами и взятием на проходе не разобрался
+    + можно переписать все в стиле collectMovesTo, collectMovesFrom
+    + я там где-то с шахами не разобрался
+    + bug fix
+    - разобраться с взятием на проходе в collectMovesTo
 
+- усекать плохие ходы на ранних этапах, потому что 10 секунд только на заполнение ходов, глубины 5 - это печально
+- deep exchange для усеченных ситуаций
+- move weight: Формула нахождения лучшего хода следующая:
+    	~ private int getTotal() {
+    	~	 return getCurrentWeight() - childrenStream().max(children.getTotal());
+    	~ }
 
 - node.calculateCost
     - parameter: material

@@ -73,3 +73,30 @@ K: e8 -> g8 (BLACK)
 oldVersion(2):
 K: e8 -> e7 (BLACK)
 K: e8 -> f8 (BLACK)
+
+4) из-за того что в canAttackTarget ранее были проверки на available, мы могли встать под шах
+
+<<<<<-------------------------------->>>>>
+   a   b   c   d   e   f   g   h
+  ------------------------------
+8| R-  N-  B-  Q-  K-  .   N-  R- |8
+7| P-  P-  P-  P-  .   P-  .   P- |7
+6| .   .   .   .   .   .   P-  B- |6
+5| .   .   .   .   P-  .   B+  .  |5
+4| .   .   .   P+  P+  .   .   .  |4
+3| .   .   .   .   .   .   .   .  |3
+2| P+  P+  P+  K+  .   P+  P+  P+ |2
+1| R+  N+  .   Q+  .   B+  N+  R+ |1
+  ------------------------------
+   a   b   c   d   e   f   g   h
+
+
+
+newVersion(1):
+K: e8 -> f8 (BLACK)
+
+
+
+oldVersion(2):
+K: e8 -> e7 (BLACK)
+K: e8 -> f8 (BLACK)

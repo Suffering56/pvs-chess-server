@@ -31,8 +31,7 @@ import kotlin.math.abs
 class MovesProvider : IMovesProvider {
 
     //collectTargetAttackers/Defenders
-
-    override fun getAvailableMoves(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): List<Point> {
+    override fun getAvailableMovesFrom(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point): List<Point> {
         var accumulator = Points.empty()
 
         collectMovesFrom(game, chessboard, pointFrom) {
@@ -42,21 +41,7 @@ class MovesProvider : IMovesProvider {
         return accumulator
     }
 
-    override fun isUnderCheck(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, kingSide: Side): Boolean {
-        val kingPoint = chessboard.getKingPoint(kingSide)
-        return canAttackTarget(game, chessboard, kingPoint, kingSide.reverse())
-    }
-
-    private fun canAttackTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, attackerSide: Side): Boolean {
-        var canAttack = false
-
-        collectMovesTo(game, chessboard, targetPoint, attackerSide, false) {
-            canAttack = true
-        }
-        return canAttack
-    }
-
-    override fun getTargetThreats(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, isBatterySupported: Boolean): List<Point> {
+    override fun getTargetAttackers(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, isBatterySupported: Boolean): List<Point> {
         val targetPiece = chessboard.getPiece(targetPoint)
         val expectedSide = targetPiece.side.reverse()
         var result: List<Point> = Points.empty()
@@ -78,26 +63,42 @@ class MovesProvider : IMovesProvider {
         return result
     }
 
-    override fun getTargetThreatsCount(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): Int {
-        val targetPiece = chessboard.getPiece(targetPoint)
-        val expectedSide = targetPiece.side.reverse()
-        var counter = 0
-
-        collectMovesTo(game, chessboard, targetPoint, expectedSide, true) {
-            counter++
-        }
-        return counter
+    override fun isUnderCheck(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, kingSide: Side): Boolean {
+        val kingPoint = chessboard.getKingPoint(kingSide)
+        return canAttackTarget(game, chessboard, kingPoint, kingSide.reverse())
     }
 
-    override fun getTargetDefendersCount(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point): Int {
-        val targetPiece = chessboard.getPiece(targetPoint)
-        val expectedSide = targetPiece.side
-        var counter = 0
+    override fun isMoveAvailable(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, pointTo: Point): Boolean {
+        val pieceFrom = chessboard.getPiece(pointFrom)
+        val kingSide = pieceFrom.side
+        val kingPoint = chessboard.getKingPoint(kingSide)
 
-        collectMovesTo(game, chessboard, targetPoint, expectedSide, true) {
-            counter++
+        if (pieceFrom.isTypeOf(KING)) {
+            //ходы короля слишком непохожи на другие, т.к. нас уже неинтересуют текущие шахи, а так же препятствия
+            return isAvailableKingMove(game, chessboard, kingSide, pointTo.row, pointTo.col)
         }
-        return counter
+
+        val kingAttackers = getTargetAttackers(game, chessboard, kingPoint, false)
+        require(kingAttackers.size <= 2) { "triple check unsupported in chess game.\r\n ${chessboard.toPrettyString()}" }
+
+        if (kingAttackers.size == 2) {
+            //двойной шах, ходить можно только королем
+            return false
+        }
+
+        val kingAttacker = if (kingAttackers.isNotEmpty()) kingAttackers[0] else null
+        val kingPossibleAttackerForObstacle = getKingThreatForCurrentObstacle(chessboard, pointFrom)
+
+        return isNotKingMoveAvailable(chessboard, pieceFrom, pointFrom, pointTo, kingPoint, kingAttacker, kingPossibleAttackerForObstacle)
+    }
+
+    private fun canAttackTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, attackerSide: Side): Boolean {
+        var canAttack = false
+
+        collectMovesTo(game, chessboard, targetPoint, attackerSide, false) {
+            canAttack = true
+        }
+        return canAttack
     }
 
     private fun collectMovesFrom(
@@ -114,7 +115,7 @@ class MovesProvider : IMovesProvider {
             return collectKingMoves(game, chessboard, pointFrom, collector)
         }
 
-        val kingAttackers = getTargetThreats(game, chessboard, kingPoint, false)
+        val kingAttackers = getTargetAttackers(game, chessboard, kingPoint, false)
         require(kingAttackers.size <= 2) { "triple check unsupported in chess game.\r\n ${chessboard.toPrettyString()}" }
 
         if (kingAttackers.size == 2) {
@@ -125,13 +126,9 @@ class MovesProvider : IMovesProvider {
         val kingAttacker = if (kingAttackers.isNotEmpty()) kingAttackers[0] else null
         val kingPossibleAttackerForObstacle = getKingThreatForCurrentObstacle(chessboard, pointFrom)
 
-        val onlyAvailableCollector: PointsCollector = {
-            val pieceTo = chessboard.getPieceNullable(it)
-
-            if (pieceTo == null && isAvailableHarmlessMove(chessboard, pointFrom, kingPoint, kingAttacker, kingPossibleAttackerForObstacle, it)) {
-                collector.invoke(it)
-            } else if (pieceFrom.isEnemyFor(pieceTo) && isAvailableHarmfulMove(kingAttacker, kingPossibleAttackerForObstacle, it)) {
-                collector.invoke(it)
+        val onlyAvailableCollector: PointsCollector = { pointTo ->
+            if (isNotKingMoveAvailable(chessboard, pieceFrom, pointFrom, pointTo, kingPoint, kingAttacker, kingPossibleAttackerForObstacle)) {
+                collector.invoke(pointTo)
             }
         }
 
@@ -143,6 +140,26 @@ class MovesProvider : IMovesProvider {
             QUEEN -> collectVectorMoves(chessboard, pieceVectorsMap[QUEEN]!!, pointFrom, onlyAvailableCollector)
             else -> throw UnsupportedOperationException("unsupported piece type: ${pieceFrom.type}")
         }
+    }
+
+    private fun isNotKingMoveAvailable(
+        chessboard: IUnmodifiableChessboard,
+        pieceFrom: Piece,
+        pointFrom: Point,
+        pointTo: Point,
+        kingPoint: Point,
+        kingAttacker: Point?,
+        kingPossibleAttackerForObstacle: Point?
+    ): Boolean {
+
+        val pieceTo = chessboard.getPieceNullable(pointTo)
+
+        if (pieceTo == null && isAvailableHarmlessMove(chessboard, pointFrom, kingPoint, kingAttacker, kingPossibleAttackerForObstacle, pointTo)) {
+            return true
+        } else if (pieceFrom.isEnemyFor(pieceTo) && isAvailableHarmfulMove(kingAttacker, kingPossibleAttackerForObstacle, pointTo)) {
+            return true
+        }
+        return false
     }
 
     /**
@@ -256,22 +273,15 @@ class MovesProvider : IMovesProvider {
                     break
                 }
 
-                val kingThreatsForCurrentObstacle = getKingThreatForCurrentObstacle(chessboard, Point.of(row, col))
+                // потенциально-доступный ход. коллектим
+                collectFunction.invoke(Point.of(row, col))
 
-                // выбранную фигуру можно двигать, она не защищает короля от шаха
-                // либо рубит фигуру, от шаха которой она защищает короля
-                if (kingThreatsForCurrentObstacle == null || kingThreatsForCurrentObstacle == targetPoint) {
-                    collectFunction.invoke(Point.of(row, col))
+                if (isBatterySupported) {
                     // за фигурой может другая фигура такого же типа (назовем такое сочетание батареей)
                     // примеры батарей: R -> R -> targetPoint,  Q -> P -> targetPoint, Q -> B -> targetPoint
                     // так вот батарея из фигур имеет значение для подсчета
-                    if (isBatterySupported) {
-                        continue
-                    } else {
-                        break
-                    }
+                    continue
                 } else {
-                    // если эту фигуру двигать нельзя, то остальные (стоящие сзади) не помогут и подавно
                     break
                 }
             }

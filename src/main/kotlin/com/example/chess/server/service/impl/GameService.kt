@@ -202,7 +202,7 @@ class GameService : IGameService {
 
         return GameResult(
             game,
-            movesProvider.getAvailableMoves(game, chessboard, point)
+            movesProvider.getAvailableMovesFrom(game, chessboard, point)
         )
     }
 
@@ -287,7 +287,7 @@ class GameService : IGameService {
     private fun applyMove(game: Game, chessboard: IChessboard, move: Move): ChangesDTO {
         val pieceFrom = chessboard.getPiece(move.from)
 
-        val availableMoves = movesProvider.getAvailableMoves(game, chessboard, move.from)
+        val availableMoves = movesProvider.getAvailableMovesFrom(game, chessboard, move.from)
         require(availableMoves.contains(move.to)) {
             "cannot applyMove move=${move.toPrettyString(pieceFrom)}, because it not contains in available moves set: " +
                     "${availableMoves.stream().map { it.toPrettyString() }.toList()}"

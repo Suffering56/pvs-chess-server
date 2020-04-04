@@ -5,9 +5,7 @@ import com.example.chess.server.logic.IChessboard
 import com.example.chess.server.logic.IGame
 import com.example.chess.server.logic.IUnmodifiableChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
-import com.example.chess.server.logic.misc.Cell
-import com.example.chess.server.logic.misc.Move
-import com.example.chess.server.logic.misc.Point
+import com.example.chess.server.logic.misc.*
 import com.example.chess.server.service.IBotMoveSelector
 import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.enums.Piece
@@ -50,6 +48,7 @@ class BotMoveSelector : IBotMoveSelector {
             countersMap["getAvailableMovesTime"] = AtomicLong(0)
             countersMap["getTargetAttackersTime"] = AtomicLong(0)
             countersMap["getTargetDefendersTime"] = AtomicLong(0)
+            countersMap["filterDeepAttackersTime"] = AtomicLong(0)
 
             countersMap["totalNodesCount"] = AtomicLong(0)
             countersMap["deepNodesCount"] = AtomicLong(0)
@@ -108,7 +107,7 @@ class BotMoveSelector : IBotMoveSelector {
         Statistic.measureAndPrint("globalInvokeTime") {
             val branches = chessboard.cellsStream(botSide)
                 .flatMap { cell ->
-                    movesProvider.getAvailableMoves(game, chessboard, cell.point).stream()
+                    movesProvider.getAvailableMovesFrom(game, chessboard, cell.point).stream()
                         .map { pointTo ->
                             Move.of(
                                 cell.point, pointTo,
@@ -204,9 +203,9 @@ class BotMoveSelector : IBotMoveSelector {
 
             fun fillChildren(reverseDeep: Int) {
                 if (reverseDeep == 0) {
-                    statistic.measure("deepExchangeTime") {
-                        fillDeepExchange()
-                    }
+//                    statistic.measure("deepExchangeTime") {
+//                        fillDeepExchange()
+//                    }
                     return
                 }
 
@@ -235,12 +234,18 @@ class BotMoveSelector : IBotMoveSelector {
             private fun fillDeepExchange() {
                 require(children == null) { "children must be null" }
 
-                actualizeChessboard()
-
                 val targetPoint = previousMove.to
 
+                if (targetPoint != parent!!.previousMove.to) {
+                    // решил считать deepExchange только для продолжения уже начатых разменов во имя производительности
+                    //TODO: а что делать с обычными ходами? ведь нам важно знать текущий ход отдает фигуру или нет
+                    return
+                }
+
+                actualizeChessboard()
+
                 val attackers = statistic.measure("getTargetAttackersTime") {
-                    movesProvider.getTargetThreats(chessboard.game, chessboard, targetPoint, true)
+                    movesProvider.getTargetAttackers(chessboard.game, chessboard, targetPoint, true)
                 }
 
                 if (attackers.isEmpty()) {
@@ -248,8 +253,22 @@ class BotMoveSelector : IBotMoveSelector {
                     // разменов не будет
                     weight = (killedPiece?.value ?: 0).toUByte()
                     return
-                } else {
-                    // противник (следующая по глубине нода) может ответить срубив передвиную фигуру
+                }
+
+                val filteredAttackers = statistic.measure("filterDeepAttackersTime") {
+                    var filtered = Points.empty()
+
+                    attackers.stream()
+                        .filter { movesProvider.isMoveAvailable(chessboard.game, chessboard, it, targetPoint) }
+                        .forEach { filtered = filtered.with(it) }
+                    filtered
+                }
+
+                if (filteredAttackers.isEmpty()) {
+                    // текущий ход (previousMove) безопасен, потому что никто не может срубить, передвинутую фигуру
+                    // разменов не будет
+                    weight = (killedPiece?.value ?: 0).toUByte()
+                    return
                 }
 
                 val defenders = statistic.measure("getTargetDefendersTime") {
@@ -301,7 +320,7 @@ class BotMoveSelector : IBotMoveSelector {
 
             fun getAvailableMoves(pointFrom: Point): List<Point> {
                 return statistic.measure("getAvailableMovesTime") {
-                    movesProvider.getAvailableMoves(game, base, pointFrom)
+                    movesProvider.getAvailableMovesFrom(game, base, pointFrom)
                 }
             }
 
@@ -386,9 +405,8 @@ class BotMoveSelector : IBotMoveSelector {
             private fun actualizeFromRoot(node: Node) {
                 node.parent?.let {
                     actualizeFromRoot(it)
+                    applyMove(node)
                 }
-
-                applyMove(node)
             }
 
             private fun applyMove(node: Node) {
@@ -489,7 +507,7 @@ class BotMoveSelector : IBotMoveSelector {
         var availableMoves: List<Point>
         do {
             randomPointFrom = random(pointsFrom).point
-            availableMoves = movesProvider.getAvailableMoves(game, chessboard, randomPointFrom)
+            availableMoves = movesProvider.getAvailableMovesFrom(game, chessboard, randomPointFrom)
         } while (availableMoves.isEmpty())
 
         return Move.of(

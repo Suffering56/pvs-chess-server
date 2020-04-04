@@ -145,3 +145,58 @@ deepExchangeTime(avg, sec): 5.60
 
 globalInvokeTime(sec) = 10.441
 ---------------------------------------------------------------------
+
+4)
+    - без вызова getTargetAttackersCount. сразу вызываем getTargetAttackers
+    - с пофикшенными багами MovesProvider-а
+    - без досрочного return-а в MovesProvider-е и inline функций
+    - со второй волной пофикшенных багов movesProvider-а (например раньше нельзя было ходить королём под шахом): к сожалению количество нод значительно увеличилось
+    - с рассчетом deepExchange только для продолжений
+
+move successfully applied for game: 232. new chessboard position: 2
+
+getAvailableMovesTime(avg, sec): 1.52
+getTargetDefendersTime(avg, sec): 0.00
+getTargetAttackersTime(avg, sec): 0.02
+filterDeepAttackersTime(avg, sec): 0.02
+totalTime(avg, sec): 2.73
+actualizeTime(avg, sec): 0.14
+calculateDeepExchangeTime(avg, sec): 0.00
+totalNodesCount: 10189515
+deepNodesCount: 0
+deepExchangeTime(avg, sec): 0.12
+
+globalInvokeTime(sec) = 2.919
+---------------------------------------------------------------------
+
+move successfully applied for game: 232. new chessboard position: 4
+
+getAvailableMovesTime(avg, sec): 2.23
+getTargetDefendersTime(avg, sec): 0.03
+getTargetAttackersTime(avg, sec): 0.05
+filterDeepAttackersTime(avg, sec): 0.03
+totalTime(avg, sec): 4.70
+actualizeTime(avg, sec): 0.35
+calculateDeepExchangeTime(avg, sec): 0.00
+totalNodesCount: 36646951
+deepNodesCount: 0
+deepExchangeTime(avg, sec): 0.36
+
+globalInvokeTime(sec) = 5.365
+---------------------------------------------------------------------
+
+move successfully applied for game: 232. new chessboard position: 6
+
+getAvailableMovesTime(avg, sec): 5.19
+getTargetDefendersTime(avg, sec): 0.06
+getTargetAttackersTime(avg, sec): 0.15
+filterDeepAttackersTime(avg, sec): 0.21
+totalTime(avg, sec): 11.09
+actualizeTime(avg, sec): 0.59
+calculateDeepExchangeTime(avg, sec): 0.00
+totalNodesCount: 79969274
+deepNodesCount: 0
+deepExchangeTime(avg, sec): 0.80
+
+globalInvokeTime(sec) = 12.352
+---------------------------------------------------------------------
