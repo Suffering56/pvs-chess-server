@@ -51,6 +51,10 @@ open class Chessboard private constructor(
 
     override fun applyMove(move: Move): Move? {
         val pieceFrom = getPiece(move.from)
+        val pieceTo = getPieceNullable(move.to)
+        require(pieceTo?.isTypeOf(KING) != true) {
+            "cannot attack king! move=${move.toPrettyString(pieceFrom)}\r\n${toPrettyString(move.from, move.to)}"
+        }
 
         if (pieceFrom.isTypeOf(KING)) {
             kingPoints[pieceFrom.side] = Point.of(move.to.toDTO())
@@ -77,7 +81,7 @@ open class Chessboard private constructor(
         val transformationPiece =
             requireNotNull(move.pawnTransformationPiece) {
                 "transformation piece cannot be null: " +
-                        "move=${move.toPrettyString(pieceFrom)}\r\n${toPrettyString()}"
+                        "move=${move.toPrettyString(pieceFrom)}\r\n${toPrettyString(move)}"
             }
 
         require(pieceFrom.side == transformationPiece.side) {
@@ -87,13 +91,15 @@ open class Chessboard private constructor(
     }
 
     private fun applyEnPassant(move: Move, pawn: Piece): Move? {
-        val attackedPiece = requireNotNull(getPieceNullable(move.from.row, move.to.col)) {
+        val attackedPoint = Point.of(move.from.row, move.to.col)
+
+        val attackedPiece = requireNotNull(getPieceNullable(attackedPoint)) {
             "attacked piece[en passant] cannot be null: " +
-                    "move=${move.toPrettyString(pawn)}\r\n${toPrettyString()}"
+                    "move=${move.toPrettyString(pawn)}\r\n${toPrettyString(move.from, move.to, attackedPoint)}"
         }
         require(pawn.side != attackedPiece.side) {
             "attacked piece side must be opposite to the side empty moved pawn:" +
-                    "move=${move.toPrettyString(pawn)}\r\n${toPrettyString()}"
+                    "move=${move.toPrettyString(pawn)}\r\n${toPrettyString(move.from, move.to, attackedPoint)}"
         }
 
         //move pawn
@@ -125,7 +131,7 @@ open class Chessboard private constructor(
         val rook = getPieceNullable(rowIndex, rookColumnFrom)
         require(rook == Piece.of(king.side, PieceType.ROOK)) {
             "required castling rook not found: " +
-                    "move=${move.toPrettyString(king)}\r\n${toPrettyString()}"
+                    "move=${move.toPrettyString(king)}\r\n${toPrettyString(move)}"
         }
 
         //move king
@@ -287,13 +293,28 @@ open class Chessboard private constructor(
     }
 
     override fun toPrettyString(): String {
+        return toPrettyString(null)
+    }
+
+    override fun toPrettyString(previousMove: Move): String {
+        return toPrettyString(previousMove.from, previousMove.to)
+    }
+
+    override fun toPrettyString(vararg highlightedPoints: Point?): String {
         var result = "   a   b   c   d   e   f   g   h\r\n"
         result += "  ------------------------------\r\n"
 
         for (rowIndex in 7 downTo 0) {
             result += "${rowIndex + 1}| "
             for (columnIndex in 7 downTo 0) {
-                val piece = getPieceNullable(Point.of(rowIndex, columnIndex))
+                val currentPoint = Point.of(rowIndex, columnIndex)
+
+                if (Arrays.stream(highlightedPoints).anyMatch { currentPoint == it }) {
+                    result = result.replaceRange(result.lastIndex, result.lastIndex + 1, "*")
+                }
+
+                val piece = getPieceNullable(currentPoint)
+
                 result += if (piece?.isTypeOf(PAWN) == true) "P" else piece?.shortName ?: "."
 
                 result += when (piece?.side) {
@@ -302,14 +323,12 @@ open class Chessboard private constructor(
                     null -> " "
                 }
 
-                if (columnIndex != 0) {
-                    result += "  "
-                }
+                result += "  "
             }
             result += " |${rowIndex + 1}\r\n"
         }
 
-        result += "  ------------------------------\n"
+        result += "  ------------------------------\r\n"
         result += "   a   b   c   d   e   f   g   h"
 
         return result

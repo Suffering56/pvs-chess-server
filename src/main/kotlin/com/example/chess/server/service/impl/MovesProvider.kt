@@ -3,10 +3,7 @@ package com.example.chess.server.service.impl
 import com.example.chess.server.PointsCollector
 import com.example.chess.server.logic.IUnmodifiableChessboard
 import com.example.chess.server.logic.IUnmodifiableGame
-import com.example.chess.server.logic.misc.Point
-import com.example.chess.server.logic.misc.Points
-import com.example.chess.server.logic.misc.isIndexOutOfBounds
-import com.example.chess.server.logic.misc.with
+import com.example.chess.server.logic.misc.*
 import com.example.chess.server.service.IMovesProvider
 import com.example.chess.shared.Constants.ROOK_LONG_COLUMN_INDEX
 import com.example.chess.shared.Constants.ROOK_SHORT_COLUMN_INDEX
@@ -17,6 +14,7 @@ import com.example.chess.shared.enums.Side
 import org.springframework.stereotype.Component
 import java.lang.Integer.*
 import java.util.*
+import java.util.stream.Collectors
 import kotlin.math.abs
 
 /**
@@ -46,7 +44,7 @@ class MovesProvider : IMovesProvider {
         val expectedSide = targetPiece.side.reverse()
         var result: List<Point> = Points.empty()
 
-        collectMovesTo(game, chessboard, targetPoint, expectedSide, isBatterySupported) {
+        collectMovesTo(game, chessboard, targetPoint, expectedSide, isBatterySupported, null) {
             result = result.with(it)
         }
         return result
@@ -57,7 +55,7 @@ class MovesProvider : IMovesProvider {
         val expectedSide = targetPiece.side
         var result: List<Point> = Points.empty()
 
-        collectMovesTo(game, chessboard, targetPoint, expectedSide, isBatterySupported) {
+        collectMovesTo(game, chessboard, targetPoint, expectedSide, isBatterySupported, null) {
             result = result.with(it)
         }
         return result
@@ -65,7 +63,7 @@ class MovesProvider : IMovesProvider {
 
     override fun isUnderCheck(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, kingSide: Side): Boolean {
         val kingPoint = chessboard.getKingPoint(kingSide)
-        return canAttackTarget(game, chessboard, kingPoint, kingSide.reverse())
+        return canAttackTarget(game, chessboard, kingPoint, kingSide.reverse(), null)
     }
 
     override fun isMoveAvailable(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, pointFrom: Point, pointTo: Point): Boolean {
@@ -75,11 +73,17 @@ class MovesProvider : IMovesProvider {
 
         if (pieceFrom.isTypeOf(KING)) {
             //ходы короля слишком непохожи на другие, т.к. нас уже неинтересуют текущие шахи, а так же препятствия
-            return isAvailableKingMove(game, chessboard, kingSide, pointTo.row, pointTo.col)
+            return isAvailableKingMove(game, chessboard, kingSide, pointFrom, pointTo.row, pointTo.col)
         }
 
         val kingAttackers = getTargetAttackers(game, chessboard, kingPoint, false)
-        require(kingAttackers.size <= 2) { "triple check unsupported in chess game.\r\n ${chessboard.toPrettyString()}" }
+        require(kingAttackers.size <= 2) {
+            "triple check unsupported in chess game.\r\n" +
+                    "move: ${Move.of(pointFrom, pointTo).toPrettyString(pieceFrom)}\r\n" +
+                    "kingPoint: ${kingPoint.toPrettyString()}\r\n" +
+                    "kingAttackers: ${kingAttackers.stream().map { it.toPrettyString() }.collect(Collectors.joining(", "))}\r\n" +
+                    chessboard.toPrettyString(pointFrom, pointTo)
+        }
 
         if (kingAttackers.size == 2) {
             //двойной шах, ходить можно только королем
@@ -92,10 +96,14 @@ class MovesProvider : IMovesProvider {
         return isNotKingMoveAvailable(chessboard, pieceFrom, pointFrom, pointTo, kingPoint, kingAttacker, kingPossibleAttackerForObstacle)
     }
 
-    private fun canAttackTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, attackerSide: Side): Boolean {
+    /**
+     * @param ignoredPoint - если мы проверяем что не встаем королём под шах, нужно в ignoredPoint передать точку где стоит король сейчас,
+     *  потому что может оказаться, что эта точка будет считаться препятствием, хотя на самом деле короля там не будет и мы встанем под шах
+     */
+    private fun canAttackTarget(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, targetPoint: Point, attackerSide: Side, ignoredPoint: Point?): Boolean {
         var canAttack = false
 
-        collectMovesTo(game, chessboard, targetPoint, attackerSide, false) {
+        collectMovesTo(game, chessboard, targetPoint, attackerSide, false, ignoredPoint) {
             canAttack = true
         }
         return canAttack
@@ -116,7 +124,7 @@ class MovesProvider : IMovesProvider {
         }
 
         val kingAttackers = getTargetAttackers(game, chessboard, kingPoint, false)
-        require(kingAttackers.size <= 2) { "triple check unsupported in chess game.\r\n ${chessboard.toPrettyString()}" }
+        require(kingAttackers.size <= 2) { "triple check unsupported in chess game.\r\n ${chessboard.toPrettyString(*kingAttackers.toTypedArray())}" }
 
         if (kingAttackers.size == 2) {
             //двойной шах, ходить можно только королем
@@ -165,6 +173,9 @@ class MovesProvider : IMovesProvider {
     /**
      * Собирает все ходы, которые ведут в targetPoint (move.to == targetPoint),
      * а источником хода является фигура с expectedSide (pieceFrom == expectedSide)
+     * Не фильтрует ходы на доступность, потому что:
+     * а) будет некрасивая рекурсия.
+     * б) не всегда это нужно. например не нужно в: isUnderCheck, либо ситуциях, когда собираем ходы для стороны, которая в общем-то сейчас и не ходит
      *
      * @param isBatterySupported - поддержка конструкций вида Q->R->R->targetPoint, или B->Q->P->targetPoint.
      */
@@ -174,23 +185,77 @@ class MovesProvider : IMovesProvider {
         targetPoint: Point,
         expectedSide: Side,
         isBatterySupported: Boolean,
-        collectFunction: PointsCollector
+        ignoredPoint: Point?,
+        collector: PointsCollector
     ) {
-        /*
-         * TODO: нужно ли проверять что король под шахом?
-         * Пока решил, что в данном кейсе это не очень важная проверка. Но если вдруг потребуется то:
-         *
-         * - король под шахом, и не может рубить targetPoint -> return 0
-         * - король под шахом, и может рубить targetPoint, который никем не защищен -> считаем как есть, или возвращаем 1? (по идее 1 > 0 будет в любом случае) -> return 1
-         * - король под шахом, но targetPoint защищен, хоть и король может его рубить (тут есть нюанс в виде такой ситуации kingAttacker -> king -> targetPoint) -> return 0
-         *
-         * PS: выглядит так, словно нас двойной шах не сильно то и интересует (но интересуют обе шахующие фигуры, независимо друг от друга)
-         */
+        collectEnPassantMoveToTarget(game, chessboard, targetPoint, expectedSide, collector)
+        collectVectorMovesToTarget(chessboard, targetPoint, expectedSide, isBatterySupported, ignoredPoint, collector)
+        collectKnightMovesToTarget(chessboard, targetPoint, expectedSide, collector)
+    }
 
-        //TODO: мы больше не уверены что король не под шахом, из-за изменений работы алгоритма -> больше нельзя передавать null просто так
-        //TODO: я совершенно точно не учитываю en-passant
-        collectVectorMovesToTarget(chessboard, targetPoint, expectedSide, isBatterySupported, collectFunction)
-        collectKnightMovesToTarget(chessboard, targetPoint, expectedSide, collectFunction)
+    /**
+     * Сей метод может добавить в коллектор только один ход - взятие на проходе пешки, находящейся в targetPoint,
+     * при условии, что:
+     *  - expectedSide ялвяется противником для пешки из targetPoint,
+     *  - а так же что все стандартные условия для взятия на проходе соблюдены,
+     *  !- кроме ситуаций с недоступностью хода связанных с шахом
+     */
+    private fun collectEnPassantMoveToTarget(
+        game: IUnmodifiableGame,
+        chessboard: IUnmodifiableChessboard,
+        targetPoint: Point,
+        expectedSide: Side,
+        collector: PointsCollector
+    ) {
+        val targetPiece = chessboard.getPieceNullable(targetPoint)
+        // если в targetPoint пусто, то взятия на проходе быть не может (если внимательно читать описание метода)
+            ?: return
+
+        if (!targetPiece.isTypeOf(PAWN)) {
+            // нас интересуют только пешки
+            return
+        }
+
+        if (targetPiece.side == expectedSide) {
+            // нас не интересуют ситуации с поиском defender-а, только attacker
+            return
+        }
+
+        if (game.getPawnLongColumnIndex(targetPiece.side) != targetPoint.col) {
+            // пешка из targetPoint на прошлом ходу не совершала длинного хода на 2 клетки
+            return
+        }
+
+        // отлавливаем рассинхрон между стейтом game и chessboard
+        require(targetPoint.row != expectedSide.pawnEnPassantStartRow) {
+            "targetPoint: ${targetPoint.toPrettyString()} must be on the ${expectedSide.pawnEnPassantStartRow} row, but found in another place." +
+                    "\r\n${chessboard.toPrettyString(targetPoint)}"
+        }
+
+        var counter = 0
+        for (offset in -1..1 step 2) {
+            val row = targetPoint.row
+            val col = targetPoint.col + offset
+
+            if (isOutOfBoard(row, col)) {
+                continue
+            }
+
+            val foundPiece = chessboard.getPieceNullable(row, col)
+                ?: continue
+
+            if (foundPiece != Piece.of(expectedSide, PAWN)) {
+                continue
+            }
+
+            collector.invoke(Point.of(row, col))
+            counter++
+            //TODO: break; возможно придется брать первый найденный
+        }
+
+        if (counter == 2) {
+            System.err.println("two en-passant moves was added, it may provide incorrect situations,\r\n${chessboard.toPrettyString(targetPoint)}")
+        }
     }
 
     private fun collectKnightMovesToTarget(chessboard: IUnmodifiableChessboard, targetPoint: Point, expectedSide: Side, collectFunction: PointsCollector) {
@@ -227,6 +292,7 @@ class MovesProvider : IMovesProvider {
         targetPoint: Point,
         expectedSide: Side,
         isBatterySupported: Boolean,
+        ignoredPoint: Point?,
         collectFunction: PointsCollector
     ) {
         val allPossibleAttackerVectors = pieceVectorsMap[QUEEN]!!
@@ -244,10 +310,15 @@ class MovesProvider : IMovesProvider {
                     break
                 }
 
+                if (ignoredPoint?.isEqual(row, col) == true) {
+                    //здесь стоит фигура, которая на самом деле будет перемещена, а значит эта точка должна считаться пустой при расчетах
+                    continue
+                }
+
                 // если точка пуста - продолжаем поиск по вектору
                 val foundPiece = chessboard.getPieceNullable(row, col) ?: continue
 
-                if (foundPiece.side != expectedSide) {
+                if (foundPiece.side != expectedSide) { //TODO: && foundPoint != movedPiece
                     // уперлись в фигуру не того цвета
                     // дальнейшее следование по вектору не имеет смысла
                     break
@@ -463,7 +534,7 @@ class MovesProvider : IMovesProvider {
             val rowTo = kingPoint.row + offset.row
             val colTo = kingPoint.col + offset.col
 
-            if (isAvailableKingMove(game, chessboard, sideFrom, rowTo, colTo)) {
+            if (isAvailableKingMove(game, chessboard, sideFrom, pointFrom, rowTo, colTo)) {
                 collector.invoke(Point.of(rowTo, colTo))
             }
         }
@@ -487,6 +558,7 @@ class MovesProvider : IMovesProvider {
         game: IUnmodifiableGame,
         chessboard: IUnmodifiableChessboard,
         kingSide: Side,
+        pointFrom: Point,
         rowTo: Int,
         colTo: Int
     ): Boolean {
@@ -506,7 +578,7 @@ class MovesProvider : IMovesProvider {
             return false
         }
 
-        if (canAttackTarget(game, chessboard, Point.of(rowTo, colTo), kingSide.reverse())) {
+        if (canAttackTarget(game, chessboard, targetPoint = Point.of(rowTo, colTo), attackerSide = kingSide.reverse(), ignoredPoint = pointFrom)) {
             // нельзя вставать под шах (случай когда рубим фигуру под защитой тоже входит в этот кейс)
             return false
         }
@@ -543,12 +615,12 @@ class MovesProvider : IMovesProvider {
                 return
             }
 
-            if (offset == 1 && canAttackTarget(game, chessboard, Point.of(row, col), kingSide.reverse())) {
+            if (offset == 1 && canAttackTarget(game, chessboard, Point.of(row, col), kingSide.reverse(), null)) {
                 // рокировка через битое поле невозможна
                 return
             }
 
-            if (offset == 2 && canAttackTarget(game, chessboard, Point.of(row, col), kingSide.reverse())) {
+            if (offset == 2 && canAttackTarget(game, chessboard, Point.of(row, col), kingSide.reverse(), null)) {
                 // под шах вставать при рокировке тоже как ни странно - нельзя
                 return
             }

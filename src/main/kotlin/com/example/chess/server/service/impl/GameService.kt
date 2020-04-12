@@ -303,7 +303,7 @@ class GameService : IGameService {
         saveGame(game)
 
         println("\r\nmove successfully applied for game: ${game.id}. new chessboard position: ${chessboard.position}")
-        println(chessboard.toPrettyString())
+        println(chessboard.toPrettyString(move))
         println()
 
         return ChangesDTO(

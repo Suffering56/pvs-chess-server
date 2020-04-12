@@ -1,6 +1,7 @@
 package com.example.chess.server.logic
 
 import com.example.chess.server.logic.misc.Cell
+import com.example.chess.server.logic.misc.Move
 import com.example.chess.server.logic.misc.Point
 import com.example.chess.server.logic.misc.compressPoint
 import com.example.chess.shared.dto.ChessboardDTO
@@ -26,7 +27,7 @@ interface IUnmodifiableChessboard {
     fun getPieceNullable(point: Point) = getPieceNullable(point.compress())
 
     fun getPiece(compressedPoint: Int): Piece = requireNotNull(getPieceNullable(compressedPoint)) {
-        "piece on position=[${Point.of(compressedPoint).toPrettyString()}] cannot be null:\r\n${toPrettyString()}"
+        "piece on position=[${Point.of(compressedPoint).toPrettyString()}] cannot be null:\r\n${toPrettyString(Point.of(compressedPoint))}"
     }
 
     fun getPiece(rowIndex: Int, columnIndex: Int): Piece {
@@ -42,7 +43,11 @@ interface IUnmodifiableChessboard {
 
     fun toDTO(): ChessboardDTO
 
-    fun toPrettyString(): String
-
     fun copyOf(): IChessboard
+
+    fun toPrettyString(vararg highlightedPoints: Point?): String
+
+    fun toPrettyString(previousMove: Move): String
+
+    fun toPrettyString(): String
 }

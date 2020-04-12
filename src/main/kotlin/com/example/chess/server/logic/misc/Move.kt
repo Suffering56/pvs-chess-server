@@ -95,5 +95,13 @@ class Move private constructor(
         return "${pieceFrom.shortName}: ${from.toPrettyString()} -> ${to.toPrettyString()} (${pieceFrom.side})"
     }
 
+    fun toPrettyString(): String {
+        return "${from.toPrettyString()} -> ${to.toPrettyString()})"
+    }
+
     fun toDTO() = MoveDTO(from.toDTO(), to.toDTO(), pawnTransformationPiece)
+
+    override fun toString(): String {
+        return toPrettyString()
+    }
 }

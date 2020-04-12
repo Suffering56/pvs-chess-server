@@ -8,6 +8,7 @@ import com.example.chess.server.logic.IUnmodifiableGame
 import com.example.chess.server.logic.misc.*
 import com.example.chess.server.service.IBotMoveSelector
 import com.example.chess.server.service.IMovesProvider
+import com.example.chess.server.tabs
 import com.example.chess.shared.enums.Piece
 import com.example.chess.shared.enums.PieceType
 import com.example.chess.shared.enums.Side
@@ -20,6 +21,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import java.util.stream.Stream
+import kotlin.Comparator
 import kotlin.collections.HashMap
 import kotlin.random.Random
 import kotlin.streams.toList
@@ -51,11 +53,11 @@ class BotMoveSelector : IBotMoveSelector {
             countersMap["filterDeepAttackersTime"] = AtomicLong(0)
 
             countersMap["totalNodesCount"] = AtomicLong(0)
-            countersMap["deepNodesCount"] = AtomicLong(0)
+            countersMap["deepAttackersCount"] = AtomicLong(0)
         }
 
         companion object {
-            inline fun <T> measureAndPrint(title: String, action: () -> T): T {
+            fun <T> measureAndPrint(title: String, action: () -> T): T {
                 val start = System.currentTimeMillis()
                 val result: T = action.invoke()
                 val invokeTime = System.currentTimeMillis() - start
@@ -73,7 +75,7 @@ class BotMoveSelector : IBotMoveSelector {
             }
         }
 
-        inline fun <T> measure(counterName: String, action: () -> T): T {
+        fun <T> measure(counterName: String, action: () -> T): T {
             val start = System.currentTimeMillis()
             val result: T = action.invoke()
             val invokeTime = System.currentTimeMillis() - start
@@ -103,8 +105,7 @@ class BotMoveSelector : IBotMoveSelector {
     }
 
     fun selectBest(game: IUnmodifiableGame, chessboard: IUnmodifiableChessboard, botSide: Side): Move {
-
-        Statistic.measureAndPrint("globalInvokeTime") {
+        return Statistic.measureAndPrint("globalInvokeTime") {
             val branches = chessboard.cellsStream(botSide)
                 .flatMap { cell ->
                     movesProvider.getAvailableMovesFrom(game, chessboard, cell.point).stream()
@@ -119,9 +120,10 @@ class BotMoveSelector : IBotMoveSelector {
                     val branchChessboard = chessboard.copyOf()
                     val branchGame = game.copyOf()
 
+                    val killedPiece = branchChessboard.getPieceNullable(move.to)?.type
                     applyMoveHandler.applyMove(branchGame, branchChessboard, move)
 
-                    MutableChessboardContext(branchGame, branchChessboard, move)
+                    MutableChessboardContext(branchGame, branchChessboard, move, killedPiece)
                 }
                 .toList()
 
@@ -130,8 +132,12 @@ class BotMoveSelector : IBotMoveSelector {
 
             branches.forEach {
                 threadPool.submit {
-                    it.fillNodes(CALCULATED_DEEP - 1)
-                    it.clean()
+                    try {
+                        it.fillNodes(CALCULATED_DEEP - 1)
+                        it.updateWeight(CALCULATED_DEEP - 1)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
             }
 
@@ -144,21 +150,48 @@ class BotMoveSelector : IBotMoveSelector {
             branches.forEach {
                 totalStatistic.addValues(it.statistic)
             }
-            totalStatistic.print(threadsCount)
-        }
 
-        return Move.cut(Point.of(1, 1))
+            branches.stream().max(Comparator.comparingInt(MutableChessboardContext::totalWeight))
+                .ifPresent {
+                    //println("BEST MOVE FOUND(totalWeight=${it.totalWeight}): ${it.rootNode.previousMove.toPrettyString()}")
+
+                    val context = branches.stream().max(Comparator.comparingInt(MutableChessboardContext::totalWeight)).get()
+                    val board = context.chessboard
+                    var node: MutableChessboardContext.Node? = context.rootNode
+                    val stringBuilder = StringBuilder()
+
+                    while (node != null) {
+                        board.actualize(node)
+                        stringBuilder.append(node.toPrettyString(true))
+                        stringBuilder.append("\r\n\r\n")
+
+                        val children = node.children
+                        node = if (children?.size == 1) children[0] else null
+                    }
+
+                    println("BEST MOVE FOUND(totalWeight=${it.totalWeight}, branchName:${it.toString()}):")
+                    println(stringBuilder.toString())
+                }
+
+            totalStatistic.print(threadsCount)
+            Move.cut(Point.of(1, 1))
+        }
     }
 
     private inner class MutableChessboardContext(
         game: IGame,
         chessboard: IChessboard,
-        previousMove: Move
+        previousMove: Move,
+        killedPiece: PieceType?
     ) {
         val statistic: Statistic = Statistic()
+        val chessboard = ChessboardStateHolder(game, chessboard)
+        val rootNode: Node = Node(null, previousMove, killedPiece)
+        var totalWeight = 0
 
-        private val chessboard = ChessboardStateHolder(game, chessboard)
-        private val rootNode: Node = Node(null, previousMove, null)
+        override fun toString(): String {
+            return "context: ${rootNode.previousMove.toPrettyString()}"
+        }
 
         fun fillNodes(deep: Int) {
             statistic.measure("totalTime") {
@@ -169,6 +202,10 @@ class BotMoveSelector : IBotMoveSelector {
 
         fun clean() {
             rootNode.children = null
+        }
+
+        fun updateWeight(deep: Int) {
+            totalWeight = rootNode.calculateDeepWeightAndFilterChildren(deep)
         }
 
         inner class Node(
@@ -186,26 +223,61 @@ class BotMoveSelector : IBotMoveSelector {
              * Рассчитывается относительно текущей ноды.
              * То есть положительный рейтинг выгоден для стороны, которая передвинула фигуру в previousMove, а отрицательный - для ее противника
              */
-            var weight: UByte = UByte.MIN_VALUE    //UByte.MAX_VALUE - checkmate
+            var weight: Int = 0
 
             val isRoot: Boolean get() = parent == null
             val currentPosition: Int get() = chessboard.initialPosition + getDeep()
             val nextTurnSide: Side get() = Side.nextTurnSide(currentPosition)
 
-            fun getDeep(): Int {
-                // deep = 0; is root! еще никто не ходил.
-                return if (isRoot) {
-                    0
-                } else {
-                    1 + parent!!.getDeep()
+
+            fun calculateDeepWeightAndFilterChildren(reverseDeep: Int): Int {
+                val childrenLocal = children
+
+                if (reverseDeep == 0 || childrenLocal == null) {
+                    //TODO: need support of the deep exchange
+                    return weight
                 }
+
+                if (childrenLocal.isEmpty()) {
+                    //TODO: CHECKMATE HERE!
+                    //-нужно проверить всех соседей на checkmate
+                    //возможно deep - это некий коэффициент на негарантированный checkmateValue
+                    return weight
+                }
+
+                val maxChildrenNode: Node = childrenLocal.stream()
+                    .max(Comparator.comparingInt { child -> child.calculateDeepWeightAndFilterChildren(reverseDeep - 1) })
+                    .orElseThrow()
+
+                children = listOf(maxChildrenNode)
+
+                return weight - maxChildrenNode.weight
+            }
+
+            fun calculateWeight(): Int {
+                //NOT ACTUALIZED CHESSBOARD HERE!
+                val materialWeight = (killedPiece?.value ?: 0) * 100
+
+                val childrenLocal = children
+                val parentChildren = parent?.children
+
+                if (childrenLocal == null || parentChildren == null) {
+                    return materialWeight
+                }
+
+                val tacticalWeight = childrenLocal.size - parentChildren.size
+
+//                return materialWeight + tacticalWeight
+                return materialWeight
             }
 
             fun fillChildren(reverseDeep: Int) {
+                weight = calculateWeight()
+
                 if (reverseDeep == 0) {
-//                    statistic.measure("deepExchangeTime") {
-//                        fillDeepExchange()
-//                    }
+                    statistic.measure("deepExchangeTime") {
+                        fillDeepExchange()
+                    }
                     return
                 }
 
@@ -232,15 +304,18 @@ class BotMoveSelector : IBotMoveSelector {
             }
 
             private fun fillDeepExchange() {
+                if (killedPiece == null) {
+                    return
+                }
+
                 require(children == null) { "children must be null" }
 
                 val targetPoint = previousMove.to
-
-                if (targetPoint != parent!!.previousMove.to) {
-                    // решил считать deepExchange только для продолжения уже начатых разменов во имя производительности
-                    //TODO: а что делать с обычными ходами? ведь нам важно знать текущий ход отдает фигуру или нет
-                    return
-                }
+//                if (targetPoint != parent!!.previousMove.to) {
+//                    // решил считать deepExchange только для продолжения уже начатых разменов во имя производительности
+//                    //TODO: а что делать с обычными ходами? ведь нам важно знать текущий ход отдает фигуру или нет
+//                    return
+//                }
 
                 actualizeChessboard()
 
@@ -251,7 +326,8 @@ class BotMoveSelector : IBotMoveSelector {
                 if (attackers.isEmpty()) {
                     // текущий ход (previousMove) безопасен, потому что никто не может срубить, передвинутую фигуру
                     // разменов не будет
-                    weight = (killedPiece?.value ?: 0).toUByte()
+//                    deepWeight = (killedPiece?.value ?: 0).toUByte()
+//                    weight = killedPiece?.value ?: 0
                     return
                 }
 
@@ -267,7 +343,8 @@ class BotMoveSelector : IBotMoveSelector {
                 if (filteredAttackers.isEmpty()) {
                     // текущий ход (previousMove) безопасен, потому что никто не может срубить, передвинутую фигуру
                     // разменов не будет
-                    weight = (killedPiece?.value ?: 0).toUByte()
+//                    deepWeight = (killedPiece?.value ?: 0).toUByte()
+//                    weight = killedPiece?.value ?: 0
                     return
                 }
 
@@ -280,14 +357,15 @@ class BotMoveSelector : IBotMoveSelector {
                 if (defenders.isEmpty()) {
                     // previousMove текущей ноды поставил под удар передвинутую фигуру. а защиты у нее нет
                     // противник ее может срубить любым из доступных способов (хотя бы 1 такой способ гарантированно есть)
-                    weight = ((killedPiece?.value ?: 0) - movedPiece.value).toUByte()
+//                    deepWeight = ((killedPiece?.value ?: 0) - movedPiece.value).toUByte()
+//                    weight = (killedPiece?.value ?: 0) - movedPiece.value
                     return
                 }
 
                 //если мы сюда дошли, значит нас постиг deepExchange
 
                 statistic.measure("calculateDeepExchangeTime") {
-//                    statistic.addCounterValue("deepNodesCount", attackers.size.toLong())
+                    statistic.addCounterValue("deepAttackersCount", attackers.size.toLong())
                 }
             }
 
@@ -308,9 +386,31 @@ class BotMoveSelector : IBotMoveSelector {
                     }
                 }
             }
+
+            fun getDeep(): Int {
+                // deep = 0; is root! еще никто не ходил.
+                return if (isRoot) {
+                    0
+                } else {
+                    1 + parent!!.getDeep()
+                }
+            }
+
+            fun toPrettyString(withTabs: Boolean = false): String {
+                val movedPiece = chessboard.getPiece(previousMove.to)
+                val str = StringBuilder()
+                str.append("move[deep=${getDeep() + 1}, weight=$weight]: ${previousMove.toPrettyString(movedPiece)}\r\n")
+                str.append("chessboard:\r\n${chessboard.toPrettyString(previousMove)}\r\n")
+                str.append("---------------------------------------------------\r\n")
+
+                if (withTabs) {
+                    return str.toString().tabs(getDeep())
+                }
+                return str.toString()
+            }
         }
 
-        private inner class ChessboardStateHolder(
+        inner class ChessboardStateHolder(
             val game: IGame,
             val base: IChessboard,
             val initialPosition: Int = base.position
@@ -330,7 +430,7 @@ class BotMoveSelector : IBotMoveSelector {
                     return
                 } else if (stackForRollback.isEmpty()) {
                     require(base.position == initialPosition) {
-                        "incorrect chessboard position=${base.position}, must be equal initialPosition=$initialPosition, \r\n ${chessboard.toPrettyString()}"
+                        "incorrect chessboard position=${base.position}, must be equal initialPosition=$initialPosition, \r\n ${node.toPrettyString()}"
                     }
                     actualizeFromRoot(node)
                     return
